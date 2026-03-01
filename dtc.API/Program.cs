@@ -1,4 +1,10 @@
 
+using dtc.Infrastructure.Pesistence.SQLServer;
+using dtc.Infrastructure.Persistence.MongoDB;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using MongoDB.Driver;
+
 namespace dtc.API
 {
     public class Program
@@ -8,6 +14,24 @@ namespace dtc.API
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
+            builder.Services.AddDbContext<SQLDBContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            // Register MongoDBContext
+            builder.Services.AddSingleton<MongoDBContext>();
+
+            builder.Services.AddHealthChecks()
+                .AddSqlServer(
+                    connectionString: builder.Configuration.GetConnectionString("DefaultConnection") ?? "",
+                    name: "sqlserver")
+                .AddMongoDb(
+                    clientFactory: sp =>
+                    {
+                        var connectionString = builder.Configuration.GetConnectionString("MongoDbConnection");
+                        return new MongoClient(connectionString);
+                    },
+                    databaseNameFactory: sp => "dtcproject",
+                    name: "mongodb");
 
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -24,7 +48,7 @@ namespace dtc.API
             }
 
             app.UseHttpsRedirection();
-
+            app.MapHealthChecks("/health");
             app.UseAuthorization();
 
 
