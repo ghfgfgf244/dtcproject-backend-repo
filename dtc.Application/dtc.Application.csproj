@@ -7,10 +7,31 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Interfaces\" />
-    <Folder Include="DTOs\" />
+    <Folder Include="DTOs\Blogs\" />
+    <Folder Include="DTOs\Classes\" />
+    <Folder Include="DTOs\Collaborators\" />
+    <Folder Include="DTOs\Exams\" />
+    <Folder Include="DTOs\Notifications\" />
+    <Folder Include="DTOs\Others\" />
+    <Folder Include="DTOs\Permissions\" />
+    <Folder Include="DTOs\Training\" />
+    <Folder Include="Interfaces\Blogs\" />
+    <Folder Include="Interfaces\Classes\" />
+    <Folder Include="Interfaces\Collaborators\" />
+    <Folder Include="Interfaces\Exams\" />
+    <Folder Include="Interfaces\Others\" />
+    <Folder Include="Interfaces\Training\" />
+    <Folder Include="Interfaces\Permissions\" />
+    <Folder Include="Interfaces\Notifications\" />
+    <Folder Include="Services\Blogs\" />
+    <Folder Include="Services\Classes\" />
+    <Folder Include="Services\Collaborators\" />
+    <Folder Include="Services\Exams\" />
+    <Folder Include="Services\Notifications\" />
+    <Folder Include="Services\Others\" />
+    <Folder Include="Services\Permissions\" />
+    <Folder Include="Services\Training\" />
     <Folder Include="UseCases\" />
-    <Folder Include="Services\" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,68 @@
+using dtc.Domain.Interfaces;
+using dtc.Infrastructure.Persistence.MongoDB;
+using MongoDB.Driver;
+using System.Linq.Expressions;
+using dtc.Domain.Entities; // for BaseEntity if using Guid Id
+
+namespace dtc.Infrastructure.Repositories
+{
+    public class MongoGenericRepository<T> : IGenericRepository<T> where T : class
+    {
+        protected readonly IMongoCollection<T> _collection;
+
+        public MongoGenericRepository(MongoDBContext context, string collectionName)
+        {
+            // Reflection mapping based on context, or pass direct collection
+            _collection = (IMongoCollection<T>)context.GetType().GetProperty(collectionName)?.GetValue(context)!;
+        }
+
+        public async Task<T?> GetByIdAsync(object id)
+        {
+            if (id is Guid guidId && typeof(BaseEntity).IsAssignableFrom(typeof(T)))
+            {
+                var filter = Builders<T>.Filter.Eq("Id", guidId);
+                return await _collection.Find(filter).FirstOrDefaultAsync();
+            }
+            // For integer Ids like Address
+            var filterInt = Builders<T>.Filter.Eq("Id", id);
+            return await _collection.Find(filterInt).FirstOrDefaultAsync();
+        }
+
+        public async Task<IEnumerable<T>> GetAllAsync()
+        {
+            return await _collection.Find(_ => true).ToListAsync();
+        }
+
+        public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+        {
+            return await _collection.Find(predicate).ToListAsync();
+        }
+
+        public async Task AddAsync(T entity)
+        {
+            await _collection.InsertOneAsync(entity);
+        }
+
+        public async Task UpdateAsync(T entity)
+        {
+            var idProperty = entity.GetType().GetProperty("Id");
+            var idValue = idProperty?.GetValue(entity);
+            if (idValue != null)
+            {
+                var filter = Builders<T>.Filter.Eq("Id", idValue);
+                await _collection.ReplaceOneAsync(filter, entity);
+            }
+        }
+
+        public async Task RemoveAsync(T entity)
+        {
+            var idProperty = entity.GetType().GetProperty("Id");
+            var idValue = idProperty?.GetValue(entity);
+            if (idValue != null)
+            {
+                var filter = Builders<T>.Filter.Eq("Id", idValue);
+                await _collection.DeleteOneAsync(filter);
+            }
+        }
+    }
+}
