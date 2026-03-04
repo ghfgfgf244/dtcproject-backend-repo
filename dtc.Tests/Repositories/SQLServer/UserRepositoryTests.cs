@@ -30,11 +30,9 @@ namespace dtc.Tests.Repositories.SQLServer
             var repository = new UserRepository(context);
 
             var user = new User(
-                "john_doe",
-                "password123",
-                "John",
-                "Doe",
                 Email.Create("john.doe@example.com"),
+                "password123",
+                "John Doe",
                 PhoneNumber.Create("0123456789")
             );
 

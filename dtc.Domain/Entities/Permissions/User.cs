@@ -12,6 +12,9 @@ namespace dtc.Domain.Entities.Permissions
         public bool IsActive { get; private set; }
         public DateTime? LastLoginAt { get; private set; }
 
+        private readonly List<Role> _roles = new();
+        public IReadOnlyCollection<Role> Roles => _roles.AsReadOnly();
+
         protected User() { }
 
         public User(
@@ -94,6 +97,22 @@ namespace dtc.Domain.Entities.Permissions
         public void UpdateLastLogin()
         {
             LastLoginAt = DateTime.UtcNow;
+        }
+
+        public void AddRole(Role role)
+        {
+            if (role != null && !_roles.Contains(role))
+            {
+                _roles.Add(role);
+            }
+        }
+
+        public void RemoveRole(Role role)
+        {
+            if (role != null)
+            {
+                _roles.Remove(role);
+            }
         }
 
         // =========================
