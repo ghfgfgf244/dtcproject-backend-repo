@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace dtc.Domain.Interfaces.Permissions
 {
-    internal interface ICenterRepository
+    public interface ICenterRepository
     {
     }
 }

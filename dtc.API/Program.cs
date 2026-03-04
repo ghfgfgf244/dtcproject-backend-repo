@@ -1,4 +1,5 @@
 
+using dtc.Infrastructure;
 using dtc.Infrastructure.Pesistence.SQLServer;
 using dtc.Infrastructure.Persistence.MongoDB;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,8 @@ namespace dtc.API
 
             // Register MongoDBContext
             builder.Services.AddSingleton<MongoDBContext>();
+            builder.Services.AddInfrastructureServices();
+
 
             builder.Services.AddHealthChecks()
                 .AddSqlServer(
