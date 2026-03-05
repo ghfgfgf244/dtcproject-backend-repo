@@ -1,0 +1,12 @@
+### Login Request (DEV-12)
+### First, use your registered Email and Password.
+
+@baseUrl = http://localhost:5066
+
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "testuser_639083399387745686@example.com",
+  "password": "SuperSecretPassword123!"
+}
