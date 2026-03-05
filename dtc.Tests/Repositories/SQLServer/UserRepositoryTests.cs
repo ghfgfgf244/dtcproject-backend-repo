@@ -30,9 +30,11 @@
 //             var repository = new UserRepository(context);
 
 //             var user = new User(
-//                 Email.Create("john.doe@example.com"),
+//                 "john_doe",
 //                 "password123",
-//                 "John Doe",
+//                 "John",
+//                 "Doe",
+//                 Email.Create("john.doe@example.com"),
 //                 PhoneNumber.Create("0123456789")
 //             );
 
