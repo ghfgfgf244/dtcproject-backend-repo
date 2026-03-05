@@ -12,10 +12,12 @@ namespace dtc.Application.Services
     public class AuthService : IAuthService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
-        public AuthService(IUnitOfWork unitOfWork)
+        public AuthService(IUnitOfWork unitOfWork, Microsoft.Extensions.Configuration.IConfiguration configuration)
         {
             _unitOfWork = unitOfWork;
+            _configuration = configuration;
         }
 
         public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request)
@@ -49,8 +51,63 @@ namespace dtc.Application.Services
                 UserId = newUser.Id,
                 Email = newUser.Email.Value,
                 FullName = newUser.FullName,
-                Token = "" // Token generation will be handled in DEV-12 (Login/Authorization)
+                Token = "" // Will generate later if needed, but for now Login is required
             };
+        }
+
+        public async Task<AuthResponseDto> LoginAsync(LoginRequestDto request)
+        {
+            // 1. Find User
+            var targetEmail = Email.Create(request.Email);
+            var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Email == targetEmail);
+            
+            if (user == null)
+            {
+                throw new Exception("Invalid email or password.");
+            }
+
+            // 2. Verify Password
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            {
+                throw new Exception("Invalid email or password.");
+            }
+
+            // 3. Update Last Login (Assuming UnitOfWork tracks changes)
+            user.UpdateLastLogin();
+            await _unitOfWork.SaveChangesAsync();
+
+            // 4. Generate JWT Token
+            string token = GenerateJwtToken(user);
+
+            return new AuthResponseDto
+            {
+                UserId = user.Id,
+                Email = user.Email.Value,
+                FullName = user.FullName,
+                Token = token
+            };
+        }
+
+        private string GenerateJwtToken(User user)
+        {
+            var securityKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? ""));
+            var credentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(securityKey, Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256);
+
+            var claims = new[]
+            {
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, user.Email.Value),
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, user.FullName)
+            };
+
+            var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddDays(double.Parse(_configuration["Jwt:ExpireDays"] ?? "7")),
+                signingCredentials: credentials);
+
+            return new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }
