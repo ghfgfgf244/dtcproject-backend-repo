@@ -21,7 +21,8 @@ namespace dtc.Application.Services
         public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request)
         {
             // 1. Validate if user already exists
-            var existingUser = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Email.Value == request.Email.Trim().ToLowerInvariant());
+            var targetEmail = Email.Create(request.Email);
+            var existingUser = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Email == targetEmail);
             if (existingUser != null)
             {
                 throw new Exception("Email already exists.");
