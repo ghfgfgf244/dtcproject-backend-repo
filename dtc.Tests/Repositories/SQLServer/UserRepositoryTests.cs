@@ -33,6 +33,11 @@
 //                 Email.Create("john.doe@example.com"),
 //                 "password123",
 //                 "John Doe",
+//                 "john_doe",
+//                 "password123",
+//                 "John",
+//                 "Doe",
+//                 Email.Create("john.doe@example.com"),
 //                 PhoneNumber.Create("0123456789")
 //             );
 
