@@ -5,6 +5,7 @@ using dtc.Infrastructure.Persistence.MongoDB;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
+using dtc.Application;
 
 namespace dtc.API
 {
@@ -21,6 +22,7 @@ namespace dtc.API
             // Register MongoDBContext
             builder.Services.AddSingleton<MongoDBContext>();
             builder.Services.AddInfrastructureServices();
+            builder.Services.AddApplicationServices();
 
 
             builder.Services.AddHealthChecks()
