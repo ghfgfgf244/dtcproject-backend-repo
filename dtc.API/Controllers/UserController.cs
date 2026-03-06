@@ -39,5 +39,26 @@ namespace dtc.API.Controllers
                 return NotFound(new { Error = ex.Message });
             }
         }
+
+        [HttpPut("me")]
+        [Authorize]
+        public async Task<IActionResult> UpdateMyProfile([FromBody] dtc.Application.DTOs.Users.UpdateProfileRequestDto request)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized(new { Error = "Invalid token." });
+            }
+
+            try
+            {
+                var updatedProfile = await _userService.UpdateProfileAsync(userId, request);
+                return Ok(updatedProfile);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
     }
 }

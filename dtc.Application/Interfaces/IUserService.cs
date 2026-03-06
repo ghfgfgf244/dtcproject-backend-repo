@@ -7,5 +7,6 @@ namespace dtc.Application.Interfaces
     public interface IUserService
     {
         Task<UserProfileDto> GetUserProfileAsync(Guid userId);
+        Task<UserProfileDto> UpdateProfileAsync(Guid userId, UpdateProfileRequestDto request);
     }
 }
