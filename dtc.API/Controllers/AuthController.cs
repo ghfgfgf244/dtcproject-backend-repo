@@ -56,5 +56,13 @@ namespace dtc.API.Controllers
                 return Unauthorized(new { Error = ex.Message });
             }
         }
+
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            // Stateless JWT logout is handled on the client side by dropping the token.
+            // This endpoint is provided for completeness or future token blacklisting logic.
+            return Ok(new { Message = "Logged out successfully" });
+        }
     }
 }
