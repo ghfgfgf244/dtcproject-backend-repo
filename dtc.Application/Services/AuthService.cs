@@ -66,6 +66,11 @@ namespace dtc.Application.Services
                 throw new Exception("Invalid email or password.");
             }
 
+            if (!user.IsActive)
+            {
+                throw new Exception("Your account has been banned or deactivated.");
+            }
+
             // 2. Verify Password
             if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             {
