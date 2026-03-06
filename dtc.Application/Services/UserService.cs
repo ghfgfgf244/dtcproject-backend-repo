@@ -2,6 +2,7 @@ using dtc.Application.DTOs.Users;
 using dtc.Application.Interfaces;
 using dtc.Domain.Interfaces;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace dtc.Application.Services
@@ -72,5 +73,29 @@ namespace dtc.Application.Services
                 IsActive = user.IsActive
             };
         }
+
+        public async Task<System.Collections.Generic.IEnumerable<UserResponseDto>> GetAllUsersAsync()
+        {
+            var users = await _unitOfWork.Users.FindAsync(u => true, u => u.Roles);
+            
+            var result = new System.Collections.Generic.List<UserResponseDto>();
+            foreach (var user in users)
+            {
+                result.Add(new UserResponseDto
+                {
+                    Id = user.Id,
+                    Email = user.Email.Value,
+                    FullName = user.FullName,
+                    Phone = user.Phone?.Value ?? "",
+                    AvatarUrl = user.AvatarUrl,
+                    IsActive = user.IsActive,
+                    LastLoginAt = user.LastLoginAt,
+                    Roles = user.Roles.Select(r => r.RoleName.ToString()).ToList()
+                });
+            }
+
+            return result;
+        }
     }
 }
+
