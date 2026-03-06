@@ -59,7 +59,7 @@ namespace dtc.Application.Services
         {
             // 1. Find User
             var targetEmail = Email.Create(request.Email);
-            var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Email == targetEmail);
+            var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Email == targetEmail, u => u.Roles);
             
             if (user == null)
             {
@@ -93,12 +93,22 @@ namespace dtc.Application.Services
             var securityKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? ""));
             var credentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(securityKey, Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256);
 
-            var claims = new[]
+            var claimsList = new System.Collections.Generic.List<System.Security.Claims.Claim>
             {
                 new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, user.Email.Value),
                 new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, user.FullName)
             };
+
+            if (user.Roles != null)
+            {
+                foreach (var role in user.Roles)
+                {
+                    claimsList.Add(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, role.RoleName.ToString()));
+                }
+            }
+
+            var claims = claimsList.ToArray();
 
             var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
                 issuer: _configuration["Jwt:Issuer"],
