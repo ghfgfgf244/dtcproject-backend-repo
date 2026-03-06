@@ -8,6 +8,8 @@ namespace dtc.Application.Interfaces
     {
         Task<UserProfileDto> GetUserProfileAsync(Guid userId);
         Task<UserProfileDto> UpdateProfileAsync(Guid userId, UpdateProfileRequestDto request);
+        Task DeleteMyProfileAsync(Guid userId);
+        Task ToggleUserStatusAsync(Guid adminId, Guid targetUserId);
         Task<IEnumerable<UserResponseDto>> GetAllUsersAsync();
     }
 }

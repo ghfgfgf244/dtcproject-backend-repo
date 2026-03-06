@@ -74,6 +74,45 @@ namespace dtc.Application.Services
             };
         }
 
+        public async Task DeleteMyProfileAsync(Guid userId)
+        {
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new Exception("User not found.");
+            }
+
+            // Perform Soft Delete
+            await _unitOfWork.Users.RemoveAsync(user); // EF Core override interceptor removes it via IsDeleted = true
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        public async Task ToggleUserStatusAsync(Guid adminId, Guid targetUserId)
+        {
+            if (adminId == targetUserId)
+            {
+                throw new Exception("You cannot ban or unban yourself.");
+            }
+
+            var targetUser = await _unitOfWork.Users.GetByIdAsync(targetUserId);
+            if (targetUser == null)
+            {
+                throw new Exception("Target user not found.");
+            }
+
+            if (targetUser.IsActive)
+            {
+                targetUser.Deactivate(adminId);
+            }
+            else
+            {
+                targetUser.Activate(adminId);
+            }
+
+            // We do not replace EF Core's IsDeleted here, just the IsActive property.
+            await _unitOfWork.SaveChangesAsync();
+        }
+
         public async Task<System.Collections.Generic.IEnumerable<UserResponseDto>> GetAllUsersAsync()
         {
             var users = await _unitOfWork.Users.FindAsync(u => true, u => u.Roles);

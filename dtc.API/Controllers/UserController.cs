@@ -61,6 +61,27 @@ namespace dtc.API.Controllers
             }
         }
 
+        [HttpDelete("me")]
+        [Authorize]
+        public async Task<IActionResult> DeleteMyProfile()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized(new { Error = "Invalid token." });
+            }
+
+            try
+            {
+                await _userService.DeleteMyProfileAsync(userId);
+                return Ok(new { Message = "User profile has been deleted." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
         [HttpGet]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllUsers()
@@ -73,6 +94,27 @@ namespace dtc.API.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { Error = ex.Message });
+            }
+        }
+
+        [HttpPut("{id}/toggle-status")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ToggleUserStatus(Guid id)
+        {
+            var adminIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (adminIdClaim == null || !Guid.TryParse(adminIdClaim.Value, out var adminId))
+            {
+                return Unauthorized(new { Error = "Invalid admin token." });
+            }
+
+            try
+            {
+                await _userService.ToggleUserStatusAsync(adminId, id);
+                return Ok(new { Message = "User status toggled successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
             }
         }
     }
