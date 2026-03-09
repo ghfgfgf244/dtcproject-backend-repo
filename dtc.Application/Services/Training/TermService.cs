@@ -63,6 +63,25 @@ namespace dtc.Application.Services.Training
             return MapToDto(term);
         }
 
+        public async Task<bool> DeleteTermAsync(Guid termId, Guid adminId)
+        {
+            var term = await _unitOfWork.Terms.GetByIdAsync(termId);
+            if (term == null)
+                throw new Exception("Term not found");
+
+            var classes = await _unitOfWork.Classes.FindAsync(c => c.TermId == termId);
+            if (classes != null && classes.Any())
+            {
+                throw new InvalidOperationException("Cannot delete term because there are classes running in this term.");
+            }
+
+            term.SoftDelete(adminId);
+            await _unitOfWork.Terms.UpdateAsync(term);
+            await _unitOfWork.SaveChangesAsync();
+
+            return true;
+        }
+
         private TermResponseDto MapToDto(Term term)
         {
             return new TermResponseDto

@@ -71,5 +71,53 @@ namespace dtc.API.Controllers
                 return NotFound(new { Error = ex.Message });
             }
         }
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> DeleteClass(Guid id)
+        {
+            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            try
+            {
+                await _classService.DeleteClassAsync(id, adminId);
+                return Ok(new { Message = "Class deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpPost("{id}/teachers")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> AssignTeachersToClass(Guid id, [FromBody] AssignTeachersRequestDto request)
+        {
+            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            try
+            {
+                await _classService.AssignTeachersToClassAsync(id, request, adminId);
+                return Ok(new { Message = "Teachers assigned successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpPost("{id}/students")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        public async Task<IActionResult> AssignStudentsToClass(Guid id, [FromBody] AssignStudentsRequestDto request)
+        {
+            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            try
+            {
+                await _classService.AssignStudentsToClassAsync(id, request, adminId);
+                return Ok(new { Message = "Students assigned successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
     }
 }

@@ -51,6 +51,22 @@ namespace dtc.API.Controllers
             }
         }
 
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> DeleteTerm(Guid id)
+        {
+            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            try
+            {
+                await _termService.DeleteTermAsync(id, adminId);
+                return Ok(new { Message = "Term deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
         [HttpGet]
         public async Task<IActionResult> GetAllTerms()
         {

@@ -1,5 +1,6 @@
 using dtc.Application.DTOs.Training.Classes;
 using dtc.Application.Interfaces.Training;
+using dtc.Domain.Entities;
 using dtc.Domain.Entities.Classes;
 using dtc.Domain.Interfaces;
 using System;
@@ -68,6 +69,51 @@ namespace dtc.Application.Services.Training
                 throw new Exception("Class not found");
 
             return MapToDto(existingClass);
+        }
+
+        public async Task<bool> DeleteClassAsync(Guid classId, Guid adminId)
+        {
+            var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
+            if (classEntity == null) throw new Exception("Class not found");
+
+            if (classEntity.Status == ClassStatus.InProgress || classEntity.Status == ClassStatus.Completed)
+            {
+                classEntity.ChangeStatus(ClassStatus.Cancelled, adminId);
+            }
+            
+            classEntity.SoftDelete(adminId);
+            await _unitOfWork.Classes.UpdateAsync(classEntity);
+            
+            await _unitOfWork.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> AssignTeachersToClassAsync(Guid classId, AssignTeachersRequestDto request, Guid adminId)
+        {
+            var classes = await _unitOfWork.Classes.FindAsync(c => c.Id == classId, c => c.Instructors);
+            var classEntity = classes.FirstOrDefault();
+            if (classEntity == null) throw new Exception("Class not found");
+
+            var users = await _unitOfWork.Users.FindAsync(u => request.InstructorIds.Contains(u.Id));
+            classEntity.SyncInstructors(users, adminId);
+
+            await _unitOfWork.Classes.UpdateAsync(classEntity);
+            await _unitOfWork.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> AssignStudentsToClassAsync(Guid classId, AssignStudentsRequestDto request, Guid adminId)
+        {
+            var classes = await _unitOfWork.Classes.FindAsync(c => c.Id == classId, c => c.Students);
+            var classEntity = classes.FirstOrDefault();
+            if (classEntity == null) throw new Exception("Class not found");
+
+            var users = await _unitOfWork.Users.FindAsync(u => request.StudentIds.Contains(u.Id));
+            classEntity.SyncStudents(users, adminId);
+
+            await _unitOfWork.Classes.UpdateAsync(classEntity);
+            await _unitOfWork.SaveChangesAsync();
+            return true;
         }
 
         private ClassResponseDto MapToDto(Class classEntity)

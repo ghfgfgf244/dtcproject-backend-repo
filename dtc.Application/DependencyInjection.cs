@@ -15,6 +15,7 @@ namespace dtc.Application
             services.AddScoped<dtc.Application.Interfaces.Training.ITermService, dtc.Application.Services.Training.TermService>();
             services.AddScoped<dtc.Application.Interfaces.Training.IClassService, dtc.Application.Services.Training.ClassService>();
             services.AddScoped<dtc.Application.Interfaces.Training.ICourseRegistrationService, dtc.Application.Services.Training.CourseRegistrationService>();
+            services.AddScoped<dtc.Application.Interfaces.Location.ICenterService, dtc.Application.Services.Location.CenterService>();
 
             return services;
         }
