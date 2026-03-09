@@ -1,10 +1,14 @@
-using System.Threading.Tasks;
+using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using dtc.Application.DTOs.Notifications;
 
 namespace dtc.Application.Interfaces.Notifications
 {
     public interface INotificationService
     {
-        // TODO: Define DTO-based methods, e.g. Task<IEnumerable<NotificationDto>> GetAllAsync();
+        Task<NotificationResponseDto> SendNotificationAsync(SendNotificationRequestDto request, Guid adminId);
+        Task<IEnumerable<NotificationResponseDto>> GetMyNotificationsAsync(Guid userId, List<int> userRoleIds);
+        Task MarkAsReadAsync(Guid notificationId, Guid userId);
     }
 }

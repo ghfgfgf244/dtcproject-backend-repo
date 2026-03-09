@@ -10,6 +10,7 @@ namespace dtc.Application
         {
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<dtc.Application.Interfaces.Notifications.INotificationService, dtc.Application.Services.Notifications.NotificationService>();
 
             return services;
         }
