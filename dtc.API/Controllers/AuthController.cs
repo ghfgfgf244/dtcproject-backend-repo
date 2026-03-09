@@ -36,5 +36,33 @@ namespace dtc.API.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var response = await _authService.LoginAsync(request);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                // In production, return standard error payload without exposing message (except for login fails)
+                return Unauthorized(new { Error = ex.Message });
+            }
+        }
+
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            // Stateless JWT logout is handled on the client side by dropping the token.
+            // This endpoint is provided for completeness or future token blacklisting logic.
+            return Ok(new { Message = "Logged out successfully" });
+        }
     }
 }

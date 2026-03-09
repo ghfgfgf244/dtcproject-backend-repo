@@ -166,7 +166,7 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
         private static void ConfigureUserRole(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>()
-                .HasMany<Role>()
+                .HasMany(u => u.Roles)
                 .WithMany()
                 .UsingEntity<Dictionary<string, object>>(
                     "UserRoles",
