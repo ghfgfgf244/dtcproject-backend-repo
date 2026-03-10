@@ -19,6 +19,7 @@ using dtc.Infrastructure.Repositories.Notifications;
 using dtc.Infrastructure.Repositories.Permissions;
 using dtc.Infrastructure.Repositories.Terms;
 using dtc.Infrastructure.Repositories.Training;
+using dtc.Infrastructure.Persistence.Repositories.Training;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace dtc.Infrastructure
@@ -50,6 +51,8 @@ namespace dtc.Infrastructure
             services.AddScoped<ISampleExamQuestionRepository, SampleExamQuestionRepository>();
             services.AddScoped<ISampleExamRepository, SampleExamRepository>();
             services.AddScoped<ISampleExamResultRepository, SampleExamResultRepository>();
+
+            services.AddScoped<IStudentEvaluationRepository, StudentEvaluationRepository>();
 
             services.AddScoped<IAddressRepository, AddressRepository>();
             

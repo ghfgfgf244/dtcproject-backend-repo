@@ -72,6 +72,7 @@ namespace dtc.Infrastructure.Repositories
         public ICourseRepository Courses => _serviceProvider.GetRequiredService<ICourseRepository>();
         public ILearningRoadmapRepository LearningRoadmaps => _serviceProvider.GetRequiredService<ILearningRoadmapRepository>();
         public IResourceLearningRepository ResourceLearnings => _serviceProvider.GetRequiredService<IResourceLearningRepository>();
+        public IStudentEvaluationRepository StudentEvaluations => _serviceProvider.GetRequiredService<IStudentEvaluationRepository>();
 
         public async Task<int> SaveChangesAsync()
         {

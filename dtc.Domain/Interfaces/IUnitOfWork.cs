@@ -60,6 +60,7 @@ namespace dtc.Domain.Interfaces
         ICourseRepository Courses { get; }
         ILearningRoadmapRepository LearningRoadmaps { get; }
         IResourceLearningRepository ResourceLearnings { get; }
+        IStudentEvaluationRepository StudentEvaluations { get; }
 
         Task<int> SaveChangesAsync();
     }

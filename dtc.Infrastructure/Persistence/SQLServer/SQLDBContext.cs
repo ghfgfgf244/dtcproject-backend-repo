@@ -48,6 +48,9 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
         // Permissions
         public DbSet<Document> Documents => Set<Document>();
 
+        // Training Extras
+        public DbSet<StudentEvaluation> StudentEvaluations => Set<StudentEvaluation>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
