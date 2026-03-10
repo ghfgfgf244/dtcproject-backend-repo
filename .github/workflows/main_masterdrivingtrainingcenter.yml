@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - develop # Cho phép develop trigger để chạy Build/Test check lỗi
   pull_request:
     branches:
       - main
