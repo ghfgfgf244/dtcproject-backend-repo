@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Training;
-using dtc.Application.Interfaces.Training;
+using dtc.Application.Features.Training.DTOs;
+using dtc.Application.Features.Training.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -8,10 +8,8 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     [Authorize(Roles = "Instructor,TrainingManager,Admin")]
-    public class EvaluationController : ControllerBase
+    public class EvaluationController : BaseApiController
     {
         private readonly IStudentEvaluationService _evaluationService;
 
@@ -28,11 +26,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _evaluationService.CreateEvaluationAsync(instructorId, request);
-                return CreatedAtAction(nameof(GetEvaluationById), new { id = response.Id }, response);
+                return Created(response, "Evaluation created successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -44,9 +42,9 @@ namespace dtc.API.Controllers
                 var response = await _evaluationService.GetEvaluationByIdAsync(id);
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch
             {
-                return NotFound(new { Error = ex.Message });
+                return NotFound("Evaluation");
             }
         }
 
@@ -71,11 +69,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _evaluationService.UpdateEvaluationAsync(id, instructorId, request);
-                return Ok(response);
+                return Ok(response, "Evaluation updated.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -85,11 +83,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _evaluationService.DeleteEvaluationAsync(id);
-                return Ok(new { Message = "Evaluation deleted successfully." });
+                return NoContent("Evaluation deleted successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
     }

@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Exams;
-using dtc.Application.Interfaces.Exams;
+using dtc.Application.Features.Exams.DTOs;
+using dtc.Application.Features.Exams.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -8,9 +8,7 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class ExamController : ControllerBase
+    public class ExamController : BaseApiController
     {
         private readonly IExamService _examService;
 
@@ -28,11 +26,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _examService.CreateExamAsync(request, adminId);
-                return CreatedAtAction(nameof(GetExamDetail), new { id = response.Id }, response);
+                return Created(response, "Exam created successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -45,9 +43,9 @@ namespace dtc.API.Controllers
                 var response = await _examService.GetExamDetailAsync(id);
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch
             {
-                return NotFound(new { Error = ex.Message });
+                return NotFound("Exam");
             }
         }
 
@@ -60,11 +58,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _examService.UpdateExamAsync(id, request, adminId);
-                return Ok(response);
+                return Ok(response, "Exam updated successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -77,11 +75,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _examService.DeleteExamAsync(id, adminId);
-                return Ok(new { Message = "Exam deleted successfully." });
+                return NoContent("Exam deleted successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -104,7 +102,7 @@ namespace dtc.API.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -117,11 +115,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _examService.UpdateExamResultAsync(resultId, request, adminId);
-                return Ok(new { Message = "Exam result updated successfully." });
+                return NoContent("Exam result updated successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
     }

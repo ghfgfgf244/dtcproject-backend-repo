@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Training;
-using dtc.Application.Interfaces.Training;
+using dtc.Application.Features.Training.DTOs;
+using dtc.Application.Features.Training.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -7,10 +7,8 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     [Authorize(Roles = "Admin,TrainingManager,Instructor")]
-    public class ResourceLearningController : ControllerBase
+    public class ResourceLearningController : BaseApiController
     {
         private readonly IResourceLearningService _resourceLearningService;
 
@@ -26,11 +24,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _resourceLearningService.CreateResourceLearningAsync(request);
-                return CreatedAtAction(nameof(GetResourceLearning), new { id = response.Id }, response);
+                return Created(response, "Resource learning created.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -52,9 +50,9 @@ namespace dtc.API.Controllers
                 var response = await _resourceLearningService.GetResourceLearningByIdAsync(id);
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch
             {
-                return NotFound(new { Error = ex.Message });
+                return NotFound("ResourceLearning");
             }
         }
 
@@ -65,11 +63,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _resourceLearningService.UpdateResourceLearningAsync(id, request);
-                return Ok(response);
+                return Ok(response, "Resource learning updated.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -80,11 +78,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _resourceLearningService.DeleteResourceLearningAsync(id);
-                return Ok(new { Message = "Resource learning deleted successfully." });
+                return NoContent("Resource learning deleted successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
     }

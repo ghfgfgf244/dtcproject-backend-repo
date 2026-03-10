@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Exams;
-using dtc.Application.Interfaces.Exams;
+using dtc.Application.Features.Exams.DTOs;
+using dtc.Application.Features.Exams.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -8,9 +8,7 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class ExamBatchController : ControllerBase
+    public class ExamBatchController : BaseApiController
     {
         private readonly IExamBatchService _examBatchService;
 
@@ -28,11 +26,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _examBatchService.CreateExamBatchAsync(request, adminId);
-                return CreatedAtAction(nameof(GetExamBatchDetail), new { id = response.Id }, response);
+                return Created(response, "Exam batch created successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -45,9 +43,9 @@ namespace dtc.API.Controllers
                 var response = await _examBatchService.GetExamBatchDetailAsync(id);
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch
             {
-                return NotFound(new { Error = ex.Message });
+                return NotFound("ExamBatch");
             }
         }
 
@@ -68,11 +66,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _examBatchService.UpdateExamBatchAsync(id, request, adminId);
-                return Ok(response);
+                return Ok(response, "Exam batch updated successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -85,11 +83,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _examBatchService.UpdateExamBatchStatusAsync(id, request, adminId);
-                return Ok(new { Message = "Exam batch status updated successfully." });
+                return NoContent("Exam batch status updated successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -102,11 +100,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _examBatchService.DeleteExamBatchAsync(id, adminId);
-                return Ok(new { Message = "Exam batch deleted successfully." });
+                return NoContent("Exam batch deleted successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
     }

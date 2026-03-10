@@ -1,14 +1,13 @@
-using dtc.Application.Interfaces.Dashboards;
+using dtc.Application.Features.Dashboards.DTOs;
+using dtc.Application.Features.Dashboards.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     [Authorize(Roles = "Admin,TrainingManager")]
-    public class DashboardController : ControllerBase
+    public class DashboardController : BaseApiController
     {
         private readonly IDashboardService _dashboardService;
 

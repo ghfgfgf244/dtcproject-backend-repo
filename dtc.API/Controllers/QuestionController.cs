@@ -1,15 +1,13 @@
-using dtc.Application.DTOs.Exams;
-using dtc.Application.Interfaces.Exams;
+using dtc.Application.Features.Exams.DTOs;
+using dtc.Application.Features.Exams.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     [Authorize(Roles = "Admin,TrainingManager,Instructor")]
-    public class QuestionController : ControllerBase
+    public class QuestionController : BaseApiController
     {
         private readonly IQuestionService _questionService;
 
@@ -25,11 +23,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _questionService.CreateQuestionAsync(request);
-                return CreatedAtAction(nameof(GetQuestionDetail), new { id = response.Id }, response);
+                return Created(response, "Question created successfully.");
             }
             catch (System.Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -43,9 +41,9 @@ namespace dtc.API.Controllers
                 var response = await _questionService.GetQuestionDetailAsync(id);
                 return Ok(response);
             }
-            catch (System.Exception ex)
+            catch
             {
-                return NotFound(new { Error = ex.Message });
+                return NotFound("Question");
             }
         }
 
@@ -64,11 +62,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _questionService.UpdateQuestionAsync(id, request);
-                return Ok(response);
+                return Ok(response, "Question updated.");
             }
             catch (System.Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -79,11 +77,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _questionService.DeleteQuestionAsync(id);
-                return Ok(new { Message = "Question deleted successfully." });
+                return NoContent("Question deleted successfully.");
             }
             catch (System.Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
     }

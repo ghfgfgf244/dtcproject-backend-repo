@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Training.Schedules;
-using dtc.Application.Interfaces.Training;
+using dtc.Application.Features.Training.DTOs;
+using dtc.Application.Features.Training.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -8,9 +8,7 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class ScheduleController : ControllerBase
+    public class ScheduleController : BaseApiController
     {
         private readonly IScheduleService _scheduleService;
 
@@ -28,11 +26,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _scheduleService.CreateScheduleAsync(request, adminId);
-                return CreatedAtAction(nameof(GetScheduleDetail), new { id = response.Id }, response);
+                return Created(response, "Schedule created successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -45,11 +43,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _scheduleService.UpdateScheduleAsync(id, request, adminId);
-                return Ok(response);
+                return Ok(response, "Schedule updated successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -62,11 +60,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _scheduleService.DeleteScheduleAsync(id, adminId);
-                return Ok(new { Message = "Schedule deleted successfully." });
+                return NoContent("Schedule deleted successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -79,9 +77,9 @@ namespace dtc.API.Controllers
                 var response = await _scheduleService.GetScheduleDetailAsync(id);
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch
             {
-                return NotFound(new { Error = ex.Message });
+                return NotFound("Schedule");
             }
         }
 
@@ -93,7 +91,7 @@ namespace dtc.API.Controllers
             return Ok(response);
         }
 
-        // DEV-88: Assign/Update Location (Address learning)
+        // DEV-88: Assign/Update Location
         [HttpPatch("{id}/location")]
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> AssignLocation(Guid id, [FromBody] AssignLocationRequestDto request)
@@ -102,11 +100,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _scheduleService.AssignLocationAsync(id, request, adminId);
-                return Ok(new { Message = "Location assigned/updated successfully." });
+                return NoContent("Location assigned/updated successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
     }

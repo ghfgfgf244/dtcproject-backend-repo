@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Exams;
-using dtc.Application.Interfaces.Exams;
+using dtc.Application.Features.Exams.DTOs;
+using dtc.Application.Features.Exams.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -8,9 +8,7 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class SampleExamController : ControllerBase
+    public class SampleExamController : BaseApiController
     {
         private readonly ISampleExamService _sampleExamService;
 
@@ -27,11 +25,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _sampleExamService.CreateSampleExamAsync(request);
-                return CreatedAtAction(nameof(GetSampleExamDetail), new { id = response.Id }, response);
+                return Created(response, "Sample exam created successfully.");
             }
             catch (System.Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -44,9 +42,9 @@ namespace dtc.API.Controllers
                 var response = await _sampleExamService.GetSampleExamDetailAsync(id);
                 return Ok(response);
             }
-            catch (System.Exception ex)
+            catch
             {
-                return NotFound(new { Error = ex.Message });
+                return NotFound("SampleExam");
             }
         }
 
@@ -65,11 +63,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _sampleExamService.UpdateSampleExamQuestionsAsync(id, request);
-                return Ok(response);
+                return Ok(response, "Sample exam questions updated.");
             }
             catch (System.Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -81,11 +79,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _sampleExamService.DeleteSampleExamAsync(id);
-                return Ok(new { Message = "Sample exam deleted successfully." });
+                return NoContent("Sample exam deleted successfully.");
             }
             catch (System.Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -102,7 +100,7 @@ namespace dtc.API.Controllers
             }
             catch (System.Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -112,15 +110,8 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> GetMySampleTestResults()
         {
             var studentId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            try
-            {
-                var response = await _sampleExamService.GetSampleTestResultsForStudentAsync(studentId);
-                return Ok(response);
-            }
-            catch (System.Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+            var response = await _sampleExamService.GetSampleTestResultsForStudentAsync(studentId);
+            return Ok(response);
         }
     }
 }

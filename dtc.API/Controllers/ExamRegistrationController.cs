@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Exams;
-using dtc.Application.Interfaces.Exams;
+using dtc.Application.Features.Exams.DTOs;
+using dtc.Application.Features.Exams.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -8,9 +8,7 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class ExamRegistrationController : ControllerBase
+    public class ExamRegistrationController : BaseApiController
     {
         private readonly IExamRegistrationService _examRegistrationService;
 
@@ -24,20 +22,19 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> Register([FromBody] CreateExamRegistrationRequestDto request)
         {
-            // Ensure student registers for themselves or Admins can do it for them (not handled here, mostly student)
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            
+
             if (request.StudentId != userId)
-                return Forbid("Students can only register themselves.");
+                return Fail("Students can only register themselves.");
 
             try
             {
                 var response = await _examRegistrationService.RegisterAsync(request);
-                return Ok(response);
+                return Created(response, "Exam registration submitted successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -50,11 +47,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _examRegistrationService.UpdateStatusAsync(id, request, adminId);
-                return Ok(new { Message = "Registration status updated successfully." });
+                return NoContent("Registration status updated successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -66,11 +63,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _examRegistrationService.MarkAsPaidAsync(id, adminId);
-                return Ok(new { Message = "Registration marked as paid." });
+                return NoContent("Registration marked as paid.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -90,7 +87,7 @@ namespace dtc.API.Controllers
             var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
 
             if (userRole == "Student" && studentId != userId)
-                return Forbid("Students can only view their own registrations.");
+                return Fail("Students can only view their own registrations.");
 
             var response = await _examRegistrationService.GetByStudentAsync(studentId);
             return Ok(response);
