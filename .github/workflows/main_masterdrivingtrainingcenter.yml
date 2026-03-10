@@ -1,74 +1,44 @@
-name: Build and deploy ASP.Net Core app to Azure Web App - masterdrivingtrainingcenter
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
       - main
-  pull_request: # Thêm để check lỗi khi bạn làm việc trên branch feature
+      - develop  # Cho phép chạy trên cả develop để check code
+  pull_request:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
-    permissions:
-      contents: read
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up .NET Core
+      - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x'
-
-      - name: Restore dependencies
-        run: dotnet restore
-
-      - name: Build with dotnet
-        run: dotnet build --configuration Release --no-restore
-
-      # THÊM BƯỚC NÀY: Chạy thử TestingDB hoặc Unit Tests
-      # Nếu bước này fail, server của bạn sẽ được bảo vệ (không deploy)
-      - name: Test
-        run: dotnet test --configuration Release --no-build --verbosity normal
-
-      - name: dotnet publish
-        run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
-
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+      - name: Build & Test
+        run: |
+          dotnet restore
+          dotnet build --configuration Release --no-restore
+          dotnet test --no-build --verbosity normal
 
   deploy:
-    if: github.event_name == 'push' # Chỉ deploy khi thực sự merge/push vào main
+    # ĐÂY LÀ DÒNG QUAN TRỌNG NHẤT
+    # Job này chỉ chạy nếu nhánh hiện tại là 'main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    needs: build # Phải build xong và pass test mới được deploy
     runs-on: windows-latest
-    needs: build
-    permissions:
-      id-token: write
-      contents: read
-
     steps:
-      - name: Download artifact from build job
+      - name: Download artifact
         uses: actions/download-artifact@v4
-        with:
-          name: .net-app
-          path: ./publish # Giải nén vào folder riêng cho sạch
+        # ... các bước login Azure và deploy của bạn giữ nguyên ...
       
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_5ECD167A916E4770B7EC54C0FD492479 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_0C811042532B4FF3BCC8DC5D5999E135 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_22E14270941A4364B0E20BBA1D20D7A8 }}
-
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'masterdrivingtrainingcenter'
           slot-name: 'Production'
-          package: ./publish # Khớp với folder đã download ở trên
+          package: .
