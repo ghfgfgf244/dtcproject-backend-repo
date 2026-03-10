@@ -36,6 +36,7 @@ namespace dtc.Domain.Interfaces
         IQuestionRepository Questions { get; }
         ISampleExamQuestionRepository SampleExamQuestions { get; }
         ISampleExamRepository SampleExams { get; }
+        ISampleExamResultRepository SampleExamResults { get; }
 
         // Location
         IAddressRepository Addresses { get; }

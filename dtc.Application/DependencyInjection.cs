@@ -15,6 +15,8 @@ namespace dtc.Application
             services.AddScoped<dtc.Application.Interfaces.Exams.IExamBatchService, dtc.Application.Services.Exams.ExamBatchService>();
             services.AddScoped<dtc.Application.Interfaces.Exams.IExamRegistrationService, dtc.Application.Services.Exams.ExamRegistrationService>();
             services.AddScoped<dtc.Application.Interfaces.Exams.IExamService, dtc.Application.Services.Exams.ExamService>();
+            services.AddScoped<dtc.Application.Interfaces.Exams.IQuestionService, dtc.Application.Services.Exams.QuestionService>();
+            services.AddScoped<dtc.Application.Interfaces.Exams.ISampleExamService, dtc.Application.Services.Exams.SampleExamService>();
             services.AddScoped<dtc.Application.Interfaces.Notifications.INotificationService, dtc.Application.Services.Notifications.NotificationService>();
             services.AddScoped<dtc.Application.Interfaces.Training.ICourseService, dtc.Application.Services.Training.CourseService>();
             services.AddScoped<dtc.Application.Interfaces.Training.ITermService, dtc.Application.Services.Training.TermService>();

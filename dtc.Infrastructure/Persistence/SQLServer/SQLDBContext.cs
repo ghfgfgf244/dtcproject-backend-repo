@@ -38,6 +38,7 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
         public DbSet<Exam> Exams => Set<Exam>();
         public DbSet<ExamRegistration> ExamRegistrations => Set<ExamRegistration>();
         public DbSet<ExamResult> ExamResults => Set<ExamResult>();
+        public DbSet<SampleExamResult> SampleExamResults => Set<SampleExamResult>();
 
         // Collaborators
         public DbSet<ReferralCode> ReferralCodes => Set<ReferralCode>();

@@ -13,6 +13,7 @@ using dtc.Infrastructure.Repositories.Blogs;
 using dtc.Infrastructure.Repositories.Classes;
 using dtc.Infrastructure.Repositories.Collaborators;
 using dtc.Infrastructure.Repositories.Exams;
+using dtc.Infrastructure.Persistence.Repositories.Exams;
 using dtc.Infrastructure.Repositories.Location;
 using dtc.Infrastructure.Repositories.Notifications;
 using dtc.Infrastructure.Repositories.Permissions;
@@ -48,6 +49,7 @@ namespace dtc.Infrastructure
             services.AddScoped<IQuestionRepository, QuestionRepository>();
             services.AddScoped<ISampleExamQuestionRepository, SampleExamQuestionRepository>();
             services.AddScoped<ISampleExamRepository, SampleExamRepository>();
+            services.AddScoped<ISampleExamResultRepository, SampleExamResultRepository>();
 
             services.AddScoped<IAddressRepository, AddressRepository>();
             
