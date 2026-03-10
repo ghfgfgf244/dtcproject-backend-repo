@@ -19,7 +19,13 @@ namespace dtc.Tests.Repositories.MongoDB
         {
             // Arrange
             var mockCollection = new Mock<IMongoCollection<Blog>>();
-            var mockContext = new Mock<MongoDBContext>(new Mock<Microsoft.Extensions.Configuration.IConfiguration>().Object);
+            var mockConfigSection = new Mock<Microsoft.Extensions.Configuration.IConfigurationSection>();
+            mockConfigSection.Setup(x => x["MongoDbConnection"]).Returns("mongodb://localhost:27017");
+            
+            var mockConfig = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
+            mockConfig.Setup(x => x.GetSection("ConnectionStrings")).Returns(mockConfigSection.Object);
+
+            var mockContext = new Mock<MongoDBContext>(mockConfig.Object);
             
             // Setup the property to return the mock collection
             mockContext.Setup(c => c.Blogs).Returns(mockCollection.Object);
