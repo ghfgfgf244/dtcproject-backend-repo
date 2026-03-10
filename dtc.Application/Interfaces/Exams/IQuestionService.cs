@@ -1,10 +1,15 @@
-using System.Threading.Tasks;
+using dtc.Application.DTOs.Exams;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace dtc.Application.Interfaces.Exams
 {
     public interface IQuestionService
     {
-        // TODO: Define DTO-based methods, e.g. Task<IEnumerable<QuestionDto>> GetAllAsync();
+        Task<QuestionResponseDto> CreateQuestionAsync(CreateQuestionRequestDto request);
+        Task<QuestionResponseDto> UpdateQuestionAsync(int id, UpdateQuestionRequestDto request);
+        Task<bool> DeleteQuestionAsync(int id);
+        Task<QuestionResponseDto> GetQuestionDetailAsync(int id);
+        Task<IEnumerable<QuestionResponseDto>> GetAllQuestionsAsync();
     }
 }

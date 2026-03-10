@@ -48,6 +48,7 @@ namespace dtc.Infrastructure.Repositories
         public IQuestionRepository Questions => _serviceProvider.GetRequiredService<IQuestionRepository>();
         public ISampleExamQuestionRepository SampleExamQuestions => _serviceProvider.GetRequiredService<ISampleExamQuestionRepository>();
         public ISampleExamRepository SampleExams => _serviceProvider.GetRequiredService<ISampleExamRepository>();
+        public ISampleExamResultRepository SampleExamResults => _serviceProvider.GetRequiredService<ISampleExamResultRepository>();
 
         // Location
         public IAddressRepository Addresses => _serviceProvider.GetRequiredService<IAddressRepository>();
@@ -71,6 +72,7 @@ namespace dtc.Infrastructure.Repositories
         public ICourseRepository Courses => _serviceProvider.GetRequiredService<ICourseRepository>();
         public ILearningRoadmapRepository LearningRoadmaps => _serviceProvider.GetRequiredService<ILearningRoadmapRepository>();
         public IResourceLearningRepository ResourceLearnings => _serviceProvider.GetRequiredService<IResourceLearningRepository>();
+        public IStudentEvaluationRepository StudentEvaluations => _serviceProvider.GetRequiredService<IStudentEvaluationRepository>();
 
         public async Task<int> SaveChangesAsync()
         {
