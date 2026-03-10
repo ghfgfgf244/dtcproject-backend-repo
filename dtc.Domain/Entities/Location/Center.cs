@@ -1,4 +1,4 @@
-﻿using dtc.Domain.ValueObjects;
+using dtc.Domain.ValueObjects;
 
 namespace dtc.Domain.Entities.Permissions
 {
@@ -9,6 +9,9 @@ namespace dtc.Domain.Entities.Permissions
         public PhoneNumber Phone { get; private set; } = default!;
         public Email Email { get; private set; } = default!;
         public bool IsActive { get; private set; }
+
+        private readonly List<User> _users = new();
+        public IReadOnlyCollection<User> Users => _users.AsReadOnly();
 
         protected Center() { }
 
@@ -80,6 +83,13 @@ namespace dtc.Domain.Entities.Permissions
         {
             if (!IsActive) return;
             IsActive = false;
+            SetUpdated(updatedBy);
+        }
+
+        public void SyncUsers(IEnumerable<User> users, Guid? updatedBy = null)
+        {
+            _users.Clear();
+            _users.AddRange(users);
             SetUpdated(updatedBy);
         }
 

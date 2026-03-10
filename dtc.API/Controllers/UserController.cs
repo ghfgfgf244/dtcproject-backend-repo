@@ -131,6 +131,39 @@ namespace dtc.API.Controllers
             }
         }
 
+        // DEV-115: View student's list
+        [HttpGet("students")]
+        [Authorize(Roles = "Admin,TrainingManager,Instructor")]
+        public async Task<IActionResult> GetStudents()
+        {
+            try
+            {
+                var students = await _userService.GetUsersByRoleAsync((int)dtc.Domain.Entities.UserRole.Student);
+                return Ok(students);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        // DEV-116: View teacher list
+        [HttpGet("instructors")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> GetInstructors()
+        {
+            try
+            {
+                var instructors = await _userService.GetUsersByRoleAsync((int)dtc.Domain.Entities.UserRole.Instructor);
+                return Ok(instructors);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+
         [HttpPost("{id}/roles/student")]
         [Authorize] // Maybe restrict depending on requirements, but often used system-to-system or user authorized
         public async Task<IActionResult> AddStudentRole(Guid id)

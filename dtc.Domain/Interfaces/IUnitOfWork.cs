@@ -36,6 +36,7 @@ namespace dtc.Domain.Interfaces
         IQuestionRepository Questions { get; }
         ISampleExamQuestionRepository SampleExamQuestions { get; }
         ISampleExamRepository SampleExams { get; }
+        ISampleExamResultRepository SampleExamResults { get; }
 
         // Location
         IAddressRepository Addresses { get; }
@@ -59,6 +60,7 @@ namespace dtc.Domain.Interfaces
         ICourseRepository Courses { get; }
         ILearningRoadmapRepository LearningRoadmaps { get; }
         IResourceLearningRepository ResourceLearnings { get; }
+        IStudentEvaluationRepository StudentEvaluations { get; }
 
         Task<int> SaveChangesAsync();
     }

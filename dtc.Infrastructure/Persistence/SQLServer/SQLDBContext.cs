@@ -1,4 +1,4 @@
-﻿using dtc.Domain.Entities;
+using dtc.Domain.Entities;
 using dtc.Domain.Entities.Classes;
 using dtc.Domain.Entities.Collaborators;
 using dtc.Domain.Entities.Exams;
@@ -38,6 +38,7 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
         public DbSet<Exam> Exams => Set<Exam>();
         public DbSet<ExamRegistration> ExamRegistrations => Set<ExamRegistration>();
         public DbSet<ExamResult> ExamResults => Set<ExamResult>();
+        public DbSet<SampleExamResult> SampleExamResults => Set<SampleExamResult>();
 
         // Collaborators
         public DbSet<ReferralCode> ReferralCodes => Set<ReferralCode>();
@@ -46,6 +47,9 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
 
         // Permissions
         public DbSet<Document> Documents => Set<Document>();
+
+        // Training Extras
+        public DbSet<StudentEvaluation> StudentEvaluations => Set<StudentEvaluation>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -232,8 +236,8 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
         private static void ConfigureUserCenter(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>()
-                .HasMany<Center>()
-                .WithMany()
+                .HasMany(u => u.Centers)
+                .WithMany(c => c.Users)
                 .UsingEntity<Dictionary<string, object>>(
                     "UserCenters",
 
@@ -357,20 +361,20 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
             });
 
             // Map User (Student) to Class many-to-many relationship
-            modelBuilder.Entity<User>()
-                .HasMany<Class>()
+            modelBuilder.Entity<Class>()
+                .HasMany(c => c.Students)
                 .WithMany()
                 .UsingEntity<Dictionary<string, object>>(
                     "ClassStudents",
 
-                    r => r.HasOne<Class>()
-                          .WithMany()
-                          .HasForeignKey("ClassId")
-                          .OnDelete(DeleteBehavior.Cascade),
-
-                    l => l.HasOne<User>()
+                    r => r.HasOne<User>()
                           .WithMany()
                           .HasForeignKey("StudentId")
+                          .OnDelete(DeleteBehavior.Cascade),
+
+                    l => l.HasOne<Class>()
+                          .WithMany()
+                          .HasForeignKey("ClassId")
                           .OnDelete(DeleteBehavior.Cascade),
 
                     j =>
@@ -379,6 +383,32 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                         j.HasKey("StudentId", "ClassId");
 
                         j.Property<Guid>("StudentId");
+                        j.Property<Guid>("ClassId");
+                    });
+
+            // Map User (Instructor) to Class many-to-many relationship
+            modelBuilder.Entity<Class>()
+                .HasMany(c => c.Instructors)
+                .WithMany()
+                .UsingEntity<Dictionary<string, object>>(
+                    "ClassInstructors",
+
+                    r => r.HasOne<User>()
+                          .WithMany()
+                          .HasForeignKey("InstructorId")
+                          .OnDelete(DeleteBehavior.Cascade),
+
+                    l => l.HasOne<Class>()
+                          .WithMany()
+                          .HasForeignKey("ClassId")
+                          .OnDelete(DeleteBehavior.Cascade),
+
+                    j =>
+                    {
+                        j.ToTable("ClassInstructors");
+                        j.HasKey("InstructorId", "ClassId");
+
+                        j.Property<Guid>("InstructorId");
                         j.Property<Guid>("ClassId");
                     });
         }

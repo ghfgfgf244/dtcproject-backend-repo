@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,6 +14,12 @@ namespace dtc.Domain.Entities.Classes
         public int CurrentStudents { get; private set; }
         public int MaxStudents { get; private set; }
         public ClassStatus Status { get; private set; }
+
+        private readonly List<dtc.Domain.Entities.Permissions.User> _instructors = new();
+        public IReadOnlyCollection<dtc.Domain.Entities.Permissions.User> Instructors => _instructors.AsReadOnly();
+
+        private readonly List<dtc.Domain.Entities.Permissions.User> _students = new();
+        public IReadOnlyCollection<dtc.Domain.Entities.Permissions.User> Students => _students.AsReadOnly();
 
         protected Class() { }
 
@@ -64,6 +70,21 @@ namespace dtc.Domain.Entities.Classes
             CurrentStudents--;
             SetUpdated(updatedBy);
             return true;
+        }
+
+        public void SyncInstructors(IEnumerable<dtc.Domain.Entities.Permissions.User> instructors, Guid? updatedBy = null)
+        {
+            _instructors.Clear();
+            _instructors.AddRange(instructors);
+            SetUpdated(updatedBy);
+        }
+
+        public void SyncStudents(IEnumerable<dtc.Domain.Entities.Permissions.User> students, Guid? updatedBy = null)
+        {
+            _students.Clear();
+            _students.AddRange(students);
+            CurrentStudents = _students.Count;
+            SetUpdated(updatedBy);
         }
 
         public bool UpdateInfo(
