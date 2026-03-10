@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - main
-  pull_request: # Thêm để check lỗi khi bạn làm việc trên branch feature
+      - develop # Cho phép develop trigger để chạy Build/Test check lỗi
+  pull_request:
     branches:
       - main
   workflow_dispatch:
@@ -29,8 +30,6 @@ jobs:
       - name: Build with dotnet
         run: dotnet build --configuration Release --no-restore
 
-      # THÊM BƯỚC NÀY: Chạy thử TestingDB hoặc Unit Tests
-      # Nếu bước này fail, server của bạn sẽ được bảo vệ (không deploy)
       - name: Test
         run: dotnet test --configuration Release --no-build --verbosity normal
 
@@ -44,7 +43,10 @@ jobs:
           path: ${{env.DOTNET_ROOT}}/myapp
 
   deploy:
-    if: github.event_name == 'push' # Chỉ deploy khi thực sự merge/push vào main
+    # SỬA TẠI ĐÂY: Thêm điều kiện kiểm tra nhánh main
+    # Chỉ chạy khi sự kiện là PUSH VÀ nhánh phải là MAIN
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' 
+    
     runs-on: windows-latest
     needs: build
     permissions:
@@ -56,7 +58,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: .net-app
-          path: ./publish # Giải nén vào folder riêng cho sạch
+          path: ./publish
       
       - name: Login to Azure
         uses: azure/login@v2
@@ -71,4 +73,4 @@ jobs:
         with:
           app-name: 'masterdrivingtrainingcenter'
           slot-name: 'Production'
-          package: ./publish # Khớp với folder đã download ở trên
+          package: ./publish
