@@ -22,6 +22,21 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("ClassInstructors", b =>
+                {
+                    b.Property<Guid>("InstructorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("InstructorId", "ClassId");
+
+                    b.HasIndex("ClassId");
+
+                    b.ToTable("ClassInstructors", (string)null);
+                });
+
             modelBuilder.Entity("ClassStudents", b =>
                 {
                     b.Property<Guid>("StudentId")
@@ -819,6 +834,21 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                     b.HasIndex("CenterId");
 
                     b.ToTable("Courses", (string)null);
+                });
+
+            modelBuilder.Entity("ClassInstructors", b =>
+                {
+                    b.HasOne("dtc.Domain.Entities.Classes.Class", null)
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("dtc.Domain.Entities.Permissions.User", null)
+                        .WithMany()
+                        .HasForeignKey("InstructorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ClassStudents", b =>

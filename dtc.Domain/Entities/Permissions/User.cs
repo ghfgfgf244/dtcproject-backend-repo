@@ -1,4 +1,4 @@
-﻿using dtc.Domain.ValueObjects;
+using dtc.Domain.ValueObjects;
 
 namespace dtc.Domain.Entities.Permissions
 {
@@ -14,6 +14,9 @@ namespace dtc.Domain.Entities.Permissions
 
         private readonly List<Role> _roles = new();
         public IReadOnlyCollection<Role> Roles => _roles.AsReadOnly();
+
+        private readonly List<Center> _centers = new();
+        public IReadOnlyCollection<Center> Centers => _centers.AsReadOnly();
 
         protected User() { }
 

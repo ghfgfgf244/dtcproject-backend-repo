@@ -12,5 +12,6 @@ namespace dtc.Application.Interfaces.Training
         
         Task<IEnumerable<TermResponseDto>> GetAllTermsAsync();
         Task<TermResponseDto> GetTermDetailAsync(Guid termId);
+        Task<bool> DeleteTermAsync(Guid termId, Guid adminId);
     }
 }
