@@ -1,15 +1,14 @@
-name: CI/CD Pipeline
+name: Master Driving CI-CD
 
 on:
   push:
     branches:
       - main
-      - develop  # Cho phép chạy trên cả develop để check code
-  pull_request:
-    branches:
-      - main
+      - develop # Cho phép chạy CI để kiểm tra lỗi code trên develop
+  workflow_dispatch:
 
 jobs:
+  # JOB 1: CHỈ BUILD VÀ TEST (Nhánh nào cũng chạy)
   build:
     runs-on: windows-latest
     steps:
@@ -22,23 +21,39 @@ jobs:
         run: |
           dotnet restore
           dotnet build --configuration Release --no-restore
-          dotnet test --no-build --verbosity normal
+          dotnet test --no-build
+      - name: Publish Artifact
+        run: dotnet publish -c Release -o ./publish
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: .net-app
+          path: ./publish
 
+  # JOB 2: CHỈ DEPLOY (CẤM các nhánh khác ngoài main)
   deploy:
-    # ĐÂY LÀ DÒNG QUAN TRỌNG NHẤT
-    # Job này chỉ chạy nếu nhánh hiện tại là 'main'
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    needs: build # Phải build xong và pass test mới được deploy
     runs-on: windows-latest
+    needs: build
+    # ĐIỀU KIỆN SỐNG CÒN: Chỉ chạy nếu là nhánh main
+    if: github.ref == 'refs/heads/main'
+    
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
-        # ... các bước login Azure và deploy của bạn giữ nguyên ...
-      
+        with:
+          name: .net-app
+          path: ./publish
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_5ECD167A916E4770B7EC54C0FD492479 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_0C811042532B4FF3BCC8DC5D5999E135 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_22E14270941A4364B0E20BBA1D20D7A8 }}
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'masterdrivingtrainingcenter'
           slot-name: 'Production'
-          package: .
+          package: ./publish
