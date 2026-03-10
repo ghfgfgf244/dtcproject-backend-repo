@@ -140,6 +140,23 @@ namespace dtc.Application.Services.Exams
             };
         }
 
+        public async Task<bool> UpdateExamResultAsync(Guid resultId, UpdateExamResultRequestDto request, Guid adminId)
+        {
+            var result = await _unitOfWork.ExamResults.GetByIdAsync(resultId);
+            if (result == null) throw new Exception("Exam result not found");
+
+            var exam = await _unitOfWork.Exams.GetByIdAsync(result.ExamId);
+            if (exam == null) throw new Exception("Exam not found");
+
+            // Update score
+            result.Grade(request.Score, exam.PassScore);
+            
+            await _unitOfWork.ExamResults.UpdateAsync(result);
+            await _unitOfWork.SaveChangesAsync();
+
+            return true;
+        }
+
         private ExamResponseDto MapToDto(Exam exam)
         {
             return new ExamResponseDto

@@ -107,5 +107,22 @@ namespace dtc.API.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
+
+        // DEV-97: Edit exam result
+        [HttpPut("{id}/results/{resultId}")]
+        [Authorize(Roles = "Admin,TrainingManager,Instructor")]
+        public async Task<IActionResult> UpdateExamResult(Guid id, Guid resultId, [FromBody] UpdateExamResultRequestDto request)
+        {
+            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            try
+            {
+                await _examService.UpdateExamResultAsync(resultId, request, adminId);
+                return Ok(new { Message = "Exam result updated successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
     }
 }

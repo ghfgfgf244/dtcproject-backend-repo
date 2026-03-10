@@ -13,5 +13,6 @@ namespace dtc.Application.Interfaces.Exams
         Task<ExamResponseDto> GetExamDetailAsync(Guid id);
         Task<IEnumerable<ExamResponseDto>> GetAllExamsAsync();
         Task<object> GetExamResultsAsync(Guid examId);
+        Task<bool> UpdateExamResultAsync(Guid resultId, UpdateExamResultRequestDto request, Guid adminId);
     }
 }
