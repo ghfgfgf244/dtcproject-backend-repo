@@ -1,10 +1,17 @@
-using System.Threading.Tasks;
+using dtc.Application.DTOs.Exams;
+using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace dtc.Application.Interfaces.Exams
 {
     public interface IExamService
     {
-        // TODO: Define DTO-based methods, e.g. Task<IEnumerable<ExamDto>> GetAllAsync();
+        Task<ExamResponseDto> CreateExamAsync(CreateExamRequestDto request, Guid adminId);
+        Task<ExamResponseDto> UpdateExamAsync(Guid id, UpdateExamRequestDto request, Guid adminId);
+        Task<bool> DeleteExamAsync(Guid id, Guid adminId);
+        Task<ExamResponseDto> GetExamDetailAsync(Guid id);
+        Task<IEnumerable<ExamResponseDto>> GetAllExamsAsync();
+        Task<object> GetExamResultsAsync(Guid examId);
     }
 }
