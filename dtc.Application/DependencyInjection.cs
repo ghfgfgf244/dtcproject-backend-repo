@@ -24,6 +24,7 @@ namespace dtc.Application
             services.AddScoped<dtc.Application.Interfaces.Training.IStudentEvaluationService, dtc.Application.Services.Training.StudentEvaluationService>();
             services.AddScoped<dtc.Application.Interfaces.Training.ITermService, dtc.Application.Services.Training.TermService>();
             services.AddScoped<dtc.Application.Interfaces.Dashboards.IDashboardService, dtc.Application.Services.Dashboards.DashboardService>();
+            services.AddScoped<dtc.Application.Interfaces.Collaborators.ICollaboratorService, dtc.Application.Services.Collaborators.CollaboratorService>();
 
             services.AddScoped<dtc.Application.Interfaces.Training.IClassService, dtc.Application.Services.Training.ClassService>();
             services.AddScoped<dtc.Application.Interfaces.Training.ICourseRegistrationService, dtc.Application.Services.Training.CourseRegistrationService>();
