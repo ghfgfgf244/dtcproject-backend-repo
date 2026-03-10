@@ -1,49 +1,65 @@
-name: Master Driving CI-CD
+name: Build and deploy ASP.Net Core app to Azure Web App - masterdrivingtrainingcenter
 
 on:
   push:
     branches:
       - main
-      - develop # Cho phép chạy CI để kiểm tra lỗi code trên develop
+      - develop # Cho phép develop trigger để chạy Build/Test check lỗi
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
-  # JOB 1: CHỈ BUILD VÀ TEST (Nhánh nào cũng chạy)
   build:
     runs-on: windows-latest
+    permissions:
+      contents: read
+
     steps:
       - uses: actions/checkout@v4
-      - name: Set up .NET
+
+      - name: Set up .NET Core
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x'
-      - name: Build & Test
-        run: |
-          dotnet restore
-          dotnet build --configuration Release --no-restore
-          dotnet test --no-build
-      - name: Publish Artifact
-        run: dotnet publish -c Release -o ./publish
-      - name: Upload Artifact
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build with dotnet
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+      - name: dotnet publish
+        run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
+
+      - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
-          path: ./publish
+          path: ${{env.DOTNET_ROOT}}/myapp
 
-  # JOB 2: CHỈ DEPLOY (CẤM các nhánh khác ngoài main)
   deploy:
+    # SỬA TẠI ĐÂY: Thêm điều kiện kiểm tra nhánh main
+    # Chỉ chạy khi sự kiện là PUSH VÀ nhánh phải là MAIN
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' 
+    
     runs-on: windows-latest
     needs: build
-    # ĐIỀU KIỆN SỐNG CÒN: Chỉ chạy nếu là nhánh main
-    if: github.ref == 'refs/heads/main'
-    
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
-      - name: Download artifact
+      - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: .net-app
           path: ./publish
-
+      
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -52,6 +68,7 @@ jobs:
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_22E14270941A4364B0E20BBA1D20D7A8 }}
 
       - name: Deploy to Azure Web App
+        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'masterdrivingtrainingcenter'
