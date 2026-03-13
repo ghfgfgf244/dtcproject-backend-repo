@@ -78,6 +78,20 @@ namespace dtc.API
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
+            // Configure CORS — allow Next.js frontend
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowNextJs", policy =>
+                {
+                    policy.WithOrigins(
+                              "http://localhost:3000",
+                              "https://localhost:3000")
+                          .AllowAnyHeader()
+                          .AllowAnyMethod()
+                          .AllowCredentials();
+                });
+            });
+
             // Configure JWT Authentication
             builder.Services.AddAuthentication(options =>
             {
@@ -110,6 +124,9 @@ namespace dtc.API
             }
 
             app.UseHttpsRedirection();
+
+            // Apply CORS before Auth — ORDER MATTERS
+            app.UseCors("AllowNextJs");
             app.MapHealthChecks("/health");
 
             app.UseAuthentication();

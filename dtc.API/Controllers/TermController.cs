@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Training.Terms;
-using dtc.Application.Interfaces.Training;
+using dtc.Application.Features.Training.DTOs;
+using dtc.Application.Features.Training.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -8,9 +8,7 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class TermController : ControllerBase
+    public class TermController : BaseApiController
     {
         private readonly ITermService _termService;
 
@@ -27,11 +25,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _termService.CreateTermAsync(request, adminId);
-                return CreatedAtAction(nameof(GetTermDetail), new { id = response.Id }, response);
+                return Created(response, "Term created successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -43,11 +41,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _termService.UpdateTermAsync(id, request, adminId);
-                return Ok(response);
+                return Ok(response, "Term updated successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -59,11 +57,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _termService.DeleteTermAsync(id, adminId);
-                return Ok(new { Message = "Term deleted successfully." });
+                return NoContent("Term deleted successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -82,9 +80,9 @@ namespace dtc.API.Controllers
                 var response = await _termService.GetTermDetailAsync(id);
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch
             {
-                return NotFound(new { Error = ex.Message });
+                return NotFound("Term");
             }
         }
     }

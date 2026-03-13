@@ -1,5 +1,21 @@
-using dtc.Application.Interfaces;
-using dtc.Application.Services;
+using dtc.Application.Features.Auth.Interfaces;
+using dtc.Application.Features.Auth.Services;
+using dtc.Application.Features.Users.Interfaces;
+using dtc.Application.Features.Users.Services;
+using dtc.Application.Features.Exams.Interfaces;
+using dtc.Application.Features.Exams.Services;
+using dtc.Application.Features.Training.Interfaces;
+using dtc.Application.Features.Training.Services;
+using dtc.Application.Features.Collaborators.Interfaces;
+using dtc.Application.Features.Collaborators.Services;
+using dtc.Application.Features.Dashboards.Interfaces;
+using dtc.Application.Features.Dashboards.Services;
+using dtc.Application.Features.Location.Interfaces;
+using dtc.Application.Features.Location.Services;
+using dtc.Application.Features.Notifications.Interfaces;
+using dtc.Application.Features.Notifications.Services;
+using dtc.Application.Features.Permissions.Interfaces;
+using dtc.Application.Features.Permissions.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace dtc.Application
@@ -8,28 +24,44 @@ namespace dtc.Application
     {
         public static IServiceCollection AddApplicationServices(this IServiceCollection services)
         {
+            // Feature: Auth
             services.AddScoped<IAuthService, AuthService>();
-            services.AddScoped<IUserService, UserService>();
-            services.AddScoped<dtc.Application.Interfaces.Training.IScheduleService, dtc.Application.Services.Training.ScheduleService>();
-            services.AddScoped<dtc.Application.Interfaces.Training.IAttendanceService, dtc.Application.Services.Training.AttendanceService>();
-            services.AddScoped<dtc.Application.Interfaces.Exams.IExamBatchService, dtc.Application.Services.Exams.ExamBatchService>();
-            services.AddScoped<dtc.Application.Interfaces.Exams.IExamRegistrationService, dtc.Application.Services.Exams.ExamRegistrationService>();
-            services.AddScoped<dtc.Application.Interfaces.Exams.IExamService, dtc.Application.Services.Exams.ExamService>();
-            services.AddScoped<dtc.Application.Interfaces.Exams.IQuestionService, dtc.Application.Services.Exams.QuestionService>();
-            services.AddScoped<dtc.Application.Interfaces.Exams.ISampleExamService, dtc.Application.Services.Exams.SampleExamService>();
-            services.AddScoped<dtc.Application.Interfaces.Notifications.INotificationService, dtc.Application.Services.Notifications.NotificationService>();
-            services.AddScoped<dtc.Application.Interfaces.Training.ICourseService, dtc.Application.Services.Training.CourseService>();
-            services.AddScoped<dtc.Application.Interfaces.Training.ILearningRoadmapService, dtc.Application.Services.Training.LearningRoadmapService>();
-            services.AddScoped<dtc.Application.Interfaces.Training.IResourceLearningService, dtc.Application.Services.Training.ResourceLearningService>();
-            services.AddScoped<dtc.Application.Interfaces.Training.IStudentEvaluationService, dtc.Application.Services.Training.StudentEvaluationService>();
-            services.AddScoped<dtc.Application.Interfaces.Training.ITermService, dtc.Application.Services.Training.TermService>();
-            services.AddScoped<dtc.Application.Interfaces.Dashboards.IDashboardService, dtc.Application.Services.Dashboards.DashboardService>();
-            services.AddScoped<dtc.Application.Interfaces.Collaborators.ICollaboratorService, dtc.Application.Services.Collaborators.CollaboratorService>();
-            services.AddScoped<dtc.Application.Interfaces.Permissions.IDocumentService, dtc.Application.Services.Permissions.DocumentService>();
 
-            services.AddScoped<dtc.Application.Interfaces.Training.IClassService, dtc.Application.Services.Training.ClassService>();
-            services.AddScoped<dtc.Application.Interfaces.Training.ICourseRegistrationService, dtc.Application.Services.Training.CourseRegistrationService>();
-            services.AddScoped<dtc.Application.Interfaces.Location.ICenterService, dtc.Application.Services.Location.CenterService>();
+            // Feature: Users
+            services.AddScoped<IUserService, UserService>();
+
+            // Feature: Exams
+            services.AddScoped<IExamBatchService, ExamBatchService>();
+            services.AddScoped<IExamRegistrationService, ExamRegistrationService>();
+            services.AddScoped<IExamService, ExamService>();
+            services.AddScoped<IQuestionService, QuestionService>();
+            services.AddScoped<ISampleExamService, SampleExamService>();
+
+            // Feature: Training
+            services.AddScoped<IScheduleService, ScheduleService>();
+            services.AddScoped<IAttendanceService, AttendanceService>();
+            services.AddScoped<ICourseService, CourseService>();
+            services.AddScoped<ILearningRoadmapService, LearningRoadmapService>();
+            services.AddScoped<IResourceLearningService, ResourceLearningService>();
+            services.AddScoped<IStudentEvaluationService, StudentEvaluationService>();
+            services.AddScoped<ITermService, TermService>();
+            services.AddScoped<IClassService, ClassService>();
+            services.AddScoped<ICourseRegistrationService, CourseRegistrationService>();
+
+            // Feature: Collaborators
+            services.AddScoped<ICollaboratorService, CollaboratorService>();
+
+            // Feature: Dashboards
+            services.AddScoped<IDashboardService, DashboardService>();
+
+            // Feature: Location
+            services.AddScoped<ICenterService, CenterService>();
+
+            // Feature: Notifications
+            services.AddScoped<INotificationService, NotificationService>();
+
+            // Feature: Permissions
+            services.AddScoped<IDocumentService, DocumentService>();
 
             return services;
         }

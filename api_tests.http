@@ -1,0 +1,49 @@
+@baseUrl = http://localhost:5000/api
+@authToken = {{login.response.body.data.token}}
+
+### 1. Register User
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "Password123!",
+  "fullName": "Test User",
+  "phone": "0987654321"
+}
+
+### 2. Login User
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "Password123!"
+}
+
+### 3. Get My Profile
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{authToken}}
+
+### 4. Update My Profile
+PUT {{baseUrl}}/users/me
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Updated Test User",
+  "phone": "0123456789"
+}
+
+### 5. Get All Courses (Public/Standard)
+GET {{baseUrl}}/Course
+Authorization: Bearer {{authToken}}
+
+### 6. Get All Classes
+GET {{baseUrl}}/Class
+Authorization: Bearer {{authToken}}
+
+### 7. Logout
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{authToken}}

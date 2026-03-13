@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Training.Attendances;
-using dtc.Application.Interfaces.Training;
+using dtc.Application.Features.Training.DTOs;
+using dtc.Application.Features.Training.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -8,9 +8,7 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class AttendanceController : ControllerBase
+    public class AttendanceController : BaseApiController
     {
         private readonly IAttendanceService _attendanceService;
 
@@ -24,15 +22,15 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager,Instructor")]
         public async Task<IActionResult> MarkAttendance([FromBody] MarkAttendanceRequestDto request)
         {
-             var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             try
             {
                 await _attendanceService.MarkAttendanceAsync(request, adminId);
-                return Ok(new { Message = "Attendance marked successfully." });
+                return NoContent("Attendance marked successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 

@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Notifications;
-using dtc.Application.Interfaces.Notifications;
+using dtc.Application.Features.Notifications.DTOs;
+using dtc.Application.Features.Notifications.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -9,9 +9,7 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class NotificationController : ControllerBase
+    public class NotificationController : BaseApiController
     {
         private readonly INotificationService _notificationService;
 
@@ -24,20 +22,16 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> SendNotification([FromBody] SendNotificationRequestDto request)
         {
-            var adminIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (adminIdClaim == null || !Guid.TryParse(adminIdClaim.Value, out var adminId))
-            {
-                return Unauthorized(new { Error = "Invalid token." });
-            }
-
+            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var adminId))
+                return Fail("Invalid token.");
             try
             {
                 var response = await _notificationService.SendNotificationAsync(request, adminId);
-                return CreatedAtAction(nameof(GetMyNotifications), new { id = response.Id }, response);
+                return Created(response, "Notification sent.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -45,52 +39,33 @@ namespace dtc.API.Controllers
         [Authorize]
         public async Task<IActionResult> GetMyNotifications()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            {
-                return Unauthorized(new { Error = "Invalid token." });
-            }
+            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
+                return Fail("Invalid token.");
 
             var rolesClaim = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-            var userRoleIds = new System.Collections.Generic.List<int>();
+            var userRoleIds = rolesClaim
+                .Where(r => Enum.TryParse<dtc.Domain.Entities.UserRole>(r, out _))
+                .Select(r => (int)Enum.Parse<dtc.Domain.Entities.UserRole>(r))
+                .ToList();
 
-            foreach (var roleName in rolesClaim)
-            {
-                if (Enum.TryParse<dtc.Domain.Entities.UserRole>(roleName, out var roleEnum))
-                {
-                    userRoleIds.Add((int)roleEnum);
-                }
-            }
-
-            try
-            {
-                var notifications = await _notificationService.GetMyNotificationsAsync(userId, userRoleIds);
-                return Ok(notifications);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+            var notifications = await _notificationService.GetMyNotificationsAsync(userId, userRoleIds);
+            return Ok(notifications);
         }
 
         [HttpPut("{id}/read")]
         [Authorize]
         public async Task<IActionResult> MarkAsRead(Guid id)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-            {
-                return Unauthorized(new { Error = "Invalid token." });
-            }
-
+            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
+                return Fail("Invalid token.");
             try
             {
                 await _notificationService.MarkAsReadAsync(id, userId);
-                return Ok(new { Message = "Notification marked as read." });
+                return NoContent("Notification marked as read.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
     }

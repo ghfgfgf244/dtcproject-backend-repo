@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Location.Centers;
-using dtc.Application.Interfaces.Location;
+using dtc.Application.Features.Location.DTOs;
+using dtc.Application.Features.Location.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -8,9 +8,7 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class CenterController : ControllerBase
+    public class CenterController : BaseApiController
     {
         private readonly ICenterService _centerService;
 
@@ -27,11 +25,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _centerService.CreateCenterAsync(request, adminId);
-                return CreatedAtAction(nameof(GetCenterDetail), new { id = response.Id }, response);
+                return Created(response, "Center created successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -43,11 +41,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _centerService.UpdateCenterAsync(id, request, adminId);
-                return Ok(response);
+                return Ok(response, "Center updated successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -59,11 +57,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _centerService.DeactivateCenterAsync(id, adminId);
-                return Ok(new { Message = "Center deactivated successfully." });
+                return NoContent("Center deactivated successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -82,9 +80,9 @@ namespace dtc.API.Controllers
                 var response = await _centerService.GetCenterDetailAsync(id);
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch
             {
-                return NotFound(new { Error = ex.Message });
+                return NotFound("Center");
             }
         }
 
@@ -96,11 +94,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _centerService.AssignUsersToCenterAsync(id, request, adminId);
-                return Ok(new { Message = "Users assigned successfully." });
+                return NoContent("Users assigned to center successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
     }

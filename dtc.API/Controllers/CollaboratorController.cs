@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Collaborators;
-using dtc.Application.Interfaces.Collaborators;
+using dtc.Application.Features.Collaborators.DTOs;
+using dtc.Application.Features.Collaborators.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -8,10 +8,8 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     [Authorize]
-    public class CollaboratorController : ControllerBase
+    public class CollaboratorController : BaseApiController
     {
         private readonly ICollaboratorService _collaboratorService;
 
@@ -36,8 +34,7 @@ namespace dtc.API.Controllers
         {
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var code = await _collaboratorService.GetMyReferralCodeAsync(userId);
-            if (code == null) return NotFound(new { Message = "You don't have a referral code yet." });
-
+            if (code == null) return NotFound("ReferralCode");
             return Ok(code);
         }
 
@@ -49,11 +46,11 @@ namespace dtc.API.Controllers
             try
             {
                 var code = await _collaboratorService.GenerateReferralCodeAsync(userId, request.Code);
-                return Ok(code);
+                return Created(code, "Referral code generated.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -89,7 +86,7 @@ namespace dtc.API.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
