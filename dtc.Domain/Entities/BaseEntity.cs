@@ -1,8 +1,13 @@
-﻿namespace dtc.Domain.Entities;
+using System.ComponentModel.DataAnnotations;
+
+namespace dtc.Domain.Entities;
 
 public abstract class BaseEntity
 {
     public Guid Id { get; protected set; }
+
+    [Timestamp]
+    public byte[] RowVersion { get; set; } = null!;
 
     public DateTime CreatedAt { get; private set; }
     public Guid? CreatedBy { get; private set; }

@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Permissions;
-using dtc.Application.Interfaces.Permissions;
+using dtc.Application.Features.Permissions.DTOs;
+using dtc.Application.Features.Permissions.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -8,10 +8,8 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     [Authorize]
-    public class DocumentController : ControllerBase
+    public class DocumentController : BaseApiController
     {
         private readonly IDocumentService _documentService;
 
@@ -28,11 +26,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _documentService.CreateDocumentAsync(userId, request);
-                return CreatedAtAction(nameof(GetDocumentById), new { id = response.Id }, response);
+                return Created(response, "Document added successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -44,11 +42,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _documentService.UpdateDocumentAsync(userId, id, request);
-                return Ok(response);
+                return Ok(response, "Document updated successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -60,11 +58,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _documentService.DeleteDocumentAsync(userId, id);
-                return Ok(new { Message = "Document deleted successfully." });
+                return NoContent("Document deleted successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -77,19 +75,17 @@ namespace dtc.API.Controllers
             return Ok(response);
         }
 
-        // DEV-135 (Specific Document)
         [HttpGet("{id}")]
         public async Task<IActionResult> GetDocumentById(Guid id)
         {
             try
             {
                 var response = await _documentService.GetDocumentByIdAsync(id);
-                // Security check logic per user could be enforced in service layer
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch
             {
-                return NotFound(new { Error = ex.Message });
+                return NotFound("Document");
             }
         }
 
@@ -101,11 +97,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _documentService.VerifyDocumentAsync(id);
-                return Ok(new { Message = "Document verified successfully." });
+                return NoContent("Document verified successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
     }

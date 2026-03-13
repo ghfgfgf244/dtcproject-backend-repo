@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Training.Courses;
-using dtc.Application.Interfaces.Training;
+using dtc.Application.Features.Training.DTOs;
+using dtc.Application.Features.Training.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -8,9 +8,7 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class CourseController : ControllerBase
+    public class CourseController : BaseApiController
     {
         private readonly ICourseService _courseService;
 
@@ -27,11 +25,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _courseService.CreateCourseAsync(request, adminId);
-                return CreatedAtAction(nameof(GetCourseDetail), new { id = response.Id }, response);
+                return Created(response, "Course created successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -43,11 +41,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _courseService.UpdateCourseAsync(id, request, adminId);
-                return Ok(response);
+                return Ok(response, "Course updated successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -59,11 +57,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _courseService.DeactivateCourseAsync(id, adminId);
-                return Ok(new { Message = "Course deactivated successfully." });
+                return NoContent("Course deactivated successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -90,9 +88,9 @@ namespace dtc.API.Controllers
                 var response = await _courseService.GetCourseDetailAsync(id);
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch
             {
-                return NotFound(new { Error = ex.Message });
+                return NotFound("Course");
             }
         }
     }

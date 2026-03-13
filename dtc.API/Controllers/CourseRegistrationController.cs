@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Training.Registrations;
-using dtc.Application.Interfaces.Training;
+using dtc.Application.Features.Training.DTOs;
+using dtc.Application.Features.Training.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -8,9 +8,7 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class CourseRegistrationController : ControllerBase
+    public class CourseRegistrationController : BaseApiController
     {
         private readonly ICourseRegistrationService _registrationService;
 
@@ -27,11 +25,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _registrationService.RegisterCourseAsync(request, studentId);
-                return CreatedAtAction(nameof(GetRegistrationDetail), new { id = response.Id }, response);
+                return Created(response, "Course registration submitted successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -43,27 +41,27 @@ namespace dtc.API.Controllers
             try
             {
                 await _registrationService.CancelRegistrationAsync(id, request.Reason, studentId);
-                return Ok(new { Message = "Registration cancelled successfully." });
+                return NoContent("Registration cancelled successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
         [HttpPut("{id}/status")]
-        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")] // BA Feedback Integrated Here
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> UpdateRegistrationStatus(Guid id, [FromBody] UpdateRegistrationStatusDto request)
         {
             var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             try
             {
                 await _registrationService.UpdateRegistrationStatusAsync(id, request, adminId);
-                return Ok(new { Message = "Status updated successfully." });
+                return NoContent("Status updated successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -93,9 +91,9 @@ namespace dtc.API.Controllers
                 var response = await _registrationService.GetRegistrationDetailAsync(id);
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch
             {
-                return NotFound(new { Error = ex.Message });
+                return NotFound("CourseRegistration");
             }
         }
     }

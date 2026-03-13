@@ -1,5 +1,5 @@
-using dtc.Application.DTOs.Training.Classes;
-using dtc.Application.Interfaces.Training;
+using dtc.Application.Features.Training.DTOs;
+using dtc.Application.Features.Training.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -8,9 +8,7 @@ using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class ClassController : ControllerBase
+    public class ClassController : BaseApiController
     {
         private readonly IClassService _classService;
 
@@ -27,11 +25,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _classService.CreateClassAsync(request, adminId);
-                return CreatedAtAction(nameof(GetClassDetail), new { id = response.Id }, response);
+                return Created(response, "Class created successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -43,11 +41,11 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _classService.UpdateClassAsync(id, request, adminId);
-                return Ok(response);
+                return Ok(response, "Class updated successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -66,9 +64,9 @@ namespace dtc.API.Controllers
                 var response = await _classService.GetClassDetailAsync(id);
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch
             {
-                return NotFound(new { Error = ex.Message });
+                return NotFound("Class");
             }
         }
 
@@ -80,11 +78,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _classService.DeleteClassAsync(id, adminId);
-                return Ok(new { Message = "Class deleted successfully." });
+                return NoContent("Class deleted successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -96,11 +94,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _classService.AssignTeachersToClassAsync(id, request, adminId);
-                return Ok(new { Message = "Teachers assigned successfully." });
+                return NoContent("Teachers assigned successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
 
@@ -112,11 +110,11 @@ namespace dtc.API.Controllers
             try
             {
                 await _classService.AssignStudentsToClassAsync(id, request, adminId);
-                return Ok(new { Message = "Students assigned successfully." });
+                return NoContent("Students assigned successfully.");
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return Fail(ex.Message);
             }
         }
     }

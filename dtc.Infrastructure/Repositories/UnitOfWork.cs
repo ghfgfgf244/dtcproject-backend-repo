@@ -79,8 +79,42 @@ namespace dtc.Infrastructure.Repositories
             return await _context.SaveChangesAsync();
         }
 
+        public async Task BeginTransactionAsync()
+        {
+            if (_context.Database.CurrentTransaction == null)
+            {
+                await _context.Database.BeginTransactionAsync();
+            }
+        }
+
+        public async Task CommitTransactionAsync()
+        {
+            try
+            {
+                await SaveChangesAsync();
+                if (_context.Database.CurrentTransaction != null)
+                {
+                    await _context.Database.CommitTransactionAsync();
+                }
+            }
+            catch
+            {
+                await RollbackTransactionAsync();
+                throw;
+            }
+        }
+
+        public async Task RollbackTransactionAsync()
+        {
+            if (_context.Database.CurrentTransaction != null)
+            {
+                await _context.Database.RollbackTransactionAsync();
+            }
+        }
+
         public void Dispose()
         {
+            _context.Database.CurrentTransaction?.Dispose();
             _context.Dispose();
         }
     }
