@@ -22,7 +22,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> CreateExamBatch([FromBody] CreateExamBatchRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _examBatchService.CreateExamBatchAsync(request, adminId);
@@ -62,7 +62,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> UpdateExamBatch(Guid id, [FromBody] UpdateExamBatchRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _examBatchService.UpdateExamBatchAsync(id, request, adminId);
@@ -79,7 +79,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> UpdateExamBatchStatus(Guid id, [FromBody] UpdateExamBatchStatusRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 await _examBatchService.UpdateExamBatchStatusAsync(id, request, adminId);
@@ -96,7 +96,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> DeleteExamBatch(Guid id)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 await _examBatchService.DeleteExamBatchAsync(id, adminId);

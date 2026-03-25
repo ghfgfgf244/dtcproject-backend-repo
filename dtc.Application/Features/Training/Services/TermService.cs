@@ -26,7 +26,7 @@ namespace dtc.Application.Features.Training.Services
             if (course == null)
                 throw new Exception("Course not found");
 
-            var term = new Term(request.CourseId, request.TermName, request.StartDate, request.EndDate, adminId);
+            var term = new Term(request.CourseId, request.TermName, request.StartDate, request.EndDate, request.MaxStudents > 0 ? request.MaxStudents : 1, adminId);
             
             await _unitOfWork.Terms.AddAsync(term);
             await _unitOfWork.SaveChangesAsync();

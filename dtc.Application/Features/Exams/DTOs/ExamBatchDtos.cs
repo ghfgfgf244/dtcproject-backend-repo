@@ -7,8 +7,6 @@ namespace dtc.Application.Features.Exams.DTOs
 {
     public class CreateExamBatchRequestDto
     {
-        [Required]
-        public Guid CourseId { get; set; }
 
         [Required]
         [MaxLength(255)]
@@ -22,6 +20,8 @@ namespace dtc.Application.Features.Exams.DTOs
 
         [Required]
         public DateTime ExamStartDate { get; set; }
+
+        public int MaxCandidates { get; set; }
     }
 
     public class UpdateExamBatchRequestDto
@@ -43,12 +43,12 @@ namespace dtc.Application.Features.Exams.DTOs
     public class ExamBatchResponseDto
     {
         public Guid Id { get; set; }
-        public Guid CourseId { get; set; }
-        public string CourseName { get; set; } = string.Empty;
         public string BatchName { get; set; } = string.Empty;
         public DateTime RegistrationStartDate { get; set; }
         public DateTime RegistrationEndDate { get; set; }
         public DateTime ExamStartDate { get; set; }
+        public int CurrentCandidates { get; set; }
+        public int MaxCandidates { get; set; }
         public ExamBatchStatus Status { get; set; }
         public DateTime CreatedAt { get; set; }
     }

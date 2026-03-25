@@ -27,7 +27,7 @@ namespace dtc.Application.Features.Training.Services
             if (term == null)
                 throw new Exception("Term not found");
 
-            var newClass = new Class(request.TermId, request.ClassName, request.MaxStudents, adminId);
+            var newClass = new Class(request.TermId, request.InstructorId, request.ClassName, request.MaxStudents, adminId);
             
             await _unitOfWork.Classes.AddAsync(newClass);
             await _unitOfWork.SaveChangesAsync();
@@ -92,30 +92,63 @@ namespace dtc.Application.Features.Training.Services
 
         public async Task<bool> AssignTeachersToClassAsync(Guid classId, AssignTeachersRequestDto request, Guid adminId)
         {
-            var classes = await _unitOfWork.Classes.FindAsync(c => c.Id == classId, c => c.Instructors);
-            var classEntity = classes.FirstOrDefault();
+            var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
             if (classEntity == null) throw new Exception("Class not found");
 
-            var users = await _unitOfWork.Users.FindAsync(u => request.InstructorIds.Contains(u.Id));
-            classEntity.SyncInstructors(users, adminId);
+            var instructorId = request.InstructorIds.FirstOrDefault();
+            if (instructorId != Guid.Empty)
+            {
+                classEntity.ChangeInstructor(instructorId, adminId);
+                await _unitOfWork.Classes.UpdateAsync(classEntity);
+                await _unitOfWork.SaveChangesAsync();
+            }
 
-            await _unitOfWork.Classes.UpdateAsync(classEntity);
-            await _unitOfWork.SaveChangesAsync();
             return true;
         }
 
         public async Task<bool> AssignStudentsToClassAsync(Guid classId, AssignStudentsRequestDto request, Guid adminId)
         {
-            var classes = await _unitOfWork.Classes.FindAsync(c => c.Id == classId, c => c.Students);
-            var classEntity = classes.FirstOrDefault();
+            var classEntity = await _unitOfWork.Classes.GetByIdAsync(classId);
             if (classEntity == null) throw new Exception("Class not found");
 
-            var users = await _unitOfWork.Users.FindAsync(u => request.StudentIds.Contains(u.Id));
-            classEntity.SyncStudents(users, adminId);
+            var distinctIds = (request.StudentIds ?? new List<Guid>()).Distinct().ToList();
+            if (distinctIds.Count > classEntity.MaxStudents)
+                throw new InvalidOperationException("Too many students for this class capacity.");
 
-            await _unitOfWork.Classes.UpdateAsync(classEntity);
-            await _unitOfWork.SaveChangesAsync();
-            return true;
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var existing = await _unitOfWork.ClassStudents.FindAsync(cs => cs.ClassId == classId);
+                var existingSet = existing.Select(e => e.StudentId).ToHashSet();
+                var requestedSet = distinctIds.ToHashSet();
+
+                var toRemove = existing.Where(e => !requestedSet.Contains(e.StudentId)).ToList();
+                if (toRemove.Count > 0)
+                    await _unitOfWork.ClassStudents.RemoveRange(toRemove);
+
+                var toAdd = distinctIds.Where(id => !existingSet.Contains(id)).ToList();
+                if (toAdd.Count > 0)
+                {
+                    var students = await _unitOfWork.Users.FindAsync(u => toAdd.Contains(u.Id));
+                    if (students.Count() != toAdd.Count)
+                        throw new InvalidOperationException("One or more students were not found.");
+                    
+                    foreach (var studentId in toAdd)
+                        await _unitOfWork.ClassStudents.AddAsync(new ClassStudent(classId, studentId));
+                }
+
+                classEntity.SyncEnrollmentCount(distinctIds.Count, adminId);
+                await _unitOfWork.Classes.UpdateAsync(classEntity);
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+                return true;
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
         }
 
         private ClassResponseDto MapToDto(Class classEntity)

@@ -10,6 +10,7 @@ using dtc.Application.Features.Notifications.Interfaces;
 using dtc.Application.Features.Notifications.DTOs;
 using dtc.Application.Features.Notifications.Interfaces;
 using dtc.Application.Features.Notifications.DTOs;
+using dtc.Domain.Entities;
 using dtc.Domain.Entities.Notifications;
 using dtc.Domain.Interfaces;
 using System;
@@ -62,7 +63,7 @@ namespace dtc.Application.Features.Notifications.Services
             var userEnums = userRoleIds.Select(id => (dtc.Domain.Entities.UserRole)id).ToList();
 
             var relevantNotifications = allNotifications
-                .Where(n => !n.TargetRoles.Any() || n.TargetRoles.Any(tr => userEnums.Contains(tr.Role)))
+                .Where(n => !n.TargetRoles.Any() || n.TargetRoles.Any(role => userEnums.Contains(role)))
                 .OrderByDescending(n => n.CreatedAt)
                 .ToList();
 
@@ -109,6 +110,31 @@ namespace dtc.Application.Features.Notifications.Services
                 }
             }
             
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        public async Task CreateForUserAsync(
+            Guid userId,
+            string title,
+            string content,
+            NotificationType type,
+            Guid? centerId = null)
+        {
+            // 1. Create notification document (no role filter = personal)
+            var notification = new Notification(
+                title: title,
+                content: content,
+                type: type,
+                createdBy: userId,
+                centerId: centerId,
+                target: null // null = no role broadcast
+            );
+            await _unitOfWork.Notifications.AddAsync(notification);
+            await _unitOfWork.SaveChangesAsync();
+
+            // 2. Create a personal read-receipt so this notification appears in the user's feed
+            var receipt = new UserNotification(notification.Id, userId);
+            await _unitOfWork.UserNotifications.AddAsync(receipt);
             await _unitOfWork.SaveChangesAsync();
         }
     }

@@ -1,28 +1,22 @@
-﻿using dtc.Domain.Entities.Permissions;
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using dtc.Domain.Entities;
 
 namespace dtc.Domain.Entities.Notifications
 {
+    /// <summary>
+    /// Notification lưu trong MongoDB. TargetRoles nhúng trực tiếp trong document (không dùng bảng trung gian).
+    /// </summary>
     public class Notification : BaseEntity
     {
-        //public Guid Id { get; private set; }
         public string Title { get; private set; }
         public string Content { get; private set; }
         public NotificationType Type { get; private set; }
         public Guid? CenterId { get; private set; }
-        //public UserRole? RoleTarget { get; private set; }
 
-        private readonly List<NotificationRole> _targetRoles = new();
-        public IReadOnlyCollection<NotificationRole> TargetRoles => _targetRoles.AsReadOnly();
-
-
-        //public Guid CreatedBy { get; private set; }
-        //public DateTime CreatedAt { get; private set; }
+        private readonly List<UserRole> _targetRoles = new();
+        public IReadOnlyCollection<UserRole> TargetRoles => _targetRoles.AsReadOnly();
 
         protected Notification() { }
 
@@ -44,24 +38,24 @@ namespace dtc.Domain.Entities.Notifications
             Title = title;
             Content = content;
             Type = type;
-            //CreatedBy = createdBy;
             CenterId = centerId;
+
             if (target != null)
             {
                 foreach (var role in target.Distinct())
-                    _targetRoles.Add(new NotificationRole(Id, role));
+                    _targetRoles.Add(role);
             }
-            //CreatedAt = DateTime.UtcNow;
+
             SetCreated(createdBy);
         }
 
         public bool Update(
-             string? title,
-             string? content,
-             NotificationType? type,
-             Guid? centerId,
-             IEnumerable<UserRole>? targetRoles,
-             Guid updatedBy)
+            string? title,
+            string? content,
+            NotificationType? type,
+            Guid? centerId,
+            IEnumerable<UserRole>? targetRoles,
+            Guid updatedBy)
         {
             bool changed = false;
 
@@ -93,7 +87,9 @@ namespace dtc.Domain.Entities.Notifications
 
             if (targetRoles != null)
             {
-                UpdateRoles(targetRoles);
+                _targetRoles.Clear();
+                foreach (var role in targetRoles.Distinct())
+                    _targetRoles.Add(role);
                 changed = true;
             }
 
@@ -104,40 +100,23 @@ namespace dtc.Domain.Entities.Notifications
             return true;
         }
 
-        private void UpdateRoles(IEnumerable<UserRole> roles)
-        {
-            var newRoles = roles.Distinct().ToHashSet();
-
-            // Remove roles not in new list
-            _targetRoles.RemoveAll(r => !newRoles.Contains(r.Role));
-
-            // Add new roles
-            foreach (var role in newRoles)
-            {
-                if (_targetRoles.All(x => x.Role != role))
-                    _targetRoles.Add(new NotificationRole(Id, role));
-            }
-        }
-
         public bool AddRole(UserRole role)
         {
-            if (_targetRoles.Any(x => x.Role == role))
+            if (_targetRoles.Contains(role))
                 return false;
 
-            _targetRoles.Add(new NotificationRole(Id, role));
+            _targetRoles.Add(role);
             return true;
         }
 
         public void RemoveRole(UserRole role)
         {
-            var item = _targetRoles.FirstOrDefault(x => x.Role == role);
-            if (item != null)
-                _targetRoles.Remove(item);
+            _targetRoles.Remove(role);
         }
 
         public bool IsTargetFor(UserRole role)
         {
-            return !_targetRoles.Any() || _targetRoles.Any(x => x.Role == role);
+            return _targetRoles.Count == 0 || _targetRoles.Contains(role);
         }
     }
 }

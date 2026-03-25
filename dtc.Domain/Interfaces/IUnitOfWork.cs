@@ -21,7 +21,11 @@ namespace dtc.Domain.Interfaces
         // Classes
         IAttendanceRepository Attendances { get; }
         IClassRepository Classes { get; }
+        IClassStudentRepository ClassStudents { get; }
         IClassScheduleRepository ClassSchedules { get; }
+        ILearningLocationRepository LearningLocations { get; }
+        IInstructorLeaveRequestRepository InstructorLeaveRequests { get; }
+        IStudentDrivingDistanceRepository StudentDrivingDistances { get; }
 
         // Collaborators
         ICollaboratorCommissionRepository CollaboratorCommissions { get; }
@@ -43,7 +47,6 @@ namespace dtc.Domain.Interfaces
         
         // Notifications
         INotificationRepository Notifications { get; }
-        INotificationRoleRepository NotificationRoles { get; }
         IUserNotificationRepository UserNotifications { get; }
 
         // Permissions
@@ -51,6 +54,7 @@ namespace dtc.Domain.Interfaces
         IDocumentRepository Documents { get; }
         IRoleRepository Roles { get; }
         IUserRepository Users { get; }
+        IUserCenterRepository UserCenters { get; }
 
         // Terms
         ICourseRegistrationRepository CourseRegistrations { get; }

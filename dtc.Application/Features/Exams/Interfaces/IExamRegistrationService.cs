@@ -13,5 +13,6 @@ namespace dtc.Application.Features.Exams.Interfaces
         Task<bool> MarkAsPaidAsync(Guid id, Guid adminId);
         Task<IEnumerable<ExamRegistrationResponseDto>> GetByExamBatchAsync(Guid examBatchId);
         Task<IEnumerable<ExamRegistrationResponseDto>> GetByStudentAsync(Guid studentId);
+        Task<bool> CreateBulkRegistrationsAsync(BulkExamRegistrationRequestDto request, Guid adminId);
     }
 }

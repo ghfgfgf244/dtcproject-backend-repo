@@ -1,25 +1,19 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace dtc.Domain.Entities.Classes
 {
     public class Class : BaseEntity
     {
         public Guid TermId { get; private set; }
+
+        /// <summary>Giáo viên chủ nhiệm (một lớp — một GV; một GV có thể chủ nhiệm nhiều lớp).</summary>
+        public Guid InstructorId { get; private set; }
+
         public string ClassName { get; private set; } = default!;
 
         public int CurrentStudents { get; private set; }
-        public int MaxStudents { get; private set; }
+        public int MaxStudents { get; set; }
         public ClassStatus Status { get; private set; }
-
-        private readonly List<dtc.Domain.Entities.Permissions.User> _instructors = new();
-        public IReadOnlyCollection<dtc.Domain.Entities.Permissions.User> Instructors => _instructors.AsReadOnly();
-
-        private readonly List<dtc.Domain.Entities.Permissions.User> _students = new();
-        public IReadOnlyCollection<dtc.Domain.Entities.Permissions.User> Students => _students.AsReadOnly();
 
         protected Class() { }
 
@@ -28,17 +22,21 @@ namespace dtc.Domain.Entities.Classes
         // =========================
         public Class(
             Guid termId,
+            Guid instructorId,
             string className,
             int maxStudents,
             Guid? createdBy = null)
         {
             if (termId == Guid.Empty)
                 throw new ArgumentException("TermId is required");
+            if (instructorId == Guid.Empty)
+                throw new ArgumentException("InstructorId is required");
 
             SetName(className);
             SetMaxStudents(maxStudents);
 
             TermId = termId;
+            InstructorId = instructorId;
             CurrentStudents = 0;
             Status = ClassStatus.Pending;
 
@@ -72,18 +70,22 @@ namespace dtc.Domain.Entities.Classes
             return true;
         }
 
-        public void SyncInstructors(IEnumerable<dtc.Domain.Entities.Permissions.User> instructors, Guid? updatedBy = null)
+        public void UpdateStudentCount(int count, Guid? updatedBy = null)
         {
-            _instructors.Clear();
-            _instructors.AddRange(instructors);
+            if (count < 0) throw new ArgumentOutOfRangeException(nameof(count));
+            CurrentStudents = count;
             SetUpdated(updatedBy);
         }
 
-        public void SyncStudents(IEnumerable<dtc.Domain.Entities.Permissions.User> students, Guid? updatedBy = null)
+        /// <summary>Đồng bộ sĩ số với bảng liên kết học viên–lớp (được cập nhật từ Application/Infrastructure).</summary>
+        public void SyncEnrollmentCount(int count, Guid? updatedBy = null)
         {
-            _students.Clear();
-            _students.AddRange(students);
-            CurrentStudents = _students.Count;
+            if (count < 0)
+                throw new ArgumentOutOfRangeException(nameof(count));
+            if (count > MaxStudents)
+                throw new InvalidOperationException("Enrollment count cannot exceed MaxStudents");
+
+            CurrentStudents = count;
             SetUpdated(updatedBy);
         }
 
@@ -115,6 +117,16 @@ namespace dtc.Domain.Entities.Classes
 
             SetUpdated(updatedBy);
             return true;
+        }
+
+        public void ChangeInstructor(Guid newInstructorId, Guid? updatedBy = null)
+        {
+            if (newInstructorId == Guid.Empty)
+                throw new ArgumentException("InstructorId is required");
+            if (InstructorId == newInstructorId) return;
+
+            InstructorId = newInstructorId;
+            SetUpdated(updatedBy);
         }
 
         public void ChangeStatus(ClassStatus newStatus, Guid? updatedBy = null)

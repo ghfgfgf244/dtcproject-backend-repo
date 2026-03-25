@@ -12,20 +12,23 @@ using Moq;
 using FluentAssertions;
 using Xunit;
 using dtc.Domain.Interfaces;
+using dtc.Application.Features.Notifications.Interfaces;
 
 namespace dtc.Tests.Features.Users
 {
     public class UserServiceTests
     {
         private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+        private readonly Mock<INotificationService> _notificationServiceMock;
 
         private readonly UserService _service;
 
         public UserServiceTests()
         {
             _unitOfWorkMock = new Mock<IUnitOfWork>();
+            _notificationServiceMock = new Mock<INotificationService>();
 
-            _service = new UserService(_unitOfWorkMock.Object);
+            _service = new UserService(_unitOfWorkMock.Object, _notificationServiceMock.Object);
         }
 
 

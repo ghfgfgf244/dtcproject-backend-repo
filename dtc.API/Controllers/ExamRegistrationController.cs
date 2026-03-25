@@ -22,7 +22,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> Register([FromBody] CreateExamRegistrationRequestDto request)
         {
-            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = await GetInternalUserIdAsync();
 
             if (request.StudentId != userId)
                 return Fail("Students can only register themselves.");
@@ -43,7 +43,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,EnrollmentManager")]
         public async Task<IActionResult> UpdateRegistrationStatus(Guid id, [FromBody] UpdateExamRegistrationStatusRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 await _examRegistrationService.UpdateStatusAsync(id, request, adminId);
@@ -59,7 +59,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,EnrollmentManager")]
         public async Task<IActionResult> MarkAsPaid(Guid id)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 await _examRegistrationService.MarkAsPaidAsync(id, adminId);
@@ -83,7 +83,7 @@ namespace dtc.API.Controllers
         [Authorize]
         public async Task<IActionResult> GetByStudent(Guid studentId)
         {
-            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = await GetInternalUserIdAsync();
             var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
 
             if (userRole == "Student" && studentId != userId)
@@ -91,6 +91,22 @@ namespace dtc.API.Controllers
 
             var response = await _examRegistrationService.GetByStudentAsync(studentId);
             return Ok(response);
+        }
+
+        [HttpPost("bulk")]
+        [Authorize(Roles = "Admin,EnrollmentManager")]
+        public async Task<IActionResult> CreateBulkRegistrations([FromBody] BulkExamRegistrationRequestDto request)
+        {
+            var adminId = await GetInternalUserIdAsync();
+            try
+            {
+                await _examRegistrationService.CreateBulkRegistrationsAsync(request, adminId);
+                return NoContent("Bulk registrations created successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
         }
     }
 }

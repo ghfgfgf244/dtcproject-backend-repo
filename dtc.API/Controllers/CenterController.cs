@@ -21,7 +21,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateCenter([FromBody] CreateCenterRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _centerService.CreateCenterAsync(request, adminId);
@@ -37,7 +37,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> UpdateCenter(Guid id, [FromBody] UpdateCenterRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _centerService.UpdateCenterAsync(id, request, adminId);
@@ -53,7 +53,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeactivateCenter(Guid id)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 await _centerService.DeactivateCenterAsync(id, adminId);
@@ -90,7 +90,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AssignUsersToCenter(Guid id, [FromBody] AssignUsersRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 await _centerService.AssignUsersToCenterAsync(id, request, adminId);

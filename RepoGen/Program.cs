@@ -47,7 +47,6 @@ namespace RepositoryImplGenerator
                 { "Location/AddressRepository.cs", ("Location", "Address") },
                 
                 { "Notifications/NotificationRepository.cs", ("Notifications", "Notification") },
-                { "Notifications/NotificationRoleRepository.cs", ("Notifications", "NotificationRole") },
                 { "Notifications/UserNotificationRepository.cs", ("Notifications", "UserNotification") },
                 
                 { "Training/LearningRoadmapRepository.cs", ("Training", "LearningRoadmap") },

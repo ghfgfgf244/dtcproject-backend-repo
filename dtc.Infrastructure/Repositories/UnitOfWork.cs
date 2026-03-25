@@ -33,7 +33,11 @@ namespace dtc.Infrastructure.Repositories
         // Classes
         public IAttendanceRepository Attendances => _serviceProvider.GetRequiredService<IAttendanceRepository>();
         public IClassRepository Classes => _serviceProvider.GetRequiredService<IClassRepository>();
+        public IClassStudentRepository ClassStudents => _serviceProvider.GetRequiredService<IClassStudentRepository>();
         public IClassScheduleRepository ClassSchedules => _serviceProvider.GetRequiredService<IClassScheduleRepository>();
+        public ILearningLocationRepository LearningLocations => _serviceProvider.GetRequiredService<ILearningLocationRepository>();
+        public IInstructorLeaveRequestRepository InstructorLeaveRequests => _serviceProvider.GetRequiredService<IInstructorLeaveRequestRepository>();
+        public IStudentDrivingDistanceRepository StudentDrivingDistances => _serviceProvider.GetRequiredService<IStudentDrivingDistanceRepository>();
 
         // Collaborators
         public ICollaboratorCommissionRepository CollaboratorCommissions => _serviceProvider.GetRequiredService<ICollaboratorCommissionRepository>();
@@ -55,7 +59,6 @@ namespace dtc.Infrastructure.Repositories
         
         // Notifications
         public INotificationRepository Notifications => _serviceProvider.GetRequiredService<INotificationRepository>();
-        public INotificationRoleRepository NotificationRoles => _serviceProvider.GetRequiredService<INotificationRoleRepository>();
         public IUserNotificationRepository UserNotifications => _serviceProvider.GetRequiredService<IUserNotificationRepository>();
 
         // Permissions
@@ -63,6 +66,7 @@ namespace dtc.Infrastructure.Repositories
         public IDocumentRepository Documents => _serviceProvider.GetRequiredService<IDocumentRepository>();
         public IRoleRepository Roles => _serviceProvider.GetRequiredService<IRoleRepository>();
         public IUserRepository Users => _serviceProvider.GetRequiredService<IUserRepository>();
+        public IUserCenterRepository UserCenters => _serviceProvider.GetRequiredService<IUserCenterRepository>();
 
         // Terms
         public ICourseRegistrationRepository CourseRegistrations => _serviceProvider.GetRequiredService<ICourseRegistrationRepository>();

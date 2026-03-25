@@ -22,10 +22,10 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager,Instructor")]
         public async Task<IActionResult> MarkAttendance([FromBody] MarkAttendanceRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var instructorId = await GetInternalUserIdAsync();
             try
             {
-                await _attendanceService.MarkAttendanceAsync(request, adminId);
+                await _attendanceService.MarkAttendanceAsync(request, instructorId);
                 return NoContent("Attendance marked successfully.");
             }
             catch (Exception ex)

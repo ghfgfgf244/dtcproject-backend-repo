@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,6 +9,7 @@ namespace dtc.Domain.Entities.Exams
     public class Exam : BaseEntity
     {
         public Guid ExamBatchId { get; private set; }
+        public Guid CourseId { get; private set; }
         public string ExamName { get; private set; } = default!;
         public DateTime ExamDate { get; private set; }
         public ExamType ExamType { get; private set; }
@@ -23,6 +24,7 @@ namespace dtc.Domain.Entities.Exams
 
         public Exam(
             Guid examBatchId,
+            Guid courseId,
             string name,
             DateTime examDate,
             ExamType examType,
@@ -33,6 +35,9 @@ namespace dtc.Domain.Entities.Exams
         {
             if (examBatchId == Guid.Empty)
                 throw new ArgumentException("ExamBatchId is required");
+
+            if (courseId == Guid.Empty)
+                throw new ArgumentException("CourseId is required");
 
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("ExamName is required");
@@ -48,6 +53,7 @@ namespace dtc.Domain.Entities.Exams
 
             Id = Guid.NewGuid();
             ExamBatchId = examBatchId;
+            CourseId = courseId;
             ExamName = name.Trim();
             ExamDate = examDate;
             ExamType = examType;

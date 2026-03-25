@@ -8,28 +8,27 @@ namespace dtc.Domain.Entities.Exams
 {
     public class ExamBatch : BaseEntity
     {
-        public Guid CourseId { get; private set; }
         public string BatchName { get; private set; } = default!;
         public DateTime RegistrationStartDate { get; private set; }
         public DateTime RegistrationEndDate { get; private set; }
         public DateTime ExamStartDate { get; private set; }
+        public int CurrentCandidates { get; private set; }
+        public int MaxCandidates { get; private set; }
         public ExamBatchStatus Status { get; private set; }
 
         protected ExamBatch() { }
 
         public ExamBatch(
-            Guid courseId,
             string batchName,
             DateTime registrationStartDate,
             DateTime registrationEndDate,
             DateTime examStartDate,
+            int maxCandidates,
             Guid? createdBy = null)
         {
-            if (courseId == Guid.Empty)
-                throw new ArgumentException("CourseId is required");
-
-            CourseId = courseId;
             SetBatchName(batchName);
+            SetMaxCandidates(maxCandidates);
+            CurrentCandidates = 0;
             SetDates(registrationStartDate, registrationEndDate, examStartDate);
             Status = ExamBatchStatus.Pending;
 
@@ -85,6 +84,26 @@ namespace dtc.Domain.Entities.Exams
             SetUpdated(updatedBy);
         }
 
+        public bool AddCandidate(Guid? updatedBy = null)
+        {
+            if (CurrentCandidates >= MaxCandidates)
+                throw new InvalidOperationException("Exam batch is full");
+
+            CurrentCandidates++;
+            SetUpdated(updatedBy);
+            return true;
+        }
+
+        public bool RemoveCandidate(Guid? updatedBy = null)
+        {
+            if (CurrentCandidates <= 0)
+                return false;
+
+            CurrentCandidates--;
+            SetUpdated(updatedBy);
+            return true;
+        }
+
         // =========================
         // PRIVATE RULES
         // =========================
@@ -108,6 +127,14 @@ namespace dtc.Domain.Entities.Exams
             RegistrationStartDate = regStart;
             RegistrationEndDate = regEnd;
             ExamStartDate = examStart;
+        }
+
+        private void SetMaxCandidates(int max)
+        {
+            if (max <= 0)
+                throw new ArgumentException("MaxCandidates must be greater than 0");
+
+            MaxCandidates = max;
         }
     }
 }

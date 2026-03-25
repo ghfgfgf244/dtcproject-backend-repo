@@ -14,6 +14,7 @@ namespace dtc.Application.Features.Training.Interfaces
         
         Task<IEnumerable<CourseResponseDto>> GetAllCoursesAsync();
         Task<IEnumerable<CourseResponseDto>> GetAvailableCoursesAsync();
+        Task<IEnumerable<CourseResponseDto>> GetCoursesByCenterAsync(Guid centerId);
         Task<CourseResponseDto> GetCourseDetailAsync(Guid courseId);
     }
 }

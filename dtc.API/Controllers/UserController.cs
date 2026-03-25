@@ -18,22 +18,17 @@ namespace dtc.API.Controllers
             _userService = userService;
         }
 
-        private Guid GetCurrentUserId()
-        {
-            var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return Guid.TryParse(claim, out var id) ? id : Guid.Empty;
-        }
+
 
         [HttpGet("me")]
         [Authorize]
         public async Task<IActionResult> GetMyProfile()
         {
-            var userId = GetCurrentUserId();
-            if (userId == Guid.Empty) return Fail("Invalid token.");
+            var userId = await GetInternalUserIdAsync();
             try
             {
-                var profile = await _userService.GetUserProfileAsync(userId);
-                return Ok(profile);
+                var response = await _userService.GetUserProfileAsync(userId);
+                return Ok(response);
             }
             catch
             {
@@ -45,12 +40,11 @@ namespace dtc.API.Controllers
         [Authorize]
         public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateProfileRequestDto request)
         {
-            var userId = GetCurrentUserId();
-            if (userId == Guid.Empty) return Fail("Invalid token.");
+            var userId = await GetInternalUserIdAsync();
             try
             {
-                var updatedProfile = await _userService.UpdateProfileAsync(userId, request);
-                return Ok(updatedProfile, "Profile updated successfully.");
+                var response = await _userService.UpdateProfileAsync(userId, request);
+                return Ok(response, "Profile updated successfully.");
             }
             catch (Exception ex)
             {
@@ -62,8 +56,7 @@ namespace dtc.API.Controllers
         [Authorize]
         public async Task<IActionResult> ApplyForStaff([FromBody] ApplyStaffRequestDto request)
         {
-            var userId = GetCurrentUserId();
-            if (userId == Guid.Empty) return Fail("Invalid token.");
+            var userId = await GetInternalUserIdAsync();
 
             if (request.RoleId != (int)dtc.Domain.Entities.UserRole.Instructor &&
                 request.RoleId != (int)dtc.Domain.Entities.UserRole.Collaborator)
@@ -84,8 +77,7 @@ namespace dtc.API.Controllers
         [Authorize]
         public async Task<IActionResult> DeleteMyProfile()
         {
-            var userId = GetCurrentUserId();
-            if (userId == Guid.Empty) return Fail("Invalid token.");
+            var userId = await GetInternalUserIdAsync();
             try
             {
                 await _userService.DeleteMyProfileAsync(userId);
@@ -101,12 +93,11 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserRequestDto request)
         {
-            var adminId = GetCurrentUserId();
-            if (adminId == Guid.Empty) return Fail("Invalid admin token.");
+            var adminId = await GetInternalUserIdAsync();
             try
             {
-                var newUser = await _userService.CreateUserAsync(request, adminId);
-                return Created(newUser, "User created successfully.");
+                var response = await _userService.CreateUserAsync(request, adminId);
+                return Created(response, "User created successfully.");
             }
             catch (Exception ex)
             {
@@ -172,8 +163,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ToggleUserStatus(Guid id)
         {
-            var adminId = GetCurrentUserId();
-            if (adminId == Guid.Empty) return Fail("Invalid admin token.");
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 await _userService.ToggleUserStatusAsync(adminId, id);

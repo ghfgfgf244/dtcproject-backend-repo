@@ -37,7 +37,7 @@ namespace dtc.API
 
             // Register MongoDBContext
             builder.Services.AddSingleton<MongoDBContext>();
-            builder.Services.AddInfrastructureServices();
+            builder.Services.AddInfrastructureServices(builder.Configuration);
             builder.Services.AddApplicationServices();
 
             // Distributed Caching - use Redis in production, InMemory for local/fallback

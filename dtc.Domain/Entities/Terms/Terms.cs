@@ -12,6 +12,8 @@ namespace dtc.Domain.Entities.Terms
         public string TermName { get; private set; } = default!;
         public DateTime StartDate { get; private set; }
         public DateTime EndDate { get; private set; }
+        public int CurrentStudents { get; private set; }
+        public int MaxStudents { get; private set; }
 
         protected Term() { }
 
@@ -20,6 +22,7 @@ namespace dtc.Domain.Entities.Terms
             string termName, 
             DateTime startDate, 
             DateTime endDate, 
+            int maxStudents,
             Guid? createdBy = null)
         {
             if (courseId == Guid.Empty)
@@ -28,6 +31,8 @@ namespace dtc.Domain.Entities.Terms
             CourseId = courseId;
             SetName(termName);
             SetSchedule(startDate, endDate);
+            SetMaxStudents(maxStudents);
+            CurrentStudents = 0;
             
             Id = Guid.NewGuid();
             SetCreated(createdBy);
@@ -67,6 +72,26 @@ namespace dtc.Domain.Entities.Terms
             return true;
         }
 
+        public bool EnrollStudent(Guid? updatedBy = null)
+        {
+            if (CurrentStudents >= MaxStudents)
+                throw new InvalidOperationException("Term is full");
+
+            CurrentStudents++;
+            SetUpdated(updatedBy);
+            return true;
+        }
+
+        public bool RemoveStudent(Guid? updatedBy = null)
+        {
+            if (CurrentStudents <= 0)
+                return false;
+
+            CurrentStudents--;
+            SetUpdated(updatedBy);
+            return true;
+        }
+
         // =========================
         // PRIVATE RULES
         // =========================
@@ -86,6 +111,14 @@ namespace dtc.Domain.Entities.Terms
 
             StartDate = start;
             EndDate = end;
+        }
+
+        private void SetMaxStudents(int max)
+        {
+            if (max <= 0)
+                throw new ArgumentException("MaxStudents must be greater than 0");
+
+            MaxStudents = max;
         }
     }
 }

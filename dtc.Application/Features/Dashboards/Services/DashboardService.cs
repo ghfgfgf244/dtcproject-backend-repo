@@ -67,7 +67,7 @@ namespace dtc.Application.Features.Dashboards.Services
         public async Task<AdmissionDashboardResponseDto> GetAdmissionDashboardAsync()
         {
             var courseRegs = await _unitOfWork.CourseRegistrations.GetAllAsync();
-            var users = await _unitOfWork.Users.FindAsync(u => u.Roles.Any(r => r.RoleName == UserRole.Student), u => u.Roles);
+            var users = await _unitOfWork.Users.FindAsync(u => u.RoleId == UserRole.Student);
 
             var pending = courseRegs.Count(r => r.Status == CourseRegistrationStatus.Pending);
             var approved = courseRegs.Count(r => r.Status == CourseRegistrationStatus.Approved);

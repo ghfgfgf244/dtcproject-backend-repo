@@ -1,5 +1,7 @@
 using dtc.Application.Features.Auth.Interfaces;
 using dtc.Application.Features.Auth.Services;
+using dtc.Application.Features.Blogs.Interfaces;
+using dtc.Application.Features.Blogs.Services;
 using dtc.Application.Features.Users.Interfaces;
 using dtc.Application.Features.Users.Services;
 using dtc.Application.Features.Exams.Interfaces;
@@ -27,6 +29,10 @@ namespace dtc.Application
             // Feature: Auth
             services.AddScoped<IAuthService, AuthService>();
 
+            // Feature: Blogs
+            services.AddScoped<IBlogService, BlogService>();
+            services.AddScoped<ICategoryService, CategoryService>();
+
             // Feature: Users
             services.AddScoped<IUserService, UserService>();
 
@@ -41,12 +47,13 @@ namespace dtc.Application
             services.AddScoped<IScheduleService, ScheduleService>();
             services.AddScoped<IAttendanceService, AttendanceService>();
             services.AddScoped<ICourseService, CourseService>();
-            services.AddScoped<ILearningRoadmapService, LearningRoadmapService>();
+            services.AddScoped<IStudentDrivingDistanceService, StudentDrivingDistanceService>();
             services.AddScoped<IResourceLearningService, ResourceLearningService>();
             services.AddScoped<IStudentEvaluationService, StudentEvaluationService>();
             services.AddScoped<ITermService, TermService>();
             services.AddScoped<IClassService, ClassService>();
             services.AddScoped<ICourseRegistrationService, CourseRegistrationService>();
+            services.AddScoped<IInstructorLeaveRequestService, InstructorLeaveRequestService>();
 
             // Feature: Collaborators
             services.AddScoped<ICollaboratorService, CollaboratorService>();

@@ -1,7 +1,5 @@
 using dtc.Application.Features.Exams.Interfaces;
 using dtc.Application.Features.Exams.DTOs;
-using dtc.Application.Features.Exams.Interfaces;
-using dtc.Application.Features.Exams.DTOs;
 using dtc.Domain.Entities.Exams;
 using dtc.Domain.Interfaces;
 using System.Text.Json;
@@ -45,43 +43,44 @@ namespace dtc.Application.Features.Exams.Services
             var sampleExam = await _unitOfWork.SampleExams.GetByIdAsync(id);
             if (sampleExam == null) throw new Exception("Sample exam not found");
 
-            // Verify questions exist
-            var newQuestionIds = request.Questions.Select(q => q.QuestionId).ToList();
+            var newItems = request.Questions.Select(q => new { q.QuestionId, q.Order }).ToList();
+            var newQuestionIds = newItems.Select(x => x.QuestionId).Distinct().ToList();
             var allQuestions = await _unitOfWork.Questions.FindAsync(q => newQuestionIds.Contains(q.Id));
             var foundQuestionIds = allQuestions.Select(q => q.Id).ToHashSet();
 
-            foreach (var requestedQ in request.Questions)
+            foreach (var item in newItems)
             {
-                if (!foundQuestionIds.Contains(requestedQ.QuestionId))
-                    throw new Exception($"Question with ID {requestedQ.QuestionId} not found.");
+                if (!foundQuestionIds.Contains(item.QuestionId))
+                    throw new Exception($"Question with ID {item.QuestionId} not found.");
             }
 
-            // Sync questions (delete removed, add new, change order)
-            var currentLinks = sampleExam.QuestionIds.ToList();
-            
-            // Remove missing
-            foreach (var link in currentLinks)
-            {
-                if (!newQuestionIds.Contains(link.QuestionId))
-                {
-                    sampleExam.RemoveQuestion(link.QuestionId);
-                }
-            }
+            var currentLinks = (await _unitOfWork.SampleExamQuestions.FindAsync(seq => seq.SampleExamId == id)).ToList();
+            var currentByQId = currentLinks.ToDictionary(seq => seq.QuestionId);
 
-            // Add or reorder
-            foreach (var requestedQ in request.Questions)
+            var newByQId = newItems.ToDictionary(x => x.QuestionId, x => x.Order);
+
+            var toRemove = currentLinks.Where(seq => !newByQId.ContainsKey(seq.QuestionId)).ToList();
+            if (toRemove.Count > 0)
+                await _unitOfWork.SampleExamQuestions.RemoveRange(toRemove);
+
+            foreach (var item in newItems)
             {
-                if (!currentLinks.Any(c => c.QuestionId == requestedQ.QuestionId))
+                if (currentByQId.TryGetValue(item.QuestionId, out var existing))
                 {
-                    sampleExam.AddQuestion(requestedQ.QuestionId);
-                    sampleExam.ChangeQuestionOrder(requestedQ.QuestionId, requestedQ.Order);
+                    if (existing.QuestionOrder != item.Order)
+                    {
+                        existing.ChangeOrder(item.Order);
+                        await _unitOfWork.SampleExamQuestions.UpdateAsync(existing);
+                    }
                 }
                 else
                 {
-                    sampleExam.ChangeQuestionOrder(requestedQ.QuestionId, requestedQ.Order);
+                    var link = new SampleExamQuestion(id, item.QuestionId, item.Order);
+                    await _unitOfWork.SampleExamQuestions.AddAsync(link);
                 }
             }
 
+            sampleExam.SyncTotalQuestions(newItems.Count);
             await _unitOfWork.SampleExams.UpdateAsync(sampleExam);
             await _unitOfWork.SaveChangesAsync();
 
@@ -106,6 +105,9 @@ namespace dtc.Application.Features.Exams.Services
             var sampleExam = await _unitOfWork.SampleExams.GetByIdAsync(id);
             if (sampleExam == null) throw new Exception("Sample exam not found");
 
+            var links = await _unitOfWork.SampleExamQuestions.FindAsync(seq => seq.SampleExamId == id);
+            var orderedLinks = links.OrderBy(seq => seq.QuestionOrder).ToList();
+
             var dto = new SampleExamDetailResponseDto
             {
                 Id = sampleExam.Id,
@@ -120,7 +122,7 @@ namespace dtc.Application.Features.Exams.Services
             };
 
             var questions = new List<QuestionResponseDto>();
-            foreach (var link in sampleExam.QuestionIds.OrderBy(q => q.QuestionOrder))
+            foreach (var link in orderedLinks)
             {
                 var qEntity = await _unitOfWork.Questions.GetByIdAsync(link.QuestionId);
                 if (qEntity != null)
@@ -148,12 +150,52 @@ namespace dtc.Application.Features.Exams.Services
         public async Task<IEnumerable<SampleExamResponseDto>> GetAllSampleExamsAsync()
         {
             var sampleExams = await _unitOfWork.SampleExams.GetAllAsync();
-            var dtos = new List<SampleExamResponseDto>();
-            foreach (var se in sampleExams)
+            return sampleExams.Select(MapToDto);
+        }
+
+        public async Task<SampleExamResponseDto> CreateSampleExamWithQuestionsAsync(CreateSampleExamWithQuestionsRequestDto request)
+        {
+            var course = await _unitOfWork.Courses.GetByIdAsync(request.CourseId);
+            if (course == null) throw new Exception("Course not found");
+
+            var questionIds = request.Questions.Select(q => q.QuestionId).Distinct().ToList();
+            var foundQuestions = await _unitOfWork.Questions.FindAsync(q => questionIds.Contains(q.Id));
+            if (foundQuestions.Count() != questionIds.Count)
+                throw new Exception("One or more questions not found");
+
+            await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                dtos.Add(MapToDto(se));
+                var sampleExam = new SampleExam(
+                    courseId: request.CourseId,
+                    examNo: request.ExamNo,
+                    level: request.Level,
+                    durationMinutes: request.DurationMinutes,
+                    passingScore: request.PassingScore
+                );
+
+                await _unitOfWork.SampleExams.AddAsync(sampleExam);
+                await _unitOfWork.SaveChangesAsync(); // get ID
+
+                foreach (var qReq in request.Questions)
+                {
+                    var link = new SampleExamQuestion(sampleExam.Id, qReq.QuestionId, qReq.Order);
+                    await _unitOfWork.SampleExamQuestions.AddAsync(link);
+                }
+
+                sampleExam.SyncTotalQuestions(request.Questions.Count);
+                await _unitOfWork.SampleExams.UpdateAsync(sampleExam);
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return MapToDto(sampleExam);
             }
-            return dtos;
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
         }
 
         public async Task<SampleTestResultResponseDto> DoSampleTestAsync(Guid sampleExamId, Guid studentId, SubmitSampleTestRequestDto request)
@@ -164,11 +206,14 @@ namespace dtc.Application.Features.Exams.Services
             if (!sampleExam.IsActive)
                 throw new Exception("Sample exam is currently inactive.");
 
+            var links = await _unitOfWork.SampleExamQuestions.FindAsync(seq => seq.SampleExamId == sampleExamId);
+            var orderedLinks = links.OrderBy(seq => seq.QuestionOrder).ToList();
+
             double score = 0;
             double scorePerQuestion = sampleExam.TotalQuestions > 0 ? 100.0 / sampleExam.TotalQuestions : 0;
             var correctAnswersDict = new Dictionary<int, string>();
 
-            foreach (var link in sampleExam.QuestionIds)
+            foreach (var link in orderedLinks)
             {
                 var qEntity = await _unitOfWork.Questions.GetByIdAsync(link.QuestionId);
                 if (qEntity != null)
@@ -185,7 +230,6 @@ namespace dtc.Application.Features.Exams.Services
                 }
             }
 
-            // Prevent floating point precision weirdness causing a fail if it's 99.9999 vs 100
             score = Math.Round(score, 2);
             bool isPassed = score >= sampleExam.PassingScore;
 
@@ -223,10 +267,10 @@ namespace dtc.Application.Features.Exams.Services
                 TotalScore = r.TotalScore,
                 DurationSeconds = r.DurationSeconds,
                 IsPassed = r.IsPassed
-            }).ToList();
+            });
         }
 
-        private SampleExamResponseDto MapToDto(SampleExam sampleExam)
+        private static SampleExamResponseDto MapToDto(SampleExam sampleExam)
         {
             return new SampleExamResponseDto
             {

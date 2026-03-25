@@ -11,6 +11,9 @@ namespace dtc.Application.Features.Exams.DTOs
         public Guid ExamBatchId { get; set; }
 
         [Required]
+        public Guid CourseId { get; set; }
+
+        [Required]
         [MaxLength(255)]
         public string ExamName { get; set; } = string.Empty;
 

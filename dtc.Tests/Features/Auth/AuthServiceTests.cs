@@ -12,6 +12,7 @@ using Moq;
 using FluentAssertions;
 using Xunit;
 using dtc.Domain.Interfaces;
+using dtc.Application.Features.Notifications.Interfaces;
 
 namespace dtc.Tests.Features.Auth
 {
@@ -19,6 +20,7 @@ namespace dtc.Tests.Features.Auth
     {
         private readonly Mock<IUnitOfWork> _unitOfWorkMock;
         private readonly Mock<Microsoft.Extensions.Configuration.IConfiguration> _configurationMock;
+        private readonly Mock<INotificationService> _notificationServiceMock;
 
         private readonly AuthService _service;
 
@@ -26,8 +28,9 @@ namespace dtc.Tests.Features.Auth
         {
             _unitOfWorkMock = new Mock<IUnitOfWork>();
             _configurationMock = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
+            _notificationServiceMock = new Mock<INotificationService>();
 
-            _service = new AuthService(_unitOfWorkMock.Object, _configurationMock.Object);
+            _service = new AuthService(_unitOfWorkMock.Object, _configurationMock.Object, _notificationServiceMock.Object);
         }
 
 

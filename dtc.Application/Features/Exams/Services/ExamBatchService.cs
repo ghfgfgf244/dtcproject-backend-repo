@@ -22,15 +22,12 @@ namespace dtc.Application.Features.Exams.Services
 
         public async Task<ExamBatchResponseDto> CreateExamBatchAsync(CreateExamBatchRequestDto request, Guid adminId)
         {
-            var course = await _unitOfWork.Courses.GetByIdAsync(request.CourseId);
-            if (course == null) throw new Exception("Course not found");
-
             var batch = new ExamBatch(
-                courseId: request.CourseId,
                 batchName: request.BatchName,
                 registrationStartDate: request.RegistrationStartDate,
                 registrationEndDate: request.RegistrationEndDate,
                 examStartDate: request.ExamStartDate,
+                maxCandidates: request.MaxCandidates > 0 ? request.MaxCandidates : 1,
                 createdBy: adminId
             );
 
@@ -104,16 +101,15 @@ namespace dtc.Application.Features.Exams.Services
 
         private async Task<ExamBatchResponseDto> MapToDtoAsync(ExamBatch batch)
         {
-            var course = await _unitOfWork.Courses.GetByIdAsync(batch.CourseId);
             return new ExamBatchResponseDto
             {
                 Id = batch.Id,
-                CourseId = batch.CourseId,
-                CourseName = course?.CourseName ?? "Unknown",
                 BatchName = batch.BatchName,
                 RegistrationStartDate = batch.RegistrationStartDate,
                 RegistrationEndDate = batch.RegistrationEndDate,
                 ExamStartDate = batch.ExamStartDate,
+                CurrentCandidates = batch.CurrentCandidates,
+                MaxCandidates = batch.MaxCandidates,
                 Status = batch.Status,
                 CreatedAt = batch.CreatedAt
             };

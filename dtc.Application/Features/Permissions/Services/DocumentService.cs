@@ -1,15 +1,6 @@
 using dtc.Application.Features.Permissions.Interfaces;
 using dtc.Application.Features.Permissions.DTOs;
-using dtc.Application.Features.Permissions.Interfaces;
-using dtc.Application.Features.Permissions.DTOs;
-using dtc.Application.Features.Permissions.Interfaces;
-using dtc.Application.Features.Permissions.DTOs;
-using dtc.Application.Features.Permissions.Interfaces;
-using dtc.Application.Features.Permissions.DTOs;
-using dtc.Application.Features.Permissions.Interfaces;
-using dtc.Application.Features.Permissions.DTOs;
-using dtc.Application.Features.Permissions.Interfaces;
-using dtc.Application.Features.Permissions.DTOs;
+using dtc.Application.Interfaces;
 using dtc.Domain.Entities.Permissions;
 using dtc.Domain.Entities;
 using dtc.Domain.Interfaces;
@@ -23,10 +14,12 @@ namespace dtc.Application.Features.Permissions.Services
     public class DocumentService : IDocumentService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ICloudinaryService _cloudinaryService;
 
-        public DocumentService(IUnitOfWork unitOfWork)
+        public DocumentService(IUnitOfWork unitOfWork, ICloudinaryService cloudinaryService)
         {
             _unitOfWork = unitOfWork;
+            _cloudinaryService = cloudinaryService;
         }
 
         // DEV-132: Add personal's document
@@ -34,8 +27,9 @@ namespace dtc.Application.Features.Permissions.Services
         {
             var document = new Document(
                 userId: userId,
-                resourceType: (ResourceType)request.ResourceType,
-                fileUrl: request.FileUrl,
+                providerPublicId: request.ProviderPublicId,
+                version: request.Version,
+                resourceType: request.ResourceType,
                 fileName: request.FileName,
                 extension: request.Extension,
                 size: request.Size
@@ -54,7 +48,12 @@ namespace dtc.Application.Features.Permissions.Services
             if (document == null || document.UserId != userId)
                 throw new Exception("Document not found or access denied.");
 
-            document.ChangeFile(request.FileUrl, request.Extension, request.Size);
+            document.ChangeFile(
+                request.ProviderPublicId, 
+                request.Version, 
+                request.ResourceType, 
+                request.Extension, 
+                request.Size);
 
             await _unitOfWork.Documents.UpdateAsync(document);
             await _unitOfWork.SaveChangesAsync();
@@ -114,12 +113,14 @@ namespace dtc.Application.Features.Permissions.Services
             {
                 Id = doc.Id,
                 UserId = doc.UserId,
-                ResourceType = doc.ResourceType.ToString(),
-                FileUrl = doc.FileUrl,
+                ResourceType = doc.ResourceType,
+                ProviderPublicId = doc.ProviderPublicId,
+                Version = doc.Version,
                 FileName = doc.FileName,
                 Extension = doc.Extension,
                 Size = doc.Size,
-                IsVerified = doc.IsVerified
+                IsVerified = doc.IsVerified,
+                FileUrl = _cloudinaryService.GetUrl(doc.ProviderPublicId, doc.Version, doc.ResourceType, isSecure: true)
             };
         }
     }
