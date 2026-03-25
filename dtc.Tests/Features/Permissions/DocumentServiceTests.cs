@@ -1,15 +1,6 @@
 using dtc.Application.Features.Permissions.Interfaces;
 using dtc.Application.Features.Permissions.DTOs;
-using dtc.Application.Features.Permissions.Interfaces;
-using dtc.Application.Features.Permissions.DTOs;
-using dtc.Application.Features.Permissions.Interfaces;
-using dtc.Application.Features.Permissions.DTOs;
-using dtc.Application.Features.Permissions.Interfaces;
-using dtc.Application.Features.Permissions.DTOs;
-using dtc.Application.Features.Permissions.Interfaces;
-using dtc.Application.Features.Permissions.DTOs;
-using dtc.Application.Features.Permissions.Interfaces;
-using dtc.Application.Features.Permissions.DTOs;
+using dtc.Application.Interfaces;
 using dtc.Domain.Entities.Permissions;
 using dtc.Domain.Entities;
 using dtc.Domain.Interfaces;
@@ -28,14 +19,16 @@ namespace dtc.Tests.Features.Permissions
     public class DocumentServiceTests
     {
         private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+        private readonly Mock<ICloudinaryService> _cloudinaryServiceMock;
 
         private readonly DocumentService _service;
 
         public DocumentServiceTests()
         {
             _unitOfWorkMock = new Mock<IUnitOfWork>();
+            _cloudinaryServiceMock = new Mock<ICloudinaryService>();
 
-            _service = new DocumentService(_unitOfWorkMock.Object);
+            _service = new DocumentService(_unitOfWorkMock.Object, _cloudinaryServiceMock.Object);
         }
 
 

@@ -1,5 +1,6 @@
 using MongoDB.Driver;
 using dtc.Domain.Entities.Blogs;
+using dtc.Domain.Entities.Classes;
 using dtc.Domain.Entities.Exams;
 using dtc.Domain.Entities.Location;
 using dtc.Domain.Entities.Notifications;
@@ -29,9 +30,9 @@ namespace dtc.Infrastructure.Persistence.MongoDB
         public virtual IMongoCollection<Question> Questions => _database.GetCollection<Question>("Questions");
         
         public virtual IMongoCollection<Address> Addresses => _database.GetCollection<Address>("Addresses");
+        public virtual IMongoCollection<LearningLocation> LearningLocations => _database.GetCollection<LearningLocation>("LearningLocations");
         
         public virtual IMongoCollection<Notification> Notifications => _database.GetCollection<Notification>("Notifications");
-        public virtual IMongoCollection<NotificationRole> NotificationRoles => _database.GetCollection<NotificationRole>("NotificationRoles");
         public virtual IMongoCollection<UserNotification> UserNotifications => _database.GetCollection<UserNotification>("UserNotifications");
         
         public virtual IMongoCollection<LearningRoadmap> LearningRoadmaps => _database.GetCollection<LearningRoadmap>("LearningRoadmaps");

@@ -1,5 +1,11 @@
-﻿namespace dtc.Domain.Entities.Exams
+using System;
+
+namespace dtc.Domain.Entities.Exams
 {
+    /// <summary>
+    /// Đề thi mẫu. Liên kết với câu hỏi qua bảng trung gian <see cref="SampleExamQuestion"/>.
+    /// Không lưu danh sách câu hỏi trong entity.
+    /// </summary>
     public class SampleExam
     {
         public Guid Id { get; private set; }
@@ -11,14 +17,11 @@
         public int DurationMinutes { get; private set; }
         public int PassingScore { get; private set; }
 
+        /// <summary>Sĩ số câu hỏi (đồng bộ từ SampleExamQuestion bởi Application layer).</summary>
+        public int TotalQuestions { get; private set; }
+
         public bool IsActive { get; private set; }
         public DateTime CreatedAt { get; private set; }
-
-
-        private readonly List<SampleExamQuestion> _questionIds = new();
-        public IReadOnlyCollection<SampleExamQuestion> QuestionIds => _questionIds.AsReadOnly();
-
-        public int TotalQuestions => _questionIds.Count;
 
         protected SampleExam() { }
 
@@ -44,55 +47,21 @@
             Level = level;
             DurationMinutes = durationMinutes;
             PassingScore = passingScore;
+            TotalQuestions = 0;
 
             IsActive = true;
             CreatedAt = DateTime.UtcNow;
         }
 
-        public void AddQuestion(int questionId)
+        /// <summary>Đồng bộ sĩ số từ SampleExamQuestion (gọi từ Application layer).</summary>
+        public void SyncTotalQuestions(int count)
         {
-            if (_questionIds.Any(q => q.QuestionId == questionId))
-                throw new InvalidOperationException("Question already exists in exam");
-
-            var order = _questionIds.Count + 1;
-            _questionIds.Add(new SampleExamQuestion(Id, questionId, order));
-        }
-
-        public void RemoveQuestion(int questionId)
-        {
-            var question = _questionIds.FirstOrDefault(q => q.QuestionId == questionId);
-            if (question == null) return;
-
-            _questionIds.Remove(question);
-
-            int order = 1;
-            foreach (var q in _questionIds.OrderBy(x => x.QuestionOrder))
-            {
-                q.ChangeOrder(order++);
-            }
-        }
-
-        public void ChangeQuestionOrder(int questionId, int newOrder)
-        {
-            if (newOrder <= 0 || newOrder > _questionIds.Count)
-                throw new ArgumentException("Invalid order");
-
-            var target = _questionIds.FirstOrDefault(q => q.QuestionId == questionId);
-            if (target is null)
-                throw new ArgumentException("Question not found");
-
-            var oldOrder = target.QuestionOrder;
-            if (oldOrder == newOrder)
-                return;
-
-            var swapped = _questionIds.First(q => q.QuestionOrder == newOrder);
-            swapped.ChangeOrder(oldOrder);
-
-            target.ChangeOrder(newOrder);
+            if (count < 0)
+                throw new ArgumentOutOfRangeException(nameof(count));
+            TotalQuestions = count;
         }
 
         public void Deactivate() => IsActive = false;
         public void Activate() => IsActive = true;
-
     }
 }

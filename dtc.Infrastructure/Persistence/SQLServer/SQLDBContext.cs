@@ -8,6 +8,7 @@ using dtc.Domain.Entities.Terms;
 using dtc.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using EmailVO = dtc.Domain.ValueObjects.Email;
 
 namespace dtc.Infrastructure.Pesistence.SQLServer
 {
@@ -20,6 +21,7 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
         // DbSets (SQL Server Only)
         // =========================
         public DbSet<User> Users => Set<User>();
+        public DbSet<UserCenter> UserCenters => Set<UserCenter>();
         public DbSet<Role> Roles => Set<Role>();
 
         public DbSet<Center> Centers => Set<Center>();
@@ -30,8 +32,11 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
         public DbSet<CourseRegistration> CourseRegistrations => Set<CourseRegistration>();
 
         public DbSet<Class> Classes => Set<Class>();
+        public DbSet<ClassStudent> ClassStudents => Set<ClassStudent>();
         public DbSet<ClassSchedule> ClassSchedules => Set<ClassSchedule>();
         public DbSet<Attendance> Attendances => Set<Attendance>();
+        public DbSet<InstructorLeaveRequest> InstructorLeaveRequests => Set<InstructorLeaveRequest>();
+        public DbSet<StudentDrivingDistance> StudentDrivingDistances => Set<StudentDrivingDistance>();
 
         // Exams
         public DbSet<ExamBatch> ExamBatches => Set<ExamBatch>();
@@ -59,7 +64,6 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
 
             ConfigureUser(modelBuilder);
             ConfigureRole(modelBuilder);
-            ConfigureUserRole(modelBuilder);
 
             ConfigureCenter(modelBuilder);
             ConfigureUserCenter(modelBuilder);
@@ -70,8 +74,11 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
             ConfigureCourseRegistration(modelBuilder);
 
             ConfigureClass(modelBuilder);
+            ConfigureClassStudent(modelBuilder);
             ConfigureClassSchedule(modelBuilder);
             ConfigureAttendance(modelBuilder);
+            ConfigureInstructorLeaveRequest(modelBuilder);
+            ConfigureStudentDrivingDistance(modelBuilder);
 
             ConfigureExamBatch(modelBuilder);
             ConfigureExam(modelBuilder);
@@ -133,14 +140,18 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                 e.ToTable("Users");
                 e.HasKey(x => x.Id);
 
+                e.Property(x => x.ClerkId)
+                    .HasMaxLength(255)
+                    .IsRequired();
+                e.HasIndex(x => x.ClerkId).IsUnique();
+
                 e.Property(x => x.Email)
-                    .HasConversion(v => v.Value, v => Email.Create(v))
+                    .HasConversion(v => v.Value, v => EmailVO.Create(v))
                     .HasMaxLength(255)
                     .IsRequired();
 
                 e.HasIndex(x => x.Email).IsUnique();
 
-                e.Property(x => x.PasswordHash).HasMaxLength(500).IsRequired();
                 e.Property(x => x.FullName).HasMaxLength(255);
 
                 e.Property(x => x.Phone)
@@ -150,6 +161,8 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                 e.Property(x => x.AvatarUrl).HasMaxLength(500);
                 e.Property(x => x.IsActive);
                 e.Property(x => x.LastLoginAt);
+
+                e.Property(x => x.RoleId).HasConversion<int>();
             });
         }
 
@@ -167,33 +180,6 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
             });
         }
 
-        private static void ConfigureUserRole(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<User>()
-                .HasMany(u => u.Roles)
-                .WithMany()
-                .UsingEntity<Dictionary<string, object>>(
-                    "UserRoles",
-
-                    r => r.HasOne<Role>()
-                          .WithMany()
-                          .HasForeignKey("RoleId")
-                          .OnDelete(DeleteBehavior.Cascade),
-
-                    l => l.HasOne<User>()
-                          .WithMany()
-                          .HasForeignKey("UserId")
-                          .OnDelete(DeleteBehavior.Cascade),
-
-                    j =>
-                    {
-                        j.ToTable("UserRoles");
-                        j.HasKey("UserId", "RoleId");
-
-                        j.Property<Guid>("UserId");
-                        j.Property<int>("RoleId");
-                    });
-        }
 
         // =========================
         // Permissions
@@ -204,7 +190,19 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
             {
                 e.ToTable("Documents");
                 e.HasKey(x => x.Id);
-                // Configuration based on future properties of Document
+
+                e.Property(x => x.ProviderPublicId).HasMaxLength(255).IsRequired();
+                e.Property(x => x.Version).HasMaxLength(50).IsRequired();
+                e.Property(x => x.ResourceType).HasMaxLength(20).IsRequired();
+                e.Property(x => x.FileName).HasMaxLength(255).IsRequired();
+                e.Property(x => x.Extension).HasMaxLength(10).IsRequired();
+                e.Property(x => x.Size).IsRequired();
+                e.Property(x => x.IsVerified).IsRequired();
+
+                e.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(x => x.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
 
@@ -226,7 +224,7 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                     .HasMaxLength(20);
 
                 e.Property(x => x.Email)
-                    .HasConversion(v => v.Value, v => Email.Create(v))
+                    .HasConversion(v => v.Value, v => EmailVO.Create(v))
                     .HasMaxLength(255);
 
                 e.Property(x => x.IsActive);
@@ -235,30 +233,21 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
         
         private static void ConfigureUserCenter(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<User>()
-                .HasMany(u => u.Centers)
-                .WithMany(c => c.Users)
-                .UsingEntity<Dictionary<string, object>>(
-                    "UserCenters",
+            modelBuilder.Entity<UserCenter>(e =>
+            {
+                e.ToTable("UserCenters");
+                e.HasKey(x => new { x.UserId, x.CenterId });
 
-                    r => r.HasOne<Center>()
-                          .WithMany()
-                          .HasForeignKey("CenterId")
-                          .OnDelete(DeleteBehavior.Cascade),
+                e.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(x => x.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
 
-                    l => l.HasOne<User>()
-                          .WithMany()
-                          .HasForeignKey("UserId")
-                          .OnDelete(DeleteBehavior.Cascade),
-
-                    j =>
-                    {
-                        j.ToTable("UserCenters");
-                        j.HasKey("UserId", "CenterId");
-
-                        j.Property<Guid>("UserId");
-                        j.Property<Guid>("CenterId");
-                    });
+                e.HasOne<Center>()
+                    .WithMany()
+                    .HasForeignKey(x => x.CenterId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
 
         // =========================
@@ -358,59 +347,32 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                 e.HasOne<Term>()
                     .WithMany()
                     .HasForeignKey(x => x.TermId);
+
+                // Một lớp một giáo viên chủ nhiệm; một user có thể chủ nhiệm nhiều lớp.
+                e.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(x => x.InstructorId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
+        }
 
-            // Map User (Student) to Class many-to-many relationship
-            modelBuilder.Entity<Class>()
-                .HasMany(c => c.Students)
-                .WithMany()
-                .UsingEntity<Dictionary<string, object>>(
-                    "ClassStudents",
+        private static void ConfigureClassStudent(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<ClassStudent>(e =>
+            {
+                e.ToTable("ClassStudents");
+                e.HasKey(x => new { x.ClassId, x.StudentId });
 
-                    r => r.HasOne<User>()
-                          .WithMany()
-                          .HasForeignKey("StudentId")
-                          .OnDelete(DeleteBehavior.Cascade),
+                e.HasOne<Class>()
+                    .WithMany()
+                    .HasForeignKey(x => x.ClassId)
+                    .OnDelete(DeleteBehavior.Cascade);
 
-                    l => l.HasOne<Class>()
-                          .WithMany()
-                          .HasForeignKey("ClassId")
-                          .OnDelete(DeleteBehavior.Cascade),
-
-                    j =>
-                    {
-                        j.ToTable("ClassStudents");
-                        j.HasKey("StudentId", "ClassId");
-
-                        j.Property<Guid>("StudentId");
-                        j.Property<Guid>("ClassId");
-                    });
-
-            // Map User (Instructor) to Class many-to-many relationship
-            modelBuilder.Entity<Class>()
-                .HasMany(c => c.Instructors)
-                .WithMany()
-                .UsingEntity<Dictionary<string, object>>(
-                    "ClassInstructors",
-
-                    r => r.HasOne<User>()
-                          .WithMany()
-                          .HasForeignKey("InstructorId")
-                          .OnDelete(DeleteBehavior.Cascade),
-
-                    l => l.HasOne<Class>()
-                          .WithMany()
-                          .HasForeignKey("ClassId")
-                          .OnDelete(DeleteBehavior.Cascade),
-
-                    j =>
-                    {
-                        j.ToTable("ClassInstructors");
-                        j.HasKey("InstructorId", "ClassId");
-
-                        j.Property<Guid>("InstructorId");
-                        j.Property<Guid>("ClassId");
-                    });
+                e.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(x => x.StudentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
 
         private static void ConfigureClassSchedule(ModelBuilder modelBuilder)
@@ -456,6 +418,42 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
             });
         }
 
+        private static void ConfigureInstructorLeaveRequest(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<InstructorLeaveRequest>(e =>
+            {
+                e.ToTable("InstructorLeaveRequests");
+                e.HasKey(x => x.Id);
+
+                e.Property(x => x.Reason).HasMaxLength(1000).IsRequired();
+                e.Property(x => x.Status).HasConversion<string>().HasMaxLength(50);
+
+                e.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(x => x.InstructorId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+        }
+
+        private static void ConfigureStudentDrivingDistance(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<StudentDrivingDistance>(e =>
+            {
+                e.ToTable("StudentDrivingDistances");
+                e.HasKey(x => x.Id);
+
+                e.Property(x => x.MorningDistanceKm);
+                e.Property(x => x.EveningDistanceKm);
+                e.Property(x => x.MaxMorningDistanceKm);
+                e.Property(x => x.MaxEveningDistanceKm);
+
+                e.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(x => x.StudentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+        }
+
         // =========================
         // Exams & Registrations
         // =========================
@@ -474,11 +472,6 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                 e.Property(x => x.Status)
                     .HasConversion<string>()
                     .HasMaxLength(50);
-
-                e.HasOne<Course>()
-                    .WithMany()
-                    .HasForeignKey(x => x.CourseId)
-                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
 
@@ -508,6 +501,8 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
             });
         }
 
+
+
         private static void ConfigureExam(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Exam>(e =>
@@ -534,6 +529,11 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                 e.HasOne<ExamBatch>()
                     .WithMany()
                     .HasForeignKey(x => x.ExamBatchId);
+
+                e.HasOne<Course>()
+                    .WithMany()
+                    .HasForeignKey(x => x.CourseId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
 

@@ -9,6 +9,9 @@ namespace dtc.Application.Features.Training.DTOs
         public Guid TermId { get; set; }
 
         [Required]
+        public Guid InstructorId { get; set; }
+
+        [Required]
         [MaxLength(255)]
         public string ClassName { get; set; } = string.Empty;
 

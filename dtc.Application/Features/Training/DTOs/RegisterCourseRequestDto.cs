@@ -13,5 +13,7 @@ namespace dtc.Application.Features.Training.DTOs
         public decimal TotalFee { get; set; }
 
         public string? Notes { get; set; }
+
+        public string? ReferralCode { get; set; }
     }
 }

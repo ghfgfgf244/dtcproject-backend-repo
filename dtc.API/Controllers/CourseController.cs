@@ -21,7 +21,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> CreateCourse([FromBody] CreateCourseRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _courseService.CreateCourseAsync(request, adminId);
@@ -37,7 +37,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> UpdateCourse(Guid id, [FromBody] UpdateCourseRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _courseService.UpdateCourseAsync(id, request, adminId);
@@ -53,7 +53,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> DeactivateCourse(Guid id)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 await _courseService.DeactivateCourseAsync(id, adminId);

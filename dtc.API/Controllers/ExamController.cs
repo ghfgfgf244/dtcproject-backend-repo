@@ -22,7 +22,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> CreateExam([FromBody] CreateExamRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _examService.CreateExamAsync(request, adminId);
@@ -116,6 +116,22 @@ namespace dtc.API.Controllers
             {
                 await _examService.UpdateExamResultAsync(resultId, request, adminId);
                 return NoContent("Exam result updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpPost("results/bulk")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> EnterBulkExamResults([FromBody] BulkExamResultRequestDto request)
+        {
+            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            try
+            {
+                await _examService.EnterBulkExamResultsAsync(request, adminId);
+                return NoContent("Bulk exam results entered successfully.");
             }
             catch (Exception ex)
             {

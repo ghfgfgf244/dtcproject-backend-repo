@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -16,7 +16,25 @@ namespace dtc.Domain.Entities
         Exam = 2,
 
         [Description("Thông báo lớp học")]
-        Class = 3
+        Class = 3,
+
+        [Description("Chào mừng người dùng mới")]
+        Welcome = 4,
+
+        [Description("Thay đổi vai trò")]
+        RoleChanged = 5,
+
+        [Description("Hoa hồng cộng tác viên")]
+        Referral = 6,
+
+        [Description("Điểm danh")]
+        Attendance = 7,
+
+        [Description("Kết quả thi")]
+        ExamResult = 8,
+
+        [Description("Đăng ký khóa học")]
+        Registration = 9
     }
     public enum UserRole
     {
@@ -154,5 +172,13 @@ namespace dtc.Domain.Entities
 
         [Description("Đã hủy")]
         Cancelled = 4
+    }
+
+    public enum LeaveRequestStatus
+    {
+        Pending,
+        Approved,
+        Rejected,
+        Cancelled
     }
 }

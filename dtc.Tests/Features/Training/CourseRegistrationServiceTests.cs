@@ -14,20 +14,26 @@ using Moq;
 using FluentAssertions;
 using Xunit;
 using dtc.Domain.Interfaces;
+using dtc.Application.Features.Notifications.Interfaces;
+using dtc.Application.Features.Email.Interfaces;
 
 namespace dtc.Tests.Features.Training
 {
     public class CourseRegistrationServiceTests
     {
         private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+        private readonly Mock<INotificationService> _notificationServiceMock;
+        private readonly Mock<IEmailService> _emailServiceMock;
 
         private readonly CourseRegistrationService _service;
 
         public CourseRegistrationServiceTests()
         {
             _unitOfWorkMock = new Mock<IUnitOfWork>();
+            _notificationServiceMock = new Mock<INotificationService>();
+            _emailServiceMock = new Mock<IEmailService>();
 
-            _service = new CourseRegistrationService(_unitOfWorkMock.Object);
+            _service = new CourseRegistrationService(_unitOfWorkMock.Object, _notificationServiceMock.Object, _emailServiceMock.Object);
         }
 
 

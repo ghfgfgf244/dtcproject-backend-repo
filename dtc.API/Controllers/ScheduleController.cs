@@ -22,7 +22,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> CreateSchedule([FromBody] CreateClassScheduleRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _scheduleService.CreateScheduleAsync(request, adminId);
@@ -39,7 +39,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> UpdateSchedule(Guid id, [FromBody] UpdateClassScheduleRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _scheduleService.UpdateScheduleAsync(id, request, adminId);
@@ -56,7 +56,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> DeleteSchedule(Guid id)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 await _scheduleService.DeleteScheduleAsync(id, adminId);
@@ -96,7 +96,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> AssignLocation(Guid id, [FromBody] AssignLocationRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 await _scheduleService.AssignLocationAsync(id, request, adminId);

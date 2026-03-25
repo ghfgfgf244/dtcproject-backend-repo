@@ -2,11 +2,14 @@ using dtc.Application.Features.Auth.Interfaces;
 using dtc.Application.Features.Auth.DTOs;
 using dtc.Application.Features.Auth.Interfaces;
 using dtc.Application.Features.Auth.DTOs;
+using dtc.Application.Features.Notifications.Interfaces;
+using dtc.Domain.Entities;
 using dtc.Domain.Entities.Permissions;
 using dtc.Domain.Interfaces;
 using dtc.Domain.ValueObjects;
 using System;
 using System.Threading.Tasks;
+using EmailVO = dtc.Domain.ValueObjects.Email;
 
 namespace dtc.Application.Features.Auth.Services
 {
@@ -14,107 +17,100 @@ namespace dtc.Application.Features.Auth.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
+        private readonly INotificationService _notificationService;
 
-        public AuthService(IUnitOfWork unitOfWork, Microsoft.Extensions.Configuration.IConfiguration configuration)
+        public AuthService(
+            IUnitOfWork unitOfWork,
+            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            INotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
             _configuration = configuration;
+            _notificationService = notificationService;
         }
 
-        public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request)
+        public async Task<AuthResponseDto> SyncUserAsync(SyncUserRequestDto request)
         {
-            var targetEmail = Email.Create(request.Email);
-            var existingUser = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Email == targetEmail);
-            if (existingUser != null)
-            {
-                throw new Exception("Email already exists.");
-            }
+            var targetEmail = EmailVO.Create(request.Email);
+            var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.ClerkId == request.ClerkId);
 
-            string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
-
-            var newUser = new User(
-                email: Email.Create(request.Email),
-                passwordHash: passwordHash,
-                fullName: request.FullName,
-                phone: PhoneNumber.Create(request.Phone)
-            );
-
-            await _unitOfWork.Users.AddAsync(newUser);
-            await _unitOfWork.SaveChangesAsync();
-
-            return new AuthResponseDto
-            {
-                UserId = newUser.Id,
-                Email = newUser.Email.Value,
-                FullName = newUser.FullName,
-                Token = ""
-            };
-        }
-
-        public async Task<AuthResponseDto> LoginAsync(LoginRequestDto request)
-        {
-            var targetEmail = Email.Create(request.Email);
-            var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Email == targetEmail, u => u.Roles);
-            
             if (user == null)
             {
-                throw new Exception("Invalid email or password.");
+                // check if user with same email exists (might have been created by admin without clerkId)
+                user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Email == targetEmail);
+                if (user != null)
+                {
+                    // link existing user to ClerkId
+                    // We need a method in User to set ClerkId if not already set, 
+                    // or just use reflection/private setter if we want to be strict.
+                    // For now, I'll add a SyncFromClerk that also sets ClerkId if missing.
+                    user.SyncFromClerk(request.FullName, request.AvatarUrl);
+                    // I'll add a SetClerkId method to User that's public for this sync purpose.
+                }
+                else
+                {
+                    // Create new user
+                    user = new User(
+                        clerkId: request.ClerkId,
+                        email: targetEmail,
+                        fullName: request.FullName,
+                        phone: PhoneNumber.Create(request.Phone ?? "0000000000") // default phone
+                    );
+                    await _unitOfWork.Users.AddAsync(user);
+
+                    // Side-effect: welcome notification
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _notificationService.CreateForUserAsync(
+                                user.Id,
+                                "Chào mừng bạn đến với DTC!",
+                                $"Xin chào {user.FullName}, tài khoản của bạn đã được kết nối thành công.",
+                                NotificationType.Welcome);
+                        }
+                        catch { }
+                    });
+                }
+            }
+            else
+            {
+                // Update existing user info from Clerk if changed
+                user.SyncFromClerk(request.FullName, request.AvatarUrl);
             }
 
-            if (!user.IsActive)
+            // Sync Role from Metadata if provided
+            if (!string.IsNullOrWhiteSpace(request.Role))
             {
-                throw new Exception("Your account has been banned or deactivated.");
+                if (Enum.TryParse<UserRole>(request.Role, true, out var clerkRole))
+                {
+                    user.UpdateRole(clerkRole);
+                }
             }
 
-            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            // Sync Center from Metadata if provided
+            if (request.CenterId.HasValue && request.CenterId.Value != Guid.Empty)
             {
-                throw new Exception("Invalid email or password.");
+                var existingLink = await _unitOfWork.UserCenters.FirstOrDefaultAsync(
+                    uc => uc.UserId == user.Id && uc.CenterId == request.CenterId.Value);
+                
+                if (existingLink == null)
+                {
+                    var userCenter = new dtc.Domain.Entities.Permissions.UserCenter(user.Id, request.CenterId.Value);
+                    await _unitOfWork.UserCenters.AddAsync(userCenter);
+                }
             }
 
             user.UpdateLastLogin();
             await _unitOfWork.SaveChangesAsync();
-
-            string token = GenerateJwtToken(user);
 
             return new AuthResponseDto
             {
                 UserId = user.Id,
                 Email = user.Email.Value,
                 FullName = user.FullName,
-                Token = token
+                Token = "" // Token is managed by Clerk on the frontend
             };
-        }
-
-        private string GenerateJwtToken(User user)
-        {
-            var securityKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? ""));
-            var credentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(securityKey, Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256);
-
-            var claimsList = new System.Collections.Generic.List<System.Security.Claims.Claim>
-            {
-                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, user.Email.Value),
-                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, user.FullName)
-            };
-
-            if (user.Roles != null)
-            {
-                foreach (var role in user.Roles)
-                {
-                    claimsList.Add(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, role.RoleName.ToString()));
-                }
-            }
-
-            var claims = claimsList.ToArray();
-
-            var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.UtcNow.AddDays(double.Parse(_configuration["Jwt:ExpireDays"] ?? "7")),
-                signingCredentials: credentials);
-
-            return new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }

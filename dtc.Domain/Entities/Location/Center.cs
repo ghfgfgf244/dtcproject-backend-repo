@@ -9,9 +9,9 @@ namespace dtc.Domain.Entities.Permissions
         public PhoneNumber Phone { get; private set; } = default!;
         public Email Email { get; private set; } = default!;
         public bool IsActive { get; private set; }
+        public int NumberOfClasses { get; private set; }
+        public int MaxStudentPerClass { get; private set; }
 
-        private readonly List<User> _users = new();
-        public IReadOnlyCollection<User> Users => _users.AsReadOnly();
 
         protected Center() { }
 
@@ -20,6 +20,8 @@ namespace dtc.Domain.Entities.Permissions
             string address,
             PhoneNumber phone,
             Email email,
+            int numberOfClasses,
+            int maxStudentPerClass,
             Guid? createdBy = null)
         {
             Id = Guid.NewGuid();
@@ -29,6 +31,8 @@ namespace dtc.Domain.Entities.Permissions
 
             Phone = phone ?? throw new ArgumentNullException(nameof(phone));
             Email = email ?? throw new ArgumentNullException(nameof(email));
+
+            SetClassLimits(numberOfClasses, maxStudentPerClass);
 
             IsActive = true;
             SetCreated(createdBy);
@@ -72,6 +76,15 @@ namespace dtc.Domain.Entities.Permissions
             return true;
         }
 
+        public void UpdateClassLimits(int numberOfClasses, int maxStudentPerClass, Guid? updatedBy = null)
+        {
+            if (NumberOfClasses == numberOfClasses && MaxStudentPerClass == maxStudentPerClass)
+                return;
+
+            SetClassLimits(numberOfClasses, maxStudentPerClass);
+            SetUpdated(updatedBy);
+        }
+
         public void Activate(Guid? updatedBy = null)
         {
             if (IsActive) return;
@@ -86,12 +99,6 @@ namespace dtc.Domain.Entities.Permissions
             SetUpdated(updatedBy);
         }
 
-        public void SyncUsers(IEnumerable<User> users, Guid? updatedBy = null)
-        {
-            _users.Clear();
-            _users.AddRange(users);
-            SetUpdated(updatedBy);
-        }
 
         // =========================
         // Internal setters
@@ -121,6 +128,17 @@ namespace dtc.Domain.Entities.Permissions
 
             Address = normalized;
             return true;
+        }
+
+        private void SetClassLimits(int numberOfClasses, int maxStudentPerClass)
+        {
+            if (numberOfClasses < 0)
+                throw new ArgumentException("NumberOfClasses cannot be negative");
+            if (maxStudentPerClass <= 0)
+                throw new ArgumentException("MaxStudentPerClass must be greater than 0");
+
+            NumberOfClasses = numberOfClasses;
+            MaxStudentPerClass = maxStudentPerClass;
         }
     }
 }

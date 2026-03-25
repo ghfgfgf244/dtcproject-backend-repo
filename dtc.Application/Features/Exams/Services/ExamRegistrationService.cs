@@ -114,6 +114,54 @@ namespace dtc.Application.Features.Exams.Services
             return dtos.OrderByDescending(r => r.RegistrationDate);
         }
 
+        public async Task<bool> CreateBulkRegistrationsAsync(BulkExamRegistrationRequestDto request, Guid adminId)
+        {
+            var batch = await _unitOfWork.ExamBatches.GetByIdAsync(request.ExamBatchId);
+            if (batch == null) throw new Exception("Exam batch not found");
+
+            if (batch.Status != ExamBatchStatus.OpenForRegistration)
+                throw new Exception("Exam batch is not open for registration");
+
+            var studentIds = request.StudentIds.Distinct().ToList();
+            var students = await _unitOfWork.Users.FindAsync(u => studentIds.Contains(u.Id));
+            if (students.Count() != studentIds.Count)
+                throw new Exception("One or more students not found");
+
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var existingRegs = await _unitOfWork.ExamRegistrations.FindAsync(r => 
+                    r.ExamBatchId == request.ExamBatchId && studentIds.Contains(r.StudentId));
+                
+                var activeByStudent = existingRegs
+                    .Where(r => r.Status != ExamRegistrationStatus.Cancelled && r.Status != ExamRegistrationStatus.Rejected)
+                    .Select(r => r.StudentId)
+                    .ToHashSet();
+
+                foreach (var studentId in studentIds)
+                {
+                    if (activeByStudent.Contains(studentId)) continue; // skip already registered
+
+                    var reg = new ExamRegistration(
+                        examBatchId: request.ExamBatchId,
+                        studentId: studentId,
+                        isPaid: request.IsPaid,
+                        createdBy: adminId
+                    );
+                    await _unitOfWork.ExamRegistrations.AddAsync(reg);
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+                return true;
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
+
         private async Task<ExamRegistrationResponseDto> MapToDtoAsync(ExamRegistration reg)
         {
             var batch = await _unitOfWork.ExamBatches.GetByIdAsync(reg.ExamBatchId);

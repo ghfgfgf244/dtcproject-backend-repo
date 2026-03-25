@@ -17,5 +17,7 @@ namespace dtc.Application.Features.Training.DTOs
 
         [Required]
         public DateTime EndDate { get; set; }
+
+        public int MaxStudents { get; set; }
     }
 }

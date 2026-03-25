@@ -1,40 +1,39 @@
+using System;
+using dtc.Domain.Entities;
 using dtc.Domain.ValueObjects;
 
 namespace dtc.Domain.Entities.Permissions
 {
     public class User : BaseEntity
     {
+        public string ClerkId { get; private set; } // Identifies user in Clerk
         public Email Email { get; private set; }
-        public string PasswordHash { get; private set; }
         public string FullName { get; private set; }
         public PhoneNumber Phone { get; private set; }
         public string? AvatarUrl { get; private set; }
         public bool IsActive { get; private set; }
         public DateTime? LastLoginAt { get; private set; }
 
-        private readonly List<Role> _roles = new();
-        public IReadOnlyCollection<Role> Roles => _roles.AsReadOnly();
-
-        private readonly List<Center> _centers = new();
-        public IReadOnlyCollection<Center> Centers => _centers.AsReadOnly();
+        public UserRole RoleId { get; private set; }
 
         protected User() { }
 
         public User(
+            string clerkId,
             Email email,
-            string passwordHash,
             string fullName,
             PhoneNumber phone,
+            UserRole roleId = UserRole.Student,
             string? avatarUrl = null,
             Guid? createdBy = null)
         {
             Id = Guid.NewGuid();
-
+            SetClerkId(clerkId);
             SetEmail(email);
-            SetPasswordHash(passwordHash);
             SetFullName(fullName);
             SetPhone(phone);
             SetAvatarUrl(avatarUrl);
+            RoleId = roleId;
 
             IsActive = true;
             SetCreated(createdBy);
@@ -68,17 +67,17 @@ namespace dtc.Domain.Entities.Permissions
             return true;
         }
 
-        public bool ChangePassword(string newPasswordHash, Guid? updatedBy = null)
+        public void SyncFromClerk(string? fullName, string? avatarUrl, Guid? updatedBy = null)
         {
-            if (string.IsNullOrWhiteSpace(newPasswordHash))
-                throw new ArgumentException("PasswordHash is required");
-
-            if (PasswordHash == newPasswordHash)
-                return false;
-
-            PasswordHash = newPasswordHash;
-            SetUpdated(updatedBy);
-            return true;
+            bool changed = false;
+            if (!string.IsNullOrWhiteSpace(fullName))
+                changed |= SetFullName(fullName);
+            
+            if (avatarUrl != null)
+                changed |= SetAvatarUrl(avatarUrl);
+            
+            if (changed)
+                SetUpdated(updatedBy);
         }
 
         public void Activate(Guid? updatedBy = null)
@@ -102,19 +101,11 @@ namespace dtc.Domain.Entities.Permissions
             LastLoginAt = DateTime.UtcNow;
         }
 
-        public void AddRole(Role role)
+        public void UpdateRole(UserRole role)
         {
-            if (role != null && !_roles.Contains(role))
+            if (RoleId != role)
             {
-                _roles.Add(role);
-            }
-        }
-
-        public void RemoveRole(Role role)
-        {
-            if (role != null)
-            {
-                _roles.Remove(role);
+                RoleId = role;
             }
         }
 
@@ -122,17 +113,16 @@ namespace dtc.Domain.Entities.Permissions
         // Internal setters
         // =========================
 
+        private void SetClerkId(string clerkId)
+        {
+            if (string.IsNullOrWhiteSpace(clerkId))
+                throw new ArgumentException("ClerkId is required");
+            ClerkId = clerkId;
+        }
+
         private void SetEmail(Email email)
         {
             Email = email ?? throw new ArgumentNullException(nameof(email));
-        }
-
-        private void SetPasswordHash(string passwordHash)
-        {
-            if (string.IsNullOrWhiteSpace(passwordHash))
-                throw new ArgumentException("PasswordHash is required");
-
-            PasswordHash = passwordHash;
         }
 
         private bool SetFullName(string fullName)

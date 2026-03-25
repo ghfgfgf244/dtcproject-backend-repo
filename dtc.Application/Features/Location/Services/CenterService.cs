@@ -8,8 +8,7 @@ using dtc.Application.Features.Location.Interfaces;
 using dtc.Application.Features.Location.DTOs;
 using dtc.Application.Features.Location.Interfaces;
 using dtc.Application.Features.Location.DTOs;
-using dtc.Domain.Entities.Location; // Ensure correct namespace depending on Center entity
-using dtc.Domain.Entities.Permissions; // Required for Center/User if they are there
+using dtc.Domain.Entities.Permissions;
 using dtc.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -39,6 +38,8 @@ namespace dtc.Application.Features.Location.Services
                 address: request.Address,
                 phone: phoneNumber,
                 email: email,
+                numberOfClasses: request.NumberOfClasses > 0 ? request.NumberOfClasses : 1,
+                maxStudentPerClass: request.MaxStudentPerClass > 0 ? request.MaxStudentPerClass : 1,
                 createdBy: adminId
             );
 
@@ -106,8 +107,7 @@ namespace dtc.Application.Features.Location.Services
         public async Task<CenterResponseDto> GetCenterDetailAsync(Guid id)
         {
             // FirstOrDefaultAsync with Users included if we want
-            // Wait, IGenericRepository doesn't support Include inside GetByIdAsync, but we can use FindAsync.
-            var centers = await _unitOfWork.Centers.FindAsync(c => c.Id == id, c => c.Users);
+            var centers = await _unitOfWork.Centers.FindAsync(c => c.Id == id);
             var center = centers.FirstOrDefault();
             
             if (center == null) throw new Exception("Center not found");
@@ -117,30 +117,32 @@ namespace dtc.Application.Features.Location.Services
 
         public async Task<bool> AssignUsersToCenterAsync(Guid centerId, AssignUsersRequestDto request, Guid adminId)
         {
-            var centers = await _unitOfWork.Centers.FindAsync(c => c.Id == centerId, c => c.Users);
-            var center = centers.FirstOrDefault();
+            var center = await _unitOfWork.Centers.GetByIdAsync(centerId);
             if (center == null) throw new Exception("Center not found");
 
-            if (request.UserIds == null || !request.UserIds.Any())
+            var requestedUserIds = (request.UserIds ?? new List<Guid>()).Distinct().ToList();
+
+            var existingLinks = await _unitOfWork.UserCenters.FindAsync(uc => uc.CenterId == centerId);
+            var existingUserIds = existingLinks.Select(uc => uc.UserId).ToHashSet();
+
+            var toRemove = existingLinks.Where(uc => !requestedUserIds.Contains(uc.UserId)).ToList();
+            if (toRemove.Count > 0)
+                await _unitOfWork.UserCenters.RemoveRange(toRemove);
+
+            var toAddIds = requestedUserIds.Where(id => !existingUserIds.Contains(id)).ToList();
+            if (toAddIds.Count > 0)
             {
-                center.SyncUsers(new List<User>(), adminId);
-            }
-            else
-            {
-                // Fetch valid users
-                var users = await _unitOfWork.Users.FindAsync(u => request.UserIds.Contains(u.Id));
-                if (users.Count() != request.UserIds.Count)
-                {
-                    // Optionally throw error if some IDs are invalid, but bulk assign often just ignores invalid ones
-                    // We'll proceed with valid users
-                }
-                
-                center.SyncUsers(users, adminId);
+                var users = await _unitOfWork.Users.FindAsync(u => toAddIds.Contains(u.Id));
+                var foundIds = users.Select(u => u.Id).ToHashSet();
+                var missing = toAddIds.Where(id => !foundIds.Contains(id)).ToList();
+                if (missing.Count > 0)
+                    throw new InvalidOperationException("One or more users were not found.");
+
+                foreach (var userId in toAddIds)
+                    await _unitOfWork.UserCenters.AddAsync(new UserCenter(userId, centerId));
             }
 
-            await _unitOfWork.Centers.UpdateAsync(center);
             await _unitOfWork.SaveChangesAsync();
-
             return true;
         }
 

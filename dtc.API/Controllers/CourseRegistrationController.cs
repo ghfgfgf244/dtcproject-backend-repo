@@ -53,7 +53,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> UpdateRegistrationStatus(Guid id, [FromBody] UpdateRegistrationStatusDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 await _registrationService.UpdateRegistrationStatusAsync(id, request, adminId);

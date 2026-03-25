@@ -15,27 +15,13 @@ namespace dtc.API.Controllers
             _authService = authService;
         }
 
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
+        [HttpPost("sync")]
+        public async Task<IActionResult> Sync([FromBody] SyncUserRequestDto request)
         {
             try
             {
-                var response = await _authService.RegisterAsync(request);
-                return Created(response, "Account registered successfully.");
-            }
-            catch (Exception ex)
-            {
-                return Fail(ex.Message);
-            }
-        }
-
-        [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
-        {
-            try
-            {
-                var response = await _authService.LoginAsync(request);
-                return Ok(response, "Login successful.");
+                var response = await _authService.SyncUserAsync(request);
+                return Ok(response, "User synced successfully.");
             }
             catch (Exception ex)
             {

@@ -2,6 +2,8 @@ using dtc.Application.Features.Users.Interfaces;
 using dtc.Application.Features.Users.DTOs;
 using dtc.Application.Features.Users.Interfaces;
 using dtc.Application.Features.Users.DTOs;
+using dtc.Application.Features.Notifications.Interfaces;
+using dtc.Domain.Entities;
 using dtc.Domain.Interfaces;
 using System;
 using System.Linq;
@@ -13,10 +15,12 @@ namespace dtc.Application.Features.Users.Services
     public class UserService : IUserService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly INotificationService _notificationService;
 
-        public UserService(IUnitOfWork unitOfWork)
+        public UserService(IUnitOfWork unitOfWork, INotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
+            _notificationService = notificationService;
         }
 
         public async Task<UserProfileDto> GetUserProfileAsync(Guid userId)
@@ -114,7 +118,7 @@ namespace dtc.Application.Features.Users.Services
 
         public async Task<IEnumerable<UserResponseDto>> GetAllUsersAsync()
         {
-            var users = await _unitOfWork.Users.FindAsync(u => true, u => u.Roles);
+            var users = await _unitOfWork.Users.FindAsync(u => true);
             
             var result = new List<UserResponseDto>();
             foreach (var user in users)
@@ -128,7 +132,7 @@ namespace dtc.Application.Features.Users.Services
                     AvatarUrl = user.AvatarUrl,
                     IsActive = user.IsActive,
                     LastLoginAt = user.LastLoginAt,
-                    Roles = user.Roles.Select(r => r.RoleName.ToString()).ToList()
+                    Roles = new List<string> { user.RoleId.ToString() }
                 });
             }
 
@@ -137,7 +141,7 @@ namespace dtc.Application.Features.Users.Services
 
         public async Task<IEnumerable<UserResponseDto>> GetUsersByRoleAsync(int roleId)
         {
-            var users = await _unitOfWork.Users.FindAsync(u => u.Roles.Any(r => (int)r.RoleName == roleId), u => u.Roles);
+            var users = await _unitOfWork.Users.FindAsync(u => (int)u.RoleId == roleId);
             
             var result = new List<UserResponseDto>();
             foreach (var user in users)
@@ -151,7 +155,7 @@ namespace dtc.Application.Features.Users.Services
                     AvatarUrl = user.AvatarUrl,
                     IsActive = user.IsActive,
                     LastLoginAt = user.LastLoginAt,
-                    Roles = user.Roles.Select(r => r.RoleName.ToString()).ToList()
+                    Roles = new List<string> { user.RoleId.ToString() }
                 });
             }
 
@@ -167,11 +171,9 @@ namespace dtc.Application.Features.Users.Services
                 throw new Exception("Email already exists.");
             }
 
-            string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
-
             var newUser = new dtc.Domain.Entities.Permissions.User(
+                clerkId: request.ClerkId, // Admin should provide the ClerkId from Clerk Dashboard or inviting flow
                 email: targetEmail,
-                passwordHash: passwordHash,
                 fullName: request.FullName,
                 phone: dtc.Domain.ValueObjects.PhoneNumber.Create(request.Phone),
                 createdBy: adminId
@@ -179,21 +181,26 @@ namespace dtc.Application.Features.Users.Services
 
             if (request.RoleIds != null && request.RoleIds.Any())
             {
-                foreach(var roleId in request.RoleIds)
+                var firstRoleId = request.RoleIds.First();
+                if (Enum.IsDefined(typeof(dtc.Domain.Entities.UserRole), firstRoleId))
                 {
-                    if (Enum.IsDefined(typeof(dtc.Domain.Entities.UserRole), roleId))
-                    {
-                        var roleEntity = await _unitOfWork.Roles.GetByIdAsync(roleId);
-                        if (roleEntity != null)
-                        {
-                            newUser.AddRole(roleEntity);
-                        }
-                    }
+                    newUser.UpdateRole((dtc.Domain.Entities.UserRole)firstRoleId);
                 }
             }
 
             await _unitOfWork.Users.AddAsync(newUser);
             await _unitOfWork.SaveChangesAsync();
+
+            // Side-effect: Welcome notification
+            try
+            {
+                await _notificationService.CreateForUserAsync(
+                    newUser.Id,
+                    "Chào mừng bạn đến với DTC!",
+                    $"Tài khoản của bạn đã được quản trị viên khởi tạo thành công.",
+                    NotificationType.Welcome);
+            }
+            catch { }
 
             return new UserResponseDto
             {
@@ -204,13 +211,13 @@ namespace dtc.Application.Features.Users.Services
                 AvatarUrl = newUser.AvatarUrl,
                 IsActive = newUser.IsActive,
                 LastLoginAt = newUser.LastLoginAt,
-                Roles = newUser.Roles.Select(r => r.RoleName.ToString()).ToList()
+                Roles = new List<string> { newUser.RoleId.ToString() }
             };
         }
 
         public async Task AddStudentRoleAsync(Guid userId)
         {
-            var user = await _unitOfWork.Users.FindAsync(u => u.Id == userId, u => u.Roles);
+            var user = await _unitOfWork.Users.FindAsync(u => u.Id == userId);
             var targetUser = user.FirstOrDefault();
 
             if (targetUser == null)
@@ -218,24 +225,18 @@ namespace dtc.Application.Features.Users.Services
                 throw new Exception("User not found.");
             }
 
-            if (targetUser.Roles.Any(r => r.Id == (int)dtc.Domain.Entities.UserRole.Student))
+            if (targetUser.RoleId == dtc.Domain.Entities.UserRole.Student)
             {
                 return;
             }
 
-            var studentRole = await _unitOfWork.Roles.GetByIdAsync((int)dtc.Domain.Entities.UserRole.Student);
-            if (studentRole == null)
-            {
-                throw new Exception("Student Role configuration missing in system.");
-            }
-
-            targetUser.AddRole(studentRole);
+            targetUser.UpdateRole(dtc.Domain.Entities.UserRole.Student);
             await _unitOfWork.SaveChangesAsync();
         }
 
         public async Task UpdateUserRolesAsync(Guid targetUserId, UpdateUserRolesRequestDto request)
         {
-            var userQuery = await _unitOfWork.Users.FindAsync(u => u.Id == targetUserId, u => u.Roles);
+            var userQuery = await _unitOfWork.Users.FindAsync(u => u.Id == targetUserId);
             var targetUser = userQuery.FirstOrDefault();
 
             if (targetUser == null)
@@ -249,32 +250,24 @@ namespace dtc.Application.Features.Users.Services
                 throw new Exception("Cannot assign Student role through this endpoint. Use specific student registration flow.");
             }
 
-            var currentRoleIds = targetUser.Roles.Select(r => r.Id).ToList();
-
-            var rolesToAdd = requestedRoleIds.Except(currentRoleIds).ToList();
-            foreach (var roleId in rolesToAdd)
+            if (requestedRoleIds.Any())
             {
-                if (Enum.IsDefined(typeof(dtc.Domain.Entities.UserRole), roleId))
+                var newRoleId = requestedRoleIds.First();
+                if (Enum.IsDefined(typeof(dtc.Domain.Entities.UserRole), newRoleId))
                 {
-                    var roleEntity = await _unitOfWork.Roles.GetByIdAsync(roleId);
-                    if (roleEntity != null)
+                    var newRole = (dtc.Domain.Entities.UserRole)newRoleId;
+                    targetUser.UpdateRole(newRole);
+                    
+                    // Side-effect: Notification
+                    try
                     {
-                        targetUser.AddRole(roleEntity);
+                        await _notificationService.CreateForUserAsync(
+                            targetUser.Id,
+                            "Cập nhật vai trò",
+                            $"Vai trò của bạn đã được quản trị viên thay đổi thành: {newRole.ToString()}.",
+                            NotificationType.RoleChanged);
                     }
-                }
-            }
-
-            var rolesToRemove = currentRoleIds
-                .Where(id => id != (int)dtc.Domain.Entities.UserRole.Student)
-                .Except(requestedRoleIds)
-                .ToList();
-                
-            foreach (var roleId in rolesToRemove)
-            {
-                var roleToRemove = targetUser.Roles.FirstOrDefault(r => r.Id == roleId);
-                if (roleToRemove != null)
-                {
-                    targetUser.RemoveRole(roleToRemove);
+                    catch { }
                 }
             }
 

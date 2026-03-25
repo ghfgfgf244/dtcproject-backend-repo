@@ -22,7 +22,7 @@ namespace dtc.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateEvaluation([FromBody] CreateStudentEvaluationRequestDto request)
         {
-            var instructorId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var instructorId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _evaluationService.CreateEvaluationAsync(instructorId, request);
@@ -65,7 +65,7 @@ namespace dtc.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateEvaluation(Guid id, [FromBody] UpdateStudentEvaluationRequestDto request)
         {
-            var instructorId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var instructorId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _evaluationService.UpdateEvaluationAsync(id, instructorId, request);

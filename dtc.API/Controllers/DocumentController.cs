@@ -1,10 +1,12 @@
 using dtc.Application.Features.Permissions.DTOs;
 using dtc.Application.Features.Permissions.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using dtc.Application.Interfaces;
 
 namespace dtc.API.Controllers
 {
@@ -12,17 +14,19 @@ namespace dtc.API.Controllers
     public class DocumentController : BaseApiController
     {
         private readonly IDocumentService _documentService;
+        private readonly ICloudinaryService _cloudinaryService;
 
-        public DocumentController(IDocumentService documentService)
+        public DocumentController(IDocumentService documentService, ICloudinaryService cloudinaryService)
         {
             _documentService = documentService;
+            _cloudinaryService = cloudinaryService;
         }
 
         // DEV-132: Add personal's document
         [HttpPost]
         public async Task<IActionResult> CreateDocument([FromBody] CreateDocumentRequestDto request)
         {
-            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _documentService.CreateDocumentAsync(userId, request);
@@ -34,11 +38,46 @@ namespace dtc.API.Controllers
             }
         }
 
+        [HttpPost("upload")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadDocument([FromForm] IFormFile file, [FromForm] string resourceType = "raw")
+        {
+            var userId = await GetInternalUserIdAsync();
+            if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
+
+            try
+            {
+                using var stream = file.OpenReadStream();
+                var (publicId, version) = await _cloudinaryService.UploadAsync(
+                    stream, 
+                    file.FileName, 
+                    $"user_docs/{userId}", 
+                    resourceType);
+
+                var request = new CreateDocumentRequestDto
+                {
+                    ResourceType = resourceType,
+                    ProviderPublicId = publicId,
+                    Version = version,
+                    FileName = file.FileName,
+                    Extension = System.IO.Path.GetExtension(file.FileName),
+                    Size = (int)file.Length
+                };
+
+                var response = await _documentService.CreateDocumentAsync(userId, request);
+                return Created(response, "File uploaded and document created successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
         // DEV-133: Update personal's document
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateDocument(Guid id, [FromBody] UpdateDocumentRequestDto request)
         {
-            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _documentService.UpdateDocumentAsync(userId, id, request);
@@ -54,7 +93,7 @@ namespace dtc.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteDocument(Guid id)
         {
-            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = await GetInternalUserIdAsync();
             try
             {
                 await _documentService.DeleteDocumentAsync(userId, id);
@@ -70,7 +109,7 @@ namespace dtc.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetMyDocuments()
         {
-            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = await GetInternalUserIdAsync();
             var response = await _documentService.GetMyDocumentsAsync(userId);
             return Ok(response);
         }

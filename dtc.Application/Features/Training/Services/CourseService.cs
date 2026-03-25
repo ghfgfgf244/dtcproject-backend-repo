@@ -97,6 +97,12 @@ namespace dtc.Application.Features.Training.Services
             return courses.Select(MapToDto);
         }
 
+        public async Task<IEnumerable<CourseResponseDto>> GetCoursesByCenterAsync(Guid centerId)
+        {
+            var courses = await _unitOfWork.Courses.FindAsync(c => c.CenterId == centerId);
+            return courses.Select(MapToDto);
+        }
+
         public async Task<CourseResponseDto> GetCourseDetailAsync(Guid courseId)
         {
             var course = await _unitOfWork.Courses.GetByIdAsync(courseId);

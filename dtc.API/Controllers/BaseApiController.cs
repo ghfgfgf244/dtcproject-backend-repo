@@ -1,5 +1,10 @@
 using dtc.Application.Common;
+using dtc.Domain.Interfaces.Permissions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
 {
@@ -25,5 +30,23 @@ namespace dtc.API.Controllers
 
         protected IActionResult NoContent(string? message = null)
             => base.Ok(ApiResponse<object?>.NoContent(message));
+
+        protected async Task<Guid> GetInternalUserIdAsync()
+        {
+            var clerkId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(clerkId)) return Guid.Empty;
+
+            var userRepository = HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+            var user = await userRepository.FirstOrDefaultAsync(u => u.ClerkId == clerkId);
+            return user?.Id ?? Guid.Empty;
+        }
+
+        protected Guid? GetCurrentCenterId()
+        {
+            var claim = User.FindFirst("center_id")?.Value;
+            if (Guid.TryParse(claim, out var centerId))
+                return centerId;
+            return null;
+        }
     }
 }

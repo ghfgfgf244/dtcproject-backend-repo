@@ -4,26 +4,31 @@ namespace dtc.Domain.Entities.Permissions
     public class Document : BaseEntity
     {
         public Guid UserId { get; private set; }
-        public ResourceType ResourceType { get; private set; }
-        public string FileUrl { get; private set; }
-        public string FileName { get; private set; }
-        public string Extension { get; private set; }
-        public int Size { get; private set; }
+        
+        // Cloudinary specific fields
+        public string ProviderPublicId { get; private set; } // e.g. "user_docs/id_123"
+        public string Version { get; private set; }          // e.g. "167890123"
+        public string ResourceType { get; private set; }     // "image", "raw", or "video"
+        
+        public string FileName { get; private set; }         // Original name (e.g. "cccd.pdf")
+        public string Extension { get; private set; }        // .pdf, .jpg, .png
+        public int Size { get; private set; }               // Byte
+        
         public bool IsVerified { get; private set; }
 
         protected Document() { }
 
         public Document(
             Guid userId,
-            ResourceType resourceType,
-            string fileUrl,
+            string providerPublicId,
+            string version,
+            string resourceType,
             string fileName,
             string extension,
             int size)
         {
             SetOwner(userId);
-            SetResourceType(resourceType);
-            SetFile(fileUrl, fileName, extension, size);
+            SetFile(providerPublicId, version, resourceType, fileName, extension, size);
             IsVerified = false;
         }
 
@@ -39,15 +44,22 @@ namespace dtc.Domain.Entities.Permissions
             UserId = userId;
         }
 
-        public void SetResourceType(ResourceType type)
+        public void SetFile(
+            string publicId, 
+            string version, 
+            string resourceType, 
+            string name, 
+            string extension, 
+            int size)
         {
-            ResourceType = type;
-        }
+            if (string.IsNullOrWhiteSpace(publicId))
+                throw new ArgumentException("ProviderPublicId is required");
 
-        public void SetFile(string url, string name, string extension, int size)
-        {
-            if (string.IsNullOrWhiteSpace(url))
-                throw new ArgumentException("FileUrl is required");
+            if (string.IsNullOrWhiteSpace(version))
+                throw new ArgumentException("Version is required");
+
+            if (string.IsNullOrWhiteSpace(resourceType))
+                throw new ArgumentException("ResourceType is required");
 
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("FileName is required");
@@ -58,7 +70,9 @@ namespace dtc.Domain.Entities.Permissions
             if (size <= 0)
                 throw new ArgumentException("Size must be greater than 0");
 
-            FileUrl = url;
+            ProviderPublicId = publicId;
+            Version = version;
+            ResourceType = resourceType;
             FileName = name;
             Extension = extension;
             Size = size;
@@ -72,10 +86,21 @@ namespace dtc.Domain.Entities.Permissions
             FileName = newName;
         }
 
-        public void ChangeFile(string url, string extension, int size)
+        public void ChangeFile(
+            string publicId, 
+            string version, 
+            string resourceType, 
+            string extension, 
+            int size)
         {
-            if (string.IsNullOrWhiteSpace(url))
-                throw new ArgumentException("FileUrl is required");
+            if (string.IsNullOrWhiteSpace(publicId))
+                throw new ArgumentException("ProviderPublicId is required");
+
+            if (string.IsNullOrWhiteSpace(version))
+                throw new ArgumentException("Version is required");
+
+            if (string.IsNullOrWhiteSpace(resourceType))
+                throw new ArgumentException("ResourceType is required");
 
             if (string.IsNullOrWhiteSpace(extension))
                 throw new ArgumentException("Extension is required");
@@ -83,7 +108,9 @@ namespace dtc.Domain.Entities.Permissions
             if (size <= 0)
                 throw new ArgumentException("Size must be greater than 0");
 
-            FileUrl = url;
+            ProviderPublicId = publicId;
+            Version = version;
+            ResourceType = resourceType;
             Extension = extension;
             Size = size;
 
@@ -102,4 +129,4 @@ namespace dtc.Domain.Entities.Permissions
             IsVerified = false;
         }
     }
-}
+}

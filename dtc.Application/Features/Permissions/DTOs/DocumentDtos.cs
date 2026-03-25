@@ -6,18 +6,21 @@ namespace dtc.Application.Features.Permissions.DTOs
     {
         public Guid Id { get; set; }
         public Guid UserId { get; set; }
-        public string ResourceType { get; set; } = string.Empty;
-        public string FileUrl { get; set; } = string.Empty;
+        public string ResourceType { get; set; } = string.Empty; // image, raw, video
+        public string ProviderPublicId { get; set; } = string.Empty;
+        public string Version { get; set; } = string.Empty;
         public string FileName { get; set; } = string.Empty;
         public string Extension { get; set; } = string.Empty;
         public int Size { get; set; }
         public bool IsVerified { get; set; }
+        public string FileUrl { get; set; } = string.Empty;
     }
 
     public class CreateDocumentRequestDto
     {
-        public int ResourceType { get; set; }
-        public string FileUrl { get; set; } = string.Empty;
+        public string ResourceType { get; set; } = "raw";
+        public string ProviderPublicId { get; set; } = string.Empty;
+        public string Version { get; set; } = string.Empty;
         public string FileName { get; set; } = string.Empty;
         public string Extension { get; set; } = string.Empty;
         public int Size { get; set; }
@@ -25,7 +28,9 @@ namespace dtc.Application.Features.Permissions.DTOs
 
     public class UpdateDocumentRequestDto
     {
-        public string FileUrl { get; set; } = string.Empty;
+        public string ResourceType { get; set; } = "raw";
+        public string ProviderPublicId { get; set; } = string.Empty;
+        public string Version { get; set; } = string.Empty;
         public string Extension { get; set; } = string.Empty;
         public int Size { get; set; }
     }

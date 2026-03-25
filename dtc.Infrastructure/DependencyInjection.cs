@@ -22,13 +22,20 @@ using dtc.Infrastructure.Repositories.Training;
 using dtc.Infrastructure.Persistence.Repositories.Training;
 using dtc.Application.Interfaces;
 using dtc.Infrastructure.Services;
+using dtc.Application.Features.Email.Interfaces;
+using dtc.Infrastructure.Email;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using dtc.Infrastructure.Configurations;
 
 namespace dtc.Infrastructure
 {
     public static class DependencyInjection
     {
-        public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
+        public static IServiceCollection AddInfrastructureServices(
+            this IServiceCollection services,
+            IConfiguration configuration)
         {
             // Register Generic Repositories - optional, normally injected via specific repos
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -39,7 +46,11 @@ namespace dtc.Infrastructure
 
             services.AddScoped<IAttendanceRepository, AttendanceRepository>();
             services.AddScoped<IClassRepository, ClassRepository>();
+            services.AddScoped<IClassStudentRepository, ClassStudentRepository>();
             services.AddScoped<IClassScheduleRepository, ClassScheduleRepository>();
+            services.AddScoped<ILearningLocationRepository, LearningLocationRepository>();
+            services.AddScoped<IInstructorLeaveRequestRepository, InstructorLeaveRequestRepository>();
+            services.AddScoped<IStudentDrivingDistanceRepository, StudentDrivingDistanceRepository>();
 
             services.AddScoped<ICollaboratorCommissionRepository, CollaboratorCommissionRepository>();
             services.AddScoped<IReferralCodeRepository, ReferralCodeRepository>();
@@ -59,13 +70,13 @@ namespace dtc.Infrastructure
             services.AddScoped<IAddressRepository, AddressRepository>();
             
             services.AddScoped<INotificationRepository, NotificationRepository>();
-            services.AddScoped<INotificationRoleRepository, NotificationRoleRepository>();
             services.AddScoped<IUserNotificationRepository, UserNotificationRepository>();
 
             services.AddScoped<dtc.Domain.Interfaces.Location.ICenterRepository, dtc.Infrastructure.Repositories.Location.CenterRepository>();
             services.AddScoped<IDocumentRepository, DocumentRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<IUserCenterRepository, UserCenterRepository>();
 
             services.AddScoped<ICourseRegistrationRepository, CourseRegistrationRepository>();
             services.AddScoped<ITermRepository, TermRepository>();
@@ -79,6 +90,34 @@ namespace dtc.Infrastructure
 
             // Register Cache Service
             services.AddScoped<ICacheService, CacheService>();
+
+            // Register Email Service
+            services.Configure<SmtpSettings>(opts => configuration.GetSection(SmtpSettings.SectionName).Bind(opts));
+            services.AddScoped<IEmailService, SmtpEmailService>();
+
+            // Register Cloudinary Service
+            services.Configure<CloudinarySettings>(opts => configuration.GetSection(CloudinarySettings.SectionName).Bind(opts));
+            services.AddScoped<ICloudinaryService, CloudinaryService>();
+
+            // Authentication & Authorization (Clerk)
+            services.AddAuthentication(opts =>
+            {
+                opts.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+                opts.DefaultChallengeScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(opts =>
+            {
+                opts.Authority = configuration["Clerk:Authority"]; // e.g. https://clerk.yourdomain.com
+                opts.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = configuration["Clerk:Authority"],
+                    ValidateAudience = false, // Clerk doesn't require audience for session tokens by default
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero,
+                    RoleClaimType = "role"
+                };
+            });
 
             return services;
         }

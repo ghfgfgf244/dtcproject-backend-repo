@@ -32,7 +32,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Collaborator")]
         public async Task<IActionResult> GetMyReferralCode()
         {
-            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = await GetInternalUserIdAsync();
             var code = await _collaboratorService.GetMyReferralCodeAsync(userId);
             if (code == null) return NotFound("ReferralCode");
             return Ok(code);
@@ -42,7 +42,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Collaborator")]
         public async Task<IActionResult> GenerateReferralCode([FromBody] CreateReferralCodeRequestDto request)
         {
-            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = await GetInternalUserIdAsync();
             try
             {
                 var code = await _collaboratorService.GenerateReferralCodeAsync(userId, request.Code);
@@ -59,7 +59,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Collaborator")]
         public async Task<IActionResult> GetTokenUsage()
         {
-            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = await GetInternalUserIdAsync();
             var count = await _collaboratorService.GetTokenUsageCountAsync(userId);
             return Ok(new { UsedCount = count });
         }
@@ -78,7 +78,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Collaborator")]
         public async Task<IActionResult> CalculateCommissions()
         {
-            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = await GetInternalUserIdAsync();
             try
             {
                 var commissions = await _collaboratorService.CalculateAndGetCommissionsAsync(userId);
@@ -94,7 +94,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Collaborator")]
         public async Task<IActionResult> GetMyCommissions()
         {
-            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userId = await GetInternalUserIdAsync();
             var commissions = await _collaboratorService.GetMyCommissionsAsync(userId);
             return Ok(commissions);
         }

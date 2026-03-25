@@ -33,6 +33,21 @@ namespace dtc.API.Controllers
             }
         }
 
+        [HttpPost("full")]
+        [Authorize(Roles = "Admin,TrainingManager,Instructor")]
+        public async Task<IActionResult> CreateFullSampleExam([FromBody] CreateSampleExamWithQuestionsRequestDto request)
+        {
+            try
+            {
+                var response = await _sampleExamService.CreateSampleExamWithQuestionsAsync(request);
+                return Created(response, "Sample exam with questions created successfully.");
+            }
+            catch (System.Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
         // DEV-106: View sample exam
         [HttpGet("{id}")]
         public async Task<IActionResult> GetSampleExamDetail(Guid id)
@@ -92,7 +107,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> SubmitSampleTest(Guid id, [FromBody] SubmitSampleTestRequestDto request)
         {
-            var studentId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var studentId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _sampleExamService.DoSampleTestAsync(id, studentId, request);
@@ -109,7 +124,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> GetMySampleTestResults()
         {
-            var studentId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var studentId = await GetInternalUserIdAsync();
             var response = await _sampleExamService.GetSampleTestResultsForStudentAsync(studentId);
             return Ok(response);
         }
