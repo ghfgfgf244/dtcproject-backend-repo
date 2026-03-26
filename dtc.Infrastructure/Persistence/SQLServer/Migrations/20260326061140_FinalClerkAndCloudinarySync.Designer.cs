@@ -12,8 +12,8 @@ using dtc.Infrastructure.Pesistence.SQLServer;
 namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
 {
     [DbContext(typeof(SQLDBContext))]
-    [Migration("20260322105259_UpdateDomainModel")]
-    partial class UpdateDomainModel
+    [Migration("20260326061140_FinalClerkAndCloudinarySync")]
+    partial class FinalClerkAndCloudinarySync
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,51 +24,6 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("ClassStudents", b =>
-                {
-                    b.Property<Guid>("StudentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("ClassId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("StudentId", "ClassId");
-
-                    b.HasIndex("ClassId");
-
-                    b.ToTable("ClassStudents", (string)null);
-                });
-
-            modelBuilder.Entity("UserCenters", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("CenterId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("UserId", "CenterId");
-
-                    b.HasIndex("CenterId");
-
-                    b.ToTable("UserCenters", (string)null);
-                });
-
-            modelBuilder.Entity("UserRoles", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("RoleId")
-                        .HasColumnType("int");
-
-                    b.HasKey("UserId", "RoleId");
-
-                    b.HasIndex("RoleId");
-
-                    b.ToTable("UserRoles", (string)null);
-                });
 
             modelBuilder.Entity("dtc.Domain.Entities.Classes.Attendance", b =>
                 {
@@ -170,8 +125,7 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("InstructorId")
-                        .IsUnique();
+                    b.HasIndex("InstructorId");
 
                     b.HasIndex("TermId");
 
@@ -229,6 +183,21 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                     b.HasIndex("InstructorId");
 
                     b.ToTable("ClassSchedules", (string)null);
+                });
+
+            modelBuilder.Entity("dtc.Domain.Entities.Classes.ClassStudent", b =>
+                {
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("ClassId", "StudentId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("ClassStudents", (string)null);
                 });
 
             modelBuilder.Entity("dtc.Domain.Entities.Classes.InstructorLeaveRequest", b =>
@@ -771,15 +740,13 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
 
                     b.Property<string>("Extension")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<string>("FileName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FileUrl")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -787,8 +754,15 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                     b.Property<bool>("IsVerified")
                         .HasColumnType("bit");
 
-                    b.Property<int>("ResourceType")
-                        .HasColumnType("int");
+                    b.Property<string>("ProviderPublicId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("ResourceType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -808,7 +782,14 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Documents", (string)null);
                 });
@@ -841,6 +822,11 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("ClerkId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -866,15 +852,13 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<string>("Phone")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -890,10 +874,28 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ClerkId")
+                        .IsUnique();
+
                     b.HasIndex("Email")
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("dtc.Domain.Entities.Permissions.UserCenter", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CenterId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("UserId", "CenterId");
+
+                    b.HasIndex("CenterId");
+
+                    b.ToTable("UserCenters", (string)null);
                 });
 
             modelBuilder.Entity("dtc.Domain.Entities.Terms.CourseRegistration", b =>
@@ -1130,51 +1132,6 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                     b.ToTable("StudentEvaluations");
                 });
 
-            modelBuilder.Entity("ClassStudents", b =>
-                {
-                    b.HasOne("dtc.Domain.Entities.Classes.Class", null)
-                        .WithMany()
-                        .HasForeignKey("ClassId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("dtc.Domain.Entities.Permissions.User", null)
-                        .WithMany()
-                        .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("UserCenters", b =>
-                {
-                    b.HasOne("dtc.Domain.Entities.Permissions.Center", null)
-                        .WithMany()
-                        .HasForeignKey("CenterId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("dtc.Domain.Entities.Permissions.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("UserRoles", b =>
-                {
-                    b.HasOne("dtc.Domain.Entities.Permissions.Role", null)
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("dtc.Domain.Entities.Permissions.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("dtc.Domain.Entities.Classes.Attendance", b =>
                 {
                     b.HasOne("dtc.Domain.Entities.Classes.ClassSchedule", null)
@@ -1216,6 +1173,21 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                     b.HasOne("dtc.Domain.Entities.Permissions.User", null)
                         .WithMany()
                         .HasForeignKey("InstructorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("dtc.Domain.Entities.Classes.ClassStudent", b =>
+                {
+                    b.HasOne("dtc.Domain.Entities.Classes.Class", null)
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("dtc.Domain.Entities.Permissions.User", null)
+                        .WithMany()
+                        .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -1312,6 +1284,30 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                     b.HasOne("dtc.Domain.Entities.Permissions.User", null)
                         .WithMany()
                         .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("dtc.Domain.Entities.Permissions.Document", b =>
+                {
+                    b.HasOne("dtc.Domain.Entities.Permissions.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("dtc.Domain.Entities.Permissions.UserCenter", b =>
+                {
+                    b.HasOne("dtc.Domain.Entities.Permissions.Center", null)
+                        .WithMany()
+                        .HasForeignKey("CenterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("dtc.Domain.Entities.Permissions.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
