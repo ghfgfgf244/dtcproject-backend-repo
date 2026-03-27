@@ -1,4 +1,8 @@
 using MongoDB.Driver;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Conventions;
+using MongoDB.Bson.Serialization.Serializers;
 using dtc.Domain.Entities.Blogs;
 using dtc.Domain.Entities.Classes;
 using dtc.Domain.Entities.Exams;
@@ -12,10 +16,13 @@ namespace dtc.Infrastructure.Persistence.MongoDB
 {
     public class MongoDBContext
     {
+        private static bool _serializationConfigured;
         private readonly IMongoDatabase _database;  
 
         public MongoDBContext(IConfiguration configuration)
         {
+            ConfigureMongoSerialization();
+
             var connectionString = configuration.GetConnectionString("MongoDbConnection");
             var mongoUrl = new MongoUrl(connectionString);
             var mongoClient = new MongoClient(mongoUrl);
@@ -42,5 +49,45 @@ namespace dtc.Infrastructure.Persistence.MongoDB
 
         public Task SeedSampleDataAsync(CancellationToken cancellationToken = default)
             => MongoDbSeeder.SeedAsync(this, cancellationToken);
+
+        private static void ConfigureMongoSerialization()
+        {
+            if (_serializationConfigured)
+            {
+                return;
+            }
+
+            try
+            {
+                BsonSerializer.RegisterSerializer(typeof(Guid), new GuidSerializer(GuidRepresentation.Standard));
+            }
+            catch (BsonSerializationException)
+            {
+                // Serializer was already registered.
+            }
+
+            try
+            {
+                BsonSerializer.RegisterSerializer(
+                    typeof(Guid?),
+                    new NullableSerializer<Guid>(new GuidSerializer(GuidRepresentation.Standard)));
+            }
+            catch (BsonSerializationException)
+            {
+                // Serializer was already registered.
+            }
+
+            var conventionPack = new ConventionPack
+            {
+                new IgnoreExtraElementsConvention(true)
+            };
+
+            ConventionRegistry.Register(
+                "dtc-mongo-conventions",
+                conventionPack,
+                _ => true);
+
+            _serializationConfigured = true;
+        }
     }
 }

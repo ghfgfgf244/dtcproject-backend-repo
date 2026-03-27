@@ -7,6 +7,7 @@ using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using dtc.Application.Interfaces;
+using dtc.API.Models;
 
 namespace dtc.API.Controllers
 {
@@ -40,9 +41,11 @@ namespace dtc.API.Controllers
 
         [HttpPost("upload")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UploadDocument([FromForm] IFormFile file, [FromForm] string resourceType = "raw")
+        public async Task<IActionResult> UploadDocument([FromForm] DocumentUploadFormRequest request)
         {
             var userId = await GetInternalUserIdAsync();
+            var file = request.File;
+            var resourceType = request.ResourceType;
             if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
 
             try
@@ -54,7 +57,7 @@ namespace dtc.API.Controllers
                     $"user_docs/{userId}", 
                     resourceType);
 
-                var request = new CreateDocumentRequestDto
+                var createRequest = new CreateDocumentRequestDto
                 {
                     ResourceType = resourceType,
                     ProviderPublicId = publicId,
@@ -64,7 +67,7 @@ namespace dtc.API.Controllers
                     Size = (int)file.Length
                 };
 
-                var response = await _documentService.CreateDocumentAsync(userId, request);
+                var response = await _documentService.CreateDocumentAsync(userId, createRequest);
                 return Created(response, "File uploaded and document created successfully.");
             }
             catch (Exception ex)

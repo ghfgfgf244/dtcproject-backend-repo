@@ -186,8 +186,22 @@ namespace dtc.Infrastructure.Persistence.Seeding
             var property = GetProperty(type, propertyName)
                 ?? throw new InvalidOperationException($"Property '{propertyName}' was not found on type '{type.FullName}'.");
 
-            property.SetValue(entity, value);
-            return entity;
+            var setter = property.SetMethod ?? property.GetSetMethod(true);
+            if (setter != null)
+            {
+                setter.Invoke(entity, new[] { value });
+                return entity;
+            }
+
+            var backingField = GetField(type, $"<{propertyName}>k__BackingField");
+            if (backingField != null)
+            {
+                backingField.SetValue(entity, value);
+                return entity;
+            }
+
+            throw new InvalidOperationException(
+                $"Property '{propertyName}' on type '{type.FullName}' does not have a writable setter or backing field.");
         }
 
         private static PropertyInfo? GetProperty(Type type, string propertyName)
@@ -201,6 +215,25 @@ namespace dtc.Infrastructure.Persistence.Seeding
                 if (property != null)
                 {
                     return property;
+                }
+
+                type = type.BaseType!;
+            }
+
+            return null;
+        }
+
+        private static FieldInfo? GetField(Type type, string fieldName)
+        {
+            while (type != typeof(object) && type != null)
+            {
+                var field = type.GetField(
+                    fieldName,
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+                if (field != null)
+                {
+                    return field;
                 }
 
                 type = type.BaseType!;
