@@ -1,4 +1,5 @@
 using dtc.Application.Interfaces;
+using dtc.API.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -22,8 +23,11 @@ namespace dtc.API.Controllers
         /// </summary>
         [HttpPost("upload-public")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UploadPublic([FromForm] IFormFile file, [FromForm] string folder = "public_assets", [FromForm] string resourceType = "image")
+        public async Task<IActionResult> UploadPublic([FromForm] PublicFileUploadFormRequest request)
         {
+            var file = request.File;
+            var folder = request.Folder;
+            var resourceType = request.ResourceType;
             if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
 
             try
