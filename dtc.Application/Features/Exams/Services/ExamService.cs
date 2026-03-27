@@ -1,7 +1,5 @@
 using dtc.Application.Features.Exams.Interfaces;
 using dtc.Application.Features.Exams.DTOs;
-using dtc.Application.Features.Exams.Interfaces;
-using dtc.Application.Features.Exams.DTOs;
 using dtc.Application.Features.Email.Interfaces;
 using dtc.Application.Features.Notifications.Interfaces;
 using dtc.Domain.Entities;
@@ -158,30 +156,78 @@ namespace dtc.Application.Features.Exams.Services
             var exam = await _unitOfWork.Exams.GetByIdAsync(examId);
             if (exam == null) throw new Exception("Exam not found");
 
-            var results = await _unitOfWork.ExamResults.FindAsync(r => r.ExamId == examId);
+            var batchId = exam.ExamBatchId;
+            var batch = await _unitOfWork.ExamBatches.GetByIdAsync(batchId);
+            
+            // Lấy tất cả các kỳ thi trong đợt này (Theory, Simulation, Practice)
+            var allExamsInBatch = await _unitOfWork.Exams.FindAsync(e => e.ExamBatchId == batchId);
+            var examIds = allExamsInBatch.Select(e => e.Id).ToList();
+            var examTypeMap = allExamsInBatch.ToDictionary(e => e.Id, e => e.ExamType);
 
-            var report = new List<object>();
-            foreach (var r in results)
-            {
-                var student = await _unitOfWork.Users.GetByIdAsync(r.StudentId);
-                report.Add(new
+            // Lấy tất cả kết quả của các kỳ thi này
+            var allResults = await _unitOfWork.ExamResults.FindAsync(r => examIds.Contains(r.ExamId));
+            
+            // Lấy thông tin học viên
+            var studentIds = allResults.Select(r => r.StudentId).Distinct().ToList();
+            var students = await _unitOfWork.Users.FindAsync(u => studentIds.Contains(u.Id));
+            var studentMap = students.ToDictionary(u => u.Id);
+
+            // Nhóm theo học viên và lấy điểm cao nhất cho mỗi loại hình thi
+            var studentReports = allResults
+                .GroupBy(r => r.StudentId)
+                .Select(g => 
                 {
-                    StudentId = r.StudentId,
-                    StudentName = student?.FullName ?? "Unknown",
-                    Score = r.Score,
-                    IsPassed = r.IsPassed,
-                    AttemptNo = r.AttemptNo
-                });
-            }
+                    var studentId = g.Key;
+                    var student = studentMap.GetValueOrDefault(studentId);
+                    var studentResults = g.ToList();
+
+                    // Lấy kết quả tốt nhất (điểm cao nhất) cho mỗi loại
+                    var theoryResult = studentResults
+                        .Where(r => examTypeMap[r.ExamId] == ExamType.Theory)
+                        .OrderByDescending(r => r.Score)
+                        .FirstOrDefault();
+
+                    var simulationResult = studentResults
+                        .Where(r => examTypeMap[r.ExamId] == ExamType.Simulation)
+                        .OrderByDescending(r => r.Score)
+                        .FirstOrDefault();
+
+                    var practiceResult = studentResults
+                        .Where(r => examTypeMap[r.ExamId] == ExamType.Practice)
+                        .OrderByDescending(r => r.Score)
+                        .FirstOrDefault();
+
+                    return new
+                    {
+                        StudentId = studentId,
+                        FullName = student?.FullName ?? "N/A",
+                        //CenterId = student?.CenterId,
+                        
+                        // Kết quả Lý thuyết
+                        TheoryScore = theoryResult?.Score,
+                        TheoryPassed = theoryResult?.IsPassed ?? false,
+                        
+                        // Kết quả Mô phỏng
+                        SimulationScore = simulationResult?.Score,
+                        SimulationPassed = simulationResult?.IsPassed ?? false,
+                        
+                        // Kết quả Thực hành (Xa trường)
+                        PracticeScore = practiceResult?.Score,
+                        PracticePassed = practiceResult?.IsPassed ?? false,
+
+                        IsFullyQualified = (theoryResult?.IsPassed == true) && 
+                                          (simulationResult?.IsPassed == true) && 
+                                          (practiceResult?.IsPassed == true)
+                    };
+                })
+                .ToList();
 
             return new
             {
-                ExamId = exam.Id,
-                ExamName = exam.ExamName,
-                PassScore = exam.PassScore,
-                TotalResults = results.Count(),
-                PassedCount = results.Count(r => r.IsPassed),
-                Results = report
+                BatchId = batchId,
+                BatchName = batch?.BatchName,
+                TotalStudents = studentReports.Count,
+                Results = studentReports
             };
         }
 

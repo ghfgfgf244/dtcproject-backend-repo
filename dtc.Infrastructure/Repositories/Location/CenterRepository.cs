@@ -1,4 +1,3 @@
-using dtc.Domain.Entities.Permissions;
 using dtc.Domain.Entities.Location;
 using dtc.Domain.Interfaces.Location;
 using dtc.Infrastructure.Pesistence.SQLServer;

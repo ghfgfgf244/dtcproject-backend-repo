@@ -1,19 +1,12 @@
 using dtc.Application.Features.Location.Interfaces;
 using dtc.Application.Features.Location.DTOs;
-using dtc.Application.Features.Location.Interfaces;
-using dtc.Application.Features.Location.DTOs;
-using dtc.Application.Features.Location.Interfaces;
-using dtc.Application.Features.Location.DTOs;
-using dtc.Application.Features.Location.Interfaces;
-using dtc.Application.Features.Location.DTOs;
-using dtc.Application.Features.Location.Interfaces;
-using dtc.Application.Features.Location.DTOs;
-using dtc.Domain.Entities.Permissions;
+using dtc.Domain.Entities.Location;
 using dtc.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using dtc.Domain.Entities.Permissions;
 
 namespace dtc.Application.Features.Location.Services
 {
@@ -33,7 +26,7 @@ namespace dtc.Application.Features.Location.Services
 
             // Wait, Center is in dtc.Domain.Entities.Permissions or dtc.Domain.Entities.Location?
             // In the previous view, it was dtc.Domain.Entities.Permissions namespace! Let's use var fully qualified if needed.
-            var center = new dtc.Domain.Entities.Permissions.Center(
+            var center = new dtc.Domain.Entities.Location.Center(
                 name: request.CenterName,
                 address: request.Address,
                 phone: phoneNumber,
@@ -146,7 +139,7 @@ namespace dtc.Application.Features.Location.Services
             return true;
         }
 
-        private CenterResponseDto MapToDto(dtc.Domain.Entities.Permissions.Center center)
+        private CenterResponseDto MapToDto(dtc.Domain.Entities.Location.Center center)
         {
             return new CenterResponseDto
             {

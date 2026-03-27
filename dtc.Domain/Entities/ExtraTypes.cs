@@ -65,7 +65,8 @@ namespace dtc.Domain.Entities
     public enum ExamType
     {
         Theory = 1,
-        Practice = 2
+        Simulation = 2,
+        Practice = 3
     }
     public enum ExamStatus
     {

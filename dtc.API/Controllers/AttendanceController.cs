@@ -43,11 +43,26 @@ namespace dtc.API.Controllers
             return Ok(response);
         }
 
-        // DEV-91: View attendance report by Class
         [HttpGet("Report/Class/{classId}")]
         public async Task<IActionResult> GetAttendanceReport(Guid classId)
         {
             var response = await _attendanceService.GetAttendanceReportByClassAsync(classId);
+            return Ok(response);
+        }
+
+        // View individual student's attendance list
+        [HttpGet("Student/{studentId}")]
+        public async Task<IActionResult> GetAttendanceByStudent(Guid studentId)
+        {
+            var response = await _attendanceService.GetAttendanceByStudentAsync(studentId);
+            return Ok(response);
+        }
+
+        // View student's summary (Present/Absent count)
+        [HttpGet("Student/{studentId}/Summary")]
+        public async Task<IActionResult> GetStudentAttendanceSummary(Guid studentId, [FromQuery] Guid? classId = null)
+        {
+            var response = await _attendanceService.GetStudentAttendanceSummaryAsync(studentId, classId);
             return Ok(response);
         }
     }

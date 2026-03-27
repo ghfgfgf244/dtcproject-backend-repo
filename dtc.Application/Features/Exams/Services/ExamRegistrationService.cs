@@ -1,7 +1,5 @@
 using dtc.Application.Features.Exams.Interfaces;
 using dtc.Application.Features.Exams.DTOs;
-using dtc.Application.Features.Exams.Interfaces;
-using dtc.Application.Features.Exams.DTOs;
 using dtc.Domain.Entities;
 using dtc.Domain.Entities.Exams;
 using dtc.Domain.Interfaces;

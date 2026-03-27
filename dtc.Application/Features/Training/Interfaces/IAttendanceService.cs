@@ -11,5 +11,7 @@ namespace dtc.Application.Features.Training.Interfaces
         Task<bool> MarkAttendanceAsync(MarkAttendanceRequestDto request, Guid adminId);
         Task<IEnumerable<AttendanceResponseDto>> GetAttendanceByClassScheduleAsync(Guid classScheduleId);
         Task<object> GetAttendanceReportByClassAsync(Guid classId);
+        Task<IEnumerable<AttendanceResponseDto>> GetAttendanceByStudentAsync(Guid studentId);
+        Task<object> GetStudentAttendanceSummaryAsync(Guid studentId, Guid? classId = null);
     }
 }

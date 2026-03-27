@@ -6,9 +6,11 @@ using dtc.Domain.Entities.Permissions;
 using dtc.Domain.Entities.Training;
 using dtc.Domain.Entities.Terms;
 using dtc.Domain.ValueObjects;
+using dtc.Infrastructure.Persistence.Seeding;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using EmailVO = dtc.Domain.ValueObjects.Email;
+using dtc.Domain.Entities.Location;
 
 namespace dtc.Infrastructure.Pesistence.SQLServer
 {
@@ -43,7 +45,7 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
         public DbSet<Exam> Exams => Set<Exam>();
         public DbSet<ExamRegistration> ExamRegistrations => Set<ExamRegistration>();
         public DbSet<ExamResult> ExamResults => Set<ExamResult>();
-        public DbSet<SampleExamResult> SampleExamResults => Set<SampleExamResult>();
+        // public DbSet<SampleExamResult> SampleExamResults => Set<SampleExamResult>();
 
         // Collaborators
         public DbSet<ReferralCode> ReferralCodes => Set<ReferralCode>();
@@ -54,7 +56,7 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
         public DbSet<Document> Documents => Set<Document>();
 
         // Training Extras
-        public DbSet<StudentEvaluation> StudentEvaluations => Set<StudentEvaluation>();
+        // public DbSet<StudentEvaluation> StudentEvaluations => Set<StudentEvaluation>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -84,11 +86,15 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
             ConfigureExam(modelBuilder);
             ConfigureExamRegistration(modelBuilder);
             ConfigureExamResult(modelBuilder);
+            // ConfigureSampleExamResult(modelBuilder);
 
             ConfigureReferral(modelBuilder);
             ConfigureCollaboratorCommission(modelBuilder);
 
             ConfigureDocument(modelBuilder);
+            // ConfigureStudentEvaluation(modelBuilder);
+
+            ApplySeedData(modelBuilder);
 
             foreach (var fk in modelBuilder.Model
                  .GetEntityTypes()
@@ -228,6 +234,8 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                     .HasMaxLength(255);
 
                 e.Property(x => x.IsActive);
+                e.Property(x => x.NumberOfClasses);
+                e.Property(x => x.MaxStudentPerClass);
             });
         }
         
@@ -274,7 +282,7 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                 e.Property(x => x.Price).HasPrecision(18, 2);
                 e.Property(x => x.IsActive);
 
-                e.HasOne<Center>()
+                e.HasOne(x => x.Center)
                     .WithMany()
                     .HasForeignKey(x => x.CenterId);
             });
@@ -559,6 +567,25 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
             });
         }
 
+        private static void ConfigureSampleExamResult(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<SampleExamResult>(e =>
+            {
+                e.ToTable("SampleExamResults");
+                e.HasKey(x => x.Id);
+
+                e.Property(x => x.TotalScore);
+                e.Property(x => x.DurationSeconds);
+                e.Property(x => x.IsPassed);
+                e.Property(x => x.UserAnswersJson).HasColumnType("nvarchar(max)");
+
+                e.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(x => x.StudentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+        }
+
         // =========================
         // Referral & Commission
         // =========================
@@ -620,6 +647,62 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                     .HasForeignKey(x => x.CollaboratorId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
+        }
+
+        private static void ConfigureStudentEvaluation(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<StudentEvaluation>(e =>
+            {
+                e.ToTable("StudentEvaluations");
+                e.HasKey(x => x.Id);
+
+                e.Property(x => x.PunctualityScore);
+                e.Property(x => x.SkillLevel);
+                e.Property(x => x.Note).HasColumnType("nvarchar(max)");
+                e.Property(x => x.EvaluationDate);
+
+                e.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(x => x.StudentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(x => x.InstructorId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne<Class>()
+                    .WithMany()
+                    .HasForeignKey(x => x.ClassId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+        }
+
+        private static void ApplySeedData(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Role>().HasData(SqlSeedData.Roles);
+            modelBuilder.Entity<User>().HasData(SqlSeedData.Users);
+            modelBuilder.Entity<Center>().HasData(SqlSeedData.Centers);
+            modelBuilder.Entity<UserCenter>().HasData(SqlSeedData.UserCenters);
+            modelBuilder.Entity<Course>().HasData(SqlSeedData.Courses);
+            modelBuilder.Entity<Term>().HasData(SqlSeedData.Terms);
+            modelBuilder.Entity<CourseRegistration>().HasData(SqlSeedData.CourseRegistrations);
+            modelBuilder.Entity<Class>().HasData(SqlSeedData.Classes);
+            modelBuilder.Entity<ClassStudent>().HasData(SqlSeedData.ClassStudents);
+            modelBuilder.Entity<ClassSchedule>().HasData(SqlSeedData.ClassSchedules);
+            modelBuilder.Entity<Attendance>().HasData(SqlSeedData.Attendances);
+            modelBuilder.Entity<InstructorLeaveRequest>().HasData(SqlSeedData.InstructorLeaveRequests);
+            modelBuilder.Entity<StudentDrivingDistance>().HasData(SqlSeedData.StudentDrivingDistances);
+            modelBuilder.Entity<ExamBatch>().HasData(SqlSeedData.ExamBatches);
+            modelBuilder.Entity<Exam>().HasData(SqlSeedData.Exams);
+            modelBuilder.Entity<ExamRegistration>().HasData(SqlSeedData.ExamRegistrations);
+            modelBuilder.Entity<ExamResult>().HasData(SqlSeedData.ExamResults);
+            modelBuilder.Entity<ReferralCode>().HasData(SqlSeedData.ReferralCodes);
+            modelBuilder.Entity<ReferralRegistration>().HasData(SqlSeedData.ReferralRegistrations);
+            modelBuilder.Entity<CollaboratorCommission>().HasData(SqlSeedData.CollaboratorCommissions);
+            modelBuilder.Entity<Document>().HasData(SqlSeedData.Documents);
+            modelBuilder.Entity<StudentEvaluation>().HasData(SqlSeedData.StudentEvaluations);
+            modelBuilder.Entity<SampleExamResult>().HasData(SqlSeedData.SampleExamResults);
         }
     }
 }

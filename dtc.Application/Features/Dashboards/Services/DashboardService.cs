@@ -1,15 +1,5 @@
 using dtc.Application.Features.Dashboards.Interfaces;
 using dtc.Application.Features.Dashboards.DTOs;
-using dtc.Application.Features.Dashboards.Interfaces;
-using dtc.Application.Features.Dashboards.DTOs;
-using dtc.Application.Features.Dashboards.Interfaces;
-using dtc.Application.Features.Dashboards.DTOs;
-using dtc.Application.Features.Dashboards.Interfaces;
-using dtc.Application.Features.Dashboards.DTOs;
-using dtc.Application.Features.Dashboards.Interfaces;
-using dtc.Application.Features.Dashboards.DTOs;
-using dtc.Application.Features.Dashboards.Interfaces;
-using dtc.Application.Features.Dashboards.DTOs;
 using dtc.Domain.Interfaces;
 using dtc.Domain.Entities;
 using System.Collections.Generic;

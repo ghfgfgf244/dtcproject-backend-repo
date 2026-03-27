@@ -1,7 +1,5 @@
 using dtc.Application.Features.Location.Interfaces;
 using dtc.Application.Features.Location.DTOs;
-using dtc.Application.Features.Location.Interfaces;
-using dtc.Application.Features.Location.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;

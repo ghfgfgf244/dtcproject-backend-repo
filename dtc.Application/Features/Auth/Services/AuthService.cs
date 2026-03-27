@@ -1,15 +1,13 @@
 using dtc.Application.Features.Auth.Interfaces;
 using dtc.Application.Features.Auth.DTOs;
-using dtc.Application.Features.Auth.Interfaces;
-using dtc.Application.Features.Auth.DTOs;
 using dtc.Application.Features.Notifications.Interfaces;
 using dtc.Domain.Entities;
-using dtc.Domain.Entities.Permissions;
 using dtc.Domain.Interfaces;
 using dtc.Domain.ValueObjects;
 using System;
 using System.Threading.Tasks;
 using EmailVO = dtc.Domain.ValueObjects.Email;
+using dtc.Domain.Entities.Permissions;
 
 namespace dtc.Application.Features.Auth.Services
 {
