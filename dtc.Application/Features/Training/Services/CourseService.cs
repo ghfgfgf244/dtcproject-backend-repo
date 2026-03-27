@@ -1,7 +1,5 @@
 using dtc.Application.Features.Training.Interfaces;
 using dtc.Application.Features.Training.DTOs;
-using dtc.Application.Features.Training.Interfaces;
-using dtc.Application.Features.Training.DTOs;
 using dtc.Domain.Entities.Training;
 using dtc.Domain.Interfaces;
 using System;
@@ -87,13 +85,13 @@ namespace dtc.Application.Features.Training.Services
 
         public async Task<IEnumerable<CourseResponseDto>> GetAllCoursesAsync()
         {
-            var courses = await _unitOfWork.Courses.GetAllAsync();
+            var courses = await _unitOfWork.Courses.FindAsync(c => true, c => c.Center);
             return courses.Select(MapToDto);
         }
 
         public async Task<IEnumerable<CourseResponseDto>> GetAvailableCoursesAsync()
         {
-            var courses = await _unitOfWork.Courses.FindAsync(c => c.IsActive);
+            var courses = await _unitOfWork.Courses.FindAsync(c => c.IsActive, c => c.Center);
             return courses.Select(MapToDto);
         }
 
@@ -105,11 +103,25 @@ namespace dtc.Application.Features.Training.Services
 
         public async Task<CourseResponseDto> GetCourseDetailAsync(Guid courseId)
         {
-            var course = await _unitOfWork.Courses.GetByIdAsync(courseId);
+            var course = await _unitOfWork.Courses.FirstOrDefaultAsync(c => c.Id == courseId, c => c.Center);
             if (course == null)
                 throw new Exception("Course not found");
 
-            return MapToDto(course);
+            var roadmaps = await _unitOfWork.LearningRoadmaps.FindAsync(r => r.CourseId == courseId);
+            
+            var response = MapToDto(course);
+            response.LearningRoadmap = roadmaps
+                .OrderBy(r => r.OrderNo)
+                .Select(r => new LearningRoadmapResponseDto
+                {
+                    Id = r.Id,
+                    CourseId = r.CourseId,
+                    Title = r.Title,
+                    Description = r.Description,
+                    OrderNo = r.OrderNo
+                });
+
+            return response;
         }
 
         private CourseResponseDto MapToDto(Course course)
@@ -126,6 +138,8 @@ namespace dtc.Application.Features.Training.Services
                 Description = course.Description,
                 Price = course.Price,
                 IsActive = course.IsActive,
+                CenterName = course.Center?.CenterName,
+                CenterAddress = course.Center?.Address,
                 CreatedAt = course.CreatedAt
             };
         }

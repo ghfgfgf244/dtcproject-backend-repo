@@ -14,6 +14,9 @@ namespace dtc.Application.Features.Training.DTOs
         public string Description { get; set; } = string.Empty;
         public decimal Price { get; set; }
         public bool IsActive { get; set; }
+        public string? CenterName { get; set; }
+        public string? CenterAddress { get; set; }
+        public IEnumerable<LearningRoadmapResponseDto> LearningRoadmap { get; set; } = new List<LearningRoadmapResponseDto>();
         public DateTime CreatedAt { get; set; }
     }
 }

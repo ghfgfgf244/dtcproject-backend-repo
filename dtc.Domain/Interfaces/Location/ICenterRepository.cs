@@ -1,4 +1,4 @@
-using dtc.Domain.Entities.Permissions;
+using dtc.Domain.Entities.Location;
 
 namespace dtc.Domain.Interfaces.Location
 {

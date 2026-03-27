@@ -3,11 +3,32 @@ DANH SÁCH API - DRIVING TRAINING CENTERS PROJECT (BACKEND)
 
 1. AttendanceController (/api/Attendance)
 -----------------------------------------
-- POST /api/Attendance: Điểm danh (Mark Attendance) - Instructor/Admin.
-- GET /api/Attendance/Schedule/{classScheduleId}: Xem điểm danh theo lịch học.
-- GET /api/Attendance/Report/Class/{classId}: Xem báo cáo điểm danh theo lớp.
+- [POST] /api/Attendance: Điểm danh cho học viên (Admin/TrainingManager/Instructor).
+- [GET] /api/Attendance/Schedule/{classScheduleId}: Xem danh sách điểm danh theo buổi học.
+- [GET] /api/Attendance/Report/Class/{classId}: Báo cáo điểm danh theo lớp.
+- [GET] /api/Attendance/Student/{studentId}: Xem danh sách điểm danh của một học viên.
+- [GET] /api/Attendance/Student/{studentId}/Summary: Xem tổng kết điểm danh của học viên (Số buổi học/vắng, Tỷ lệ %).
 
-2. AuthController (/api/Auth)
+2. BlogController (/api/Blog)
+-----------------------------
+- [GET] /api/Blog: Danh sách tất cả bài viết (query ?onlyPublished=true để lọc đã xuất bản).
+- [GET] /api/Blog/{id}: Xem chi tiết bài viết.
+- [POST] /api/Blog: Tạo bài viết mới (Admin/TrainingManager).
+- [PUT] /api/Blog/{id}: Cập nhật bài viết (Admin/TrainingManager).
+- [DELETE] /api/Blog/{id}: Xóa mềm bài viết (Admin/TrainingManager).
+- [PATCH] /api/Blog/{id}/publish: Xuất bản bài viết (Admin/TrainingManager).
+- [PATCH] /api/Blog/{id}/unpublish: Ẩn bài viết (Admin/TrainingManager).
+- [GET] /api/Blog/user/{userId}: Danh sách bài viết do một user tạo (sắp xếp mới nhất trước).
+
+3. CategoryController (/api/Category)
+--------------------------------------
+- [GET] /api/Category: Danh sách tất cả danh mục.
+- [GET] /api/Category/{id}: Xem chi tiết danh mục.
+- [POST] /api/Category: Tạo danh mục mới (Admin/TrainingManager).
+- [PUT] /api/Category/{id}: Cập nhật danh mục (Admin/TrainingManager).
+- [DELETE] /api/Category/{id}: Xóa danh mục (Admin/TrainingManager).
+
+4. AuthController (/api/Auth)
 -----------------------------
 - POST /api/Auth/sync: Đồng bộ thông tin người dùng từ Clerk vào Database.
 - POST /api/Auth/logout: Đăng xuất.
@@ -81,7 +102,15 @@ DANH SÁCH API - DRIVING TRAINING CENTERS PROJECT (BACKEND)
 - GET /api/Evaluation/{id}: Xem chi tiết đánh giá.
 - GET /api/Evaluation/student/{studentId}: Xem tất cả đánh giá của một học viên.
 - GET /api/Evaluation/class/{classId}: Xem tất cả đánh giá trong một lớp.
-- PUT /api/Evaluation/{id}: Cập nhật đánh giá.
+- PUT /api/StudentEvaluation/{id}: Cập nhật đánh giá của học viên.
+
+- POST /api/StudentDrivingDistance: Tạo bản ghi quãng đường mới (Admin/TrainingManager).
+- GET /api/StudentDrivingDistance/{id}: Lấy chi tiết bản ghi.
+- PUT /api/StudentDrivingDistance/{id}/actual: Cập nhật quãng đường thực tế (Admin/TrainingManager/Instructor).
+- GET /api/StudentDrivingDistance/my: Xem quãng đường của tôi (Học viên).
+- GET /api/StudentDrivingDistance: Danh sách tất cả bản ghi (Admin/TrainingManager).
+- DELETE /api/StudentDrivingDistance/{id}: Xóa bản ghi.
+
 - DELETE /api/Evaluation/{id}: Xóa đánh giá.
 ////////////////////////////////////////////////////////////////////////////////
 

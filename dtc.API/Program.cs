@@ -96,6 +96,11 @@ namespace dtc.API
             // Legacy JWT configuration removed to avoid conflicts.
 
             var app = builder.Build();
+            using (var scope = app.Services.CreateScope())
+            {
+                var mongoContext = scope.ServiceProvider.GetRequiredService<MongoDBContext>();
+                mongoContext.SeedSampleDataAsync().GetAwaiter().GetResult();
+            }
 
             // Configure the HTTP request pipeline.
             app.UseMiddleware<GlobalExceptionMiddleware>();

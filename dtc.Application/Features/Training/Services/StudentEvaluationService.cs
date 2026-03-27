@@ -1,7 +1,5 @@
 using dtc.Application.Features.Training.Interfaces;
 using dtc.Application.Features.Training.DTOs;
-using dtc.Application.Features.Training.Interfaces;
-using dtc.Application.Features.Training.DTOs;
 using dtc.Domain.Entities.Training;
 using dtc.Domain.Interfaces;
 using System;

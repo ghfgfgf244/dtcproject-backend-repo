@@ -2,11 +2,11 @@ using dtc.Application.Features.Exams.Interfaces;
 using dtc.Application.Features.Exams.DTOs;
 using dtc.Domain.Entities.Exams;
 using dtc.Domain.Interfaces;
-using System.Text.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace dtc.Application.Features.Exams.Services
 {

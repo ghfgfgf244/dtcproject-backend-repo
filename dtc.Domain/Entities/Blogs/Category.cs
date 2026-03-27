@@ -20,6 +20,7 @@ public class Category : BaseEntity
         Guid? createdBy,
         int? parentCategoryId = null)
     {
+        Id = Guid.NewGuid();
         SetName(name);
         SetParent(parentCategoryId);
 

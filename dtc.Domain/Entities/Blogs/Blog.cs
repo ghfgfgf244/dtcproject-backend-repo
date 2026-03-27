@@ -22,6 +22,7 @@ public class Blog : BaseEntity
         string? summary = null,
         string? avatar = null)
     {
+        Id = Guid.NewGuid();
         SetTitle(title);
         SetCategory(categoryId);
         SetContent(content);

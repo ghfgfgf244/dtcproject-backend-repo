@@ -1,6 +1,6 @@
 using dtc.Domain.ValueObjects;
 
-namespace dtc.Domain.Entities.Permissions
+namespace dtc.Domain.Entities.Location
 {
     public class Center : BaseEntity
     {

@@ -1,12 +1,5 @@
 using dtc.Application.Features.Permissions.Interfaces;
 using dtc.Application.Features.Permissions.DTOs;
-using dtc.Application.Features.Permissions.Interfaces;
-using dtc.Application.Features.Permissions.DTOs;
-using dtc.Application.Features.Permissions.Interfaces;
-using dtc.Application.Features.Permissions.DTOs;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace dtc.Application.Features.Permissions.Interfaces
 {

@@ -115,6 +115,12 @@ namespace dtc.Application.Features.Blogs.Services
             return true;
         }
 
+        public async Task<IEnumerable<BlogResponseDto>> GetBlogsByUserAsync(Guid userId)
+        {
+            var blogs = await _unitOfWork.Blogs.FindAsync(b => b.CreatedBy == userId && !b.IsDeleted);
+            return blogs.OrderByDescending(b => b.CreatedAt).Select(MapToDto);
+        }
+
         private static BlogResponseDto MapToDto(Blog blog)
         {
             return new BlogResponseDto

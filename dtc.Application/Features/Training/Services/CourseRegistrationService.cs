@@ -1,7 +1,5 @@
 using dtc.Application.Features.Training.Interfaces;
 using dtc.Application.Features.Training.DTOs;
-using dtc.Application.Features.Training.Interfaces;
-using dtc.Application.Features.Training.DTOs;
 using dtc.Application.Features.Email.Interfaces;
 using dtc.Application.Features.Notifications.Interfaces;
 using dtc.Domain.Entities;

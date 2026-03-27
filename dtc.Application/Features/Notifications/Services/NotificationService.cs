@@ -1,15 +1,5 @@
 using dtc.Application.Features.Notifications.Interfaces;
 using dtc.Application.Features.Notifications.DTOs;
-using dtc.Application.Features.Notifications.Interfaces;
-using dtc.Application.Features.Notifications.DTOs;
-using dtc.Application.Features.Notifications.Interfaces;
-using dtc.Application.Features.Notifications.DTOs;
-using dtc.Application.Features.Notifications.Interfaces;
-using dtc.Application.Features.Notifications.DTOs;
-using dtc.Application.Features.Notifications.Interfaces;
-using dtc.Application.Features.Notifications.DTOs;
-using dtc.Application.Features.Notifications.Interfaces;
-using dtc.Application.Features.Notifications.DTOs;
 using dtc.Domain.Entities;
 using dtc.Domain.Entities.Notifications;
 using dtc.Domain.Interfaces;

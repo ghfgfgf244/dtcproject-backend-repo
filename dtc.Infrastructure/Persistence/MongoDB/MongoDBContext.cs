@@ -5,13 +5,14 @@ using dtc.Domain.Entities.Exams;
 using dtc.Domain.Entities.Location;
 using dtc.Domain.Entities.Notifications;
 using dtc.Domain.Entities.Training;
+using dtc.Infrastructure.Persistence.Seeding;
 using Microsoft.Extensions.Configuration;
 
 namespace dtc.Infrastructure.Persistence.MongoDB
 {
     public class MongoDBContext
     {
-        private readonly IMongoDatabase _database;
+        private readonly IMongoDatabase _database;  
 
         public MongoDBContext(IConfiguration configuration)
         {
@@ -33,9 +34,13 @@ namespace dtc.Infrastructure.Persistence.MongoDB
         public virtual IMongoCollection<LearningLocation> LearningLocations => _database.GetCollection<LearningLocation>("LearningLocations");
         
         public virtual IMongoCollection<Notification> Notifications => _database.GetCollection<Notification>("Notifications");
+        //public virtual IMongoCollection<NotificationRole> NotificationRoles => _database.GetCollection<NotificationRole>("NotificationRoles");
         public virtual IMongoCollection<UserNotification> UserNotifications => _database.GetCollection<UserNotification>("UserNotifications");
         
         public virtual IMongoCollection<LearningRoadmap> LearningRoadmaps => _database.GetCollection<LearningRoadmap>("LearningRoadmaps");
         public virtual IMongoCollection<ResourceLearning> ResourceLearnings => _database.GetCollection<ResourceLearning>("ResourceLearnings");
+
+        public Task SeedSampleDataAsync(CancellationToken cancellationToken = default)
+            => MongoDbSeeder.SeedAsync(this, cancellationToken);
     }
 }

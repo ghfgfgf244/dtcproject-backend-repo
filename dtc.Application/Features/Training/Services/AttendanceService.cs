@@ -1,7 +1,5 @@
 using dtc.Application.Features.Training.Interfaces;
 using dtc.Application.Features.Training.DTOs;
-using dtc.Application.Features.Training.Interfaces;
-using dtc.Application.Features.Training.DTOs;
 using dtc.Application.Features.Notifications.Interfaces;
 using dtc.Application.Features.Email.Interfaces;
 using dtc.Domain.Entities;
@@ -206,6 +204,66 @@ namespace dtc.Application.Features.Training.Services
                 ClassName = theClass?.ClassName ?? "Unknown",
                 TotalSessions = totalSessions,
                 StudentReports = report
+            };
+        }
+
+        public async Task<IEnumerable<AttendanceResponseDto>> GetAttendanceByStudentAsync(Guid studentId)
+        {
+            var attendances = await _unitOfWork.Attendances.FindAsync(a => a.StudentId == studentId);
+            var dtos = new List<AttendanceResponseDto>();
+            
+            foreach (var a in attendances)
+            {
+                var schedule = await _unitOfWork.ClassSchedules.GetByIdAsync(a.ClassScheduleId);
+                dtos.Add(new AttendanceResponseDto
+                {
+                    Id = a.Id,
+                    ClassScheduleId = a.ClassScheduleId,
+                    StudentId = a.StudentId,
+                    IsPresent = a.IsPresent,
+                    CheckedAt = a.CheckedAt,
+                    // Optionally add schedule info here if DTO supports it
+                });
+            }
+
+            return dtos;
+        }
+
+        public async Task<object> GetStudentAttendanceSummaryAsync(Guid studentId, Guid? classId = null)
+        {
+            var student = await _unitOfWork.Users.GetByIdAsync(studentId);
+            if (student == null) throw new Exception("Student not found");
+
+            IEnumerable<Guid> relevantScheduleIds;
+            if (classId.HasValue)
+            {
+                var schedules = await _unitOfWork.ClassSchedules.FindAsync(s => s.ClassId == classId.Value);
+                relevantScheduleIds = schedules.Select(s => s.Id);
+            }
+            else
+            {
+                // Summary across all classes student is enrolled in
+                var enrollments = await _unitOfWork.ClassStudents.FindAsync(cs => cs.StudentId == studentId);
+                var classIds = enrollments.Select(e => e.ClassId).ToList();
+                var allSchedules = await _unitOfWork.ClassSchedules.FindAsync(s => classIds.Contains(s.ClassId));
+                relevantScheduleIds = allSchedules.Select(s => s.Id);
+            }
+
+            var totalSessions = relevantScheduleIds.Count();
+            var attendances = await _unitOfWork.Attendances.FindAsync(a => a.StudentId == studentId && relevantScheduleIds.Contains(a.ClassScheduleId));
+            
+            var presentCount = attendances.Count(a => a.IsPresent);
+            var absentCount = attendances.Count(a => !a.IsPresent);
+            var rate = totalSessions > 0 ? Math.Round(((double)presentCount / totalSessions) * 100, 2) : 0;
+
+            return new
+            {
+                StudentId = studentId,
+                FullName = student.FullName,
+                TotalSessions = totalSessions,
+                PresentCount = presentCount,
+                AbsentCount = absentCount,
+                AttendanceRate = rate
             };
         }
     }

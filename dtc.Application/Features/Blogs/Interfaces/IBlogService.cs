@@ -14,5 +14,6 @@ namespace dtc.Application.Features.Blogs.Interfaces
         Task<IEnumerable<BlogResponseDto>> GetAllBlogsAsync(bool onlyPublished = false);
         Task<bool> PublishBlogAsync(Guid id, Guid adminId);
         Task<bool> UnpublishBlogAsync(Guid id, Guid adminId);
+        Task<IEnumerable<BlogResponseDto>> GetBlogsByUserAsync(Guid userId);
     }
 }

@@ -26,6 +26,7 @@ using dtc.Application.Features.Email.Interfaces;
 using dtc.Infrastructure.Email;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using dtc.Infrastructure.Configurations;
 
@@ -91,9 +92,17 @@ namespace dtc.Infrastructure
             // Register Cache Service
             services.AddScoped<ICacheService, CacheService>();
 
-            // Register Email Service
-            services.Configure<SmtpSettings>(opts => configuration.GetSection(SmtpSettings.SectionName).Bind(opts));
-            services.AddScoped<IEmailService, SmtpEmailService>();
+            // Register Email Service (Resend)
+            services.Configure<ResendSettings>(opts => configuration.GetSection(ResendSettings.SectionName).Bind(opts));
+            services.AddHttpClient("Resend", (sp, client) =>
+            {
+                var settings = sp.GetRequiredService<IOptions<ResendSettings>>().Value;
+                client.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", settings.ApiKey);
+                client.DefaultRequestHeaders.Accept.Add(
+                    new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+            });
+            services.AddScoped<IEmailService, ResendEmailService>();
 
             // Register Cloudinary Service
             services.Configure<CloudinarySettings>(opts => configuration.GetSection(CloudinarySettings.SectionName).Bind(opts));

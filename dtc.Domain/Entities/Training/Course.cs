@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using dtc.Domain.Entities.Location;
 
 namespace dtc.Domain.Entities.Training
 {
@@ -17,6 +15,9 @@ namespace dtc.Domain.Entities.Training
         public string Description { get; private set; }
         public decimal Price { get; private set; }
         public bool IsActive { get; private set; }
+
+        // Navigation Properties
+        public virtual Center Center { get; private set; } = default!;
 
         protected Course() { }
 

@@ -1,11 +1,5 @@
 using dtc.Application.Features.Collaborators.Interfaces;
 using dtc.Application.Features.Collaborators.DTOs;
-using dtc.Application.Features.Collaborators.Interfaces;
-using dtc.Application.Features.Collaborators.DTOs;
-using dtc.Application.Features.Collaborators.Interfaces;
-using dtc.Application.Features.Collaborators.DTOs;
-using dtc.Application.Features.Users.Interfaces;
-using dtc.Application.Features.Users.DTOs;
 using dtc.Application.Features.Users.Interfaces;
 using dtc.Application.Features.Users.DTOs;
 using System;

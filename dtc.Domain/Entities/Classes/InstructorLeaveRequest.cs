@@ -2,13 +2,6 @@ using System;
 
 namespace dtc.Domain.Entities.Classes
 {
-    public enum LeaveRequestStatus
-    {
-        Pending,
-        Approved,
-        Rejected,
-        Cancelled
-    }
 
     public class InstructorLeaveRequest : BaseEntity
     {

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using dtc.Infrastructure.Pesistence.SQLServer;
 
@@ -11,9 +12,11 @@ using dtc.Infrastructure.Pesistence.SQLServer;
 namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
 {
     [DbContext(typeof(SQLDBContext))]
-    partial class SQLDBContextModelSnapshot : ModelSnapshot
+    [Migration("20260327183728_SeedAndContextSync")]
+    partial class SeedAndContextSync
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -986,7 +989,9 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SampleExamResult");
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("SampleExamResults", (string)null);
 
                     b.HasData(
                         new
@@ -1708,7 +1713,13 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("StudentEvaluation");
+                    b.HasIndex("ClassId");
+
+                    b.HasIndex("InstructorId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("StudentEvaluations", (string)null);
 
                     b.HasData(
                         new
@@ -1899,6 +1910,15 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("dtc.Domain.Entities.Exams.SampleExamResult", b =>
+                {
+                    b.HasOne("dtc.Domain.Entities.Permissions.User", null)
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("dtc.Domain.Entities.Permissions.Document", b =>
                 {
                     b.HasOne("dtc.Domain.Entities.Permissions.User", null)
@@ -1956,6 +1976,26 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         .IsRequired();
 
                     b.Navigation("Center");
+                });
+
+            modelBuilder.Entity("dtc.Domain.Entities.Training.StudentEvaluation", b =>
+                {
+                    b.HasOne("dtc.Domain.Entities.Classes.Class", null)
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("dtc.Domain.Entities.Permissions.User", null)
+                        .WithMany()
+                        .HasForeignKey("InstructorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("dtc.Domain.Entities.Permissions.User", null)
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }
