@@ -128,6 +128,9 @@ namespace dtc.Infrastructure
                 };
             });
 
+            // Register Claims Transformation for Clerk Roles
+            services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, dtc.Infrastructure.Auth.ClerkClaimsTransformer>();
+
             return services;
         }
     }

@@ -11,5 +11,8 @@ namespace dtc.Application.Features.Training.DTOs
         public string StudentName { get; set; } = string.Empty;
         public bool IsPresent { get; set; }
         public DateTime CheckedAt { get; set; }
+        
+        public DateTime? SessionDate { get; set; }
+        public string? SubjectName { get; set; }
     }
 }

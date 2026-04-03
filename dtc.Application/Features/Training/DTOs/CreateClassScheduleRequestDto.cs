@@ -18,7 +18,6 @@ namespace dtc.Application.Features.Training.DTOs
         public DateTime EndTime { get; set; }
 
         [Required]
-        [MaxLength(255)]
-        public string Location { get; set; } = string.Empty;
+        public int AddressId { get; set; }
     }
 }

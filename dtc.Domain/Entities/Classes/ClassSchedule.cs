@@ -8,7 +8,7 @@ public class ClassSchedule : BaseEntity
     public DateTime StartTime { get; private set; }
     public DateTime EndTime { get; private set; }
 
-    public string Location { get; private set; } = default!;
+    public int AddressId { get; private set; }
 
     protected ClassSchedule() { }
 
@@ -20,7 +20,7 @@ public class ClassSchedule : BaseEntity
         Guid instructorId,
         DateTime startTime,
         DateTime endTime,
-        string location,
+        int addressId,
         Guid? createdBy)
     {
         if (classId == Guid.Empty)
@@ -30,7 +30,7 @@ public class ClassSchedule : BaseEntity
             throw new ArgumentException("InstructorId is required");
 
         SetSchedule(startTime, endTime);
-        SetLocation(location);
+        SetAddress(addressId);
 
         ClassId = classId;
         InstructorId = instructorId;
@@ -44,7 +44,7 @@ public class ClassSchedule : BaseEntity
     public bool Reschedule(
         DateTime newStart,
         DateTime newEnd,
-        string? newLocation,
+        int? newAddressId,
         Guid? updatedBy)
     {
         bool changed = false;
@@ -55,10 +55,9 @@ public class ClassSchedule : BaseEntity
             changed = true;
         }
 
-        if (!string.IsNullOrWhiteSpace(newLocation) &&
-            !string.Equals(Location, newLocation.Trim(), StringComparison.Ordinal))
+        if (newAddressId.HasValue && newAddressId.Value != AddressId)
         {
-            Location = newLocation.Trim();
+            SetAddress(newAddressId.Value);
             changed = true;
         }
 
@@ -98,11 +97,11 @@ public class ClassSchedule : BaseEntity
         EndTime = end;
     }
 
-    private void SetLocation(string location)
+    private void SetAddress(int addressId)
     {
-        if (string.IsNullOrWhiteSpace(location))
-            throw new ArgumentException("Location is required");
+        if (addressId <= 0)
+            throw new ArgumentException("AddressId is required");
 
-        Location = location.Trim();
+        AddressId = addressId;
     }
 }

@@ -1,9 +1,4 @@
-using dtc.Application.Features.Users.Interfaces;
-using dtc.Application.Features.Users.DTOs;
-using dtc.Application.Features.Users.Interfaces;
-using dtc.Application.Features.Users.DTOs;
 using System;
-using System.Collections.Generic;
 
 namespace dtc.Application.Features.Collaborators.DTOs
 {

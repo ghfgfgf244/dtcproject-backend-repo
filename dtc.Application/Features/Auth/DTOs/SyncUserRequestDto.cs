@@ -12,8 +12,7 @@ namespace dtc.Application.Features.Auth.DTOs
         [EmailAddress]
         public string Email { get; set; } = string.Empty;
 
-        [Required]
-        public string FullName { get; set; } = string.Empty;
+        public string? FullName { get; set; }
 
         public string? Phone { get; set; }
         public string? AvatarUrl { get; set; }

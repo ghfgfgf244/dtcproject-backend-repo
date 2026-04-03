@@ -1,5 +1,6 @@
 using dtc.Application.Features.Auth.DTOs;
 using dtc.Application.Features.Auth.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using System;
@@ -16,6 +17,7 @@ namespace dtc.API.Controllers
         }
 
         [HttpPost("sync")]
+        [AllowAnonymous]
         public async Task<IActionResult> Sync([FromBody] SyncUserRequestDto request)
         {
             try

@@ -1,6 +1,7 @@
 using dtc.Application.Features.Training.Interfaces;
 using dtc.Application.Features.Training.DTOs;
 using dtc.Domain.Entities.Classes;
+using dtc.Domain.Entities.Location;
 using dtc.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -30,6 +31,8 @@ namespace dtc.Application.Features.Training.Services
             if (instructor == null)
                 throw new Exception("Instructor not found");
 
+            var address = await GetAddressOrThrowAsync(request.AddressId);
+
             // Verify if instructor is already scheduled during this time
             var existingSchedules = await _unitOfWork.ClassSchedules.FindAsync(s => 
                 s.InstructorId == request.InstructorId && 
@@ -44,14 +47,14 @@ namespace dtc.Application.Features.Training.Services
                 instructorId: request.InstructorId,
                 startTime: request.StartTime,
                 endTime: request.EndTime,
-                location: request.Location,
+                addressId: request.AddressId,
                 createdBy: adminId
             );
 
             await _unitOfWork.ClassSchedules.AddAsync(schedule);
             await _unitOfWork.SaveChangesAsync();
 
-            return await GetScheduleDetailAsync(schedule.Id);
+            return await MapToDtoCompleteAsync(schedule, address);
         }
 
         public async Task<ClassScheduleResponseDto> UpdateScheduleAsync(Guid id, UpdateClassScheduleRequestDto request, Guid adminId)
@@ -61,12 +64,18 @@ namespace dtc.Application.Features.Training.Services
                 throw new Exception("Class schedule not found");
 
             bool isUpdated = false;
+            Address? address = null;
+
+            if (request.AddressId.HasValue)
+            {
+                address = await GetAddressOrThrowAsync(request.AddressId.Value);
+            }
 
             // Handle rescheduling
             isUpdated = schedule.Reschedule(
                 newStart: request.StartTime,
                 newEnd: request.EndTime,
-                newLocation: request.Location,
+                newAddressId: request.AddressId,
                 updatedBy: adminId
             );
 
@@ -97,7 +106,7 @@ namespace dtc.Application.Features.Training.Services
                 await _unitOfWork.SaveChangesAsync();
             }
 
-            return await GetScheduleDetailAsync(schedule.Id);
+            return await MapToDtoCompleteAsync(schedule, address);
         }
 
         public async Task<bool> DeleteScheduleAsync(Guid id, Guid adminId)
@@ -142,10 +151,12 @@ namespace dtc.Application.Features.Training.Services
             if (schedule == null)
                 throw new Exception("Schedule not found");
 
+            await GetAddressOrThrowAsync(request.AddressId);
+
             bool isUpdated = schedule.Reschedule(
                 newStart: schedule.StartTime, 
                 newEnd: schedule.EndTime, 
-                newLocation: request.Location, 
+                newAddressId: request.AddressId, 
                 updatedBy: adminId);
 
             if (isUpdated)
@@ -157,10 +168,12 @@ namespace dtc.Application.Features.Training.Services
             return true;
         }
 
-        private async Task<ClassScheduleResponseDto> MapToDtoCompleteAsync(ClassSchedule schedule)
+        private async Task<ClassScheduleResponseDto> MapToDtoCompleteAsync(ClassSchedule schedule, Address? address = null)
         {
             var instructor = await _unitOfWork.Users.GetByIdAsync(schedule.InstructorId);
             var classEntity = await _unitOfWork.Classes.GetByIdAsync(schedule.ClassId);
+            address ??= await _unitOfWork.Addresses.GetByIdAsync(schedule.AddressId);
+            var addressName = address?.AddressName ?? "Unknown Address";
 
             return new ClassScheduleResponseDto
             {
@@ -171,9 +184,60 @@ namespace dtc.Application.Features.Training.Services
                 InstructorName = instructor?.FullName ?? "Unknown Instructor",
                 StartTime = schedule.StartTime,
                 EndTime = schedule.EndTime,
-                Location = schedule.Location,
+                AddressId = schedule.AddressId,
+                AddressName = addressName,
+                Location = addressName,
                 CreatedAt = schedule.CreatedAt,
             };
+        }
+
+        public async Task<IEnumerable<ClassScheduleResponseDto>> GetMySchedulesAsync(Guid studentId)
+        {
+            // 1. Get all class IDs the student is enrolled in
+            var enrollments = await _unitOfWork.ClassStudents.FindAsync(cs => cs.StudentId == studentId);
+            if (enrollments == null || !enrollments.Any())
+                return new List<ClassScheduleResponseDto>();
+
+            var classIds = enrollments.Select(e => e.ClassId).Distinct().ToList();
+
+            // 2. Get all schedules for those classes
+            var schedules = await _unitOfWork.ClassSchedules.FindAsync(s => classIds.Contains(s.ClassId));
+            if (schedules == null || !schedules.Any())
+                return new List<ClassScheduleResponseDto>();
+
+            var dtos = new List<ClassScheduleResponseDto>();
+            foreach (var schedule in schedules)
+            {
+                dtos.Add(await MapToDtoCompleteAsync(schedule));
+            }
+
+            return dtos.OrderBy(s => s.StartTime);
+        }
+
+        public async Task<IEnumerable<ClassScheduleResponseDto>> GetTeachingScheduleAsync(Guid instructorId)
+        {
+            var schedules = await _unitOfWork.ClassSchedules.FindAsync(s => s.InstructorId == instructorId);
+            if (schedules == null || !schedules.Any())
+                return new List<ClassScheduleResponseDto>();
+
+            var dtos = new List<ClassScheduleResponseDto>();
+            foreach (var schedule in schedules)
+            {
+                dtos.Add(await MapToDtoCompleteAsync(schedule));
+            }
+
+            return dtos.OrderBy(s => s.StartTime);
+        }
+
+        private async Task<Address> GetAddressOrThrowAsync(int addressId)
+        {
+            var address = await _unitOfWork.Addresses.GetByIdAsync(addressId);
+            if (address == null)
+            {
+                throw new Exception("Address not found");
+            }
+
+            return address;
         }
     }
 }

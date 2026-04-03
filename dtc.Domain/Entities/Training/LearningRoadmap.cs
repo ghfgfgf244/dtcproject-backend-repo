@@ -4,8 +4,8 @@
     {
         public Guid Id { get; private set; }
         public Guid CourseId { get; private set; }
-        public string Title { get; private set; }
-        public string Description { get; private set; }
+        public string Title { get; private set; } = string.Empty;
+        public string Description { get; private set; } = string.Empty;
         public int OrderNo { get; private set; }
 
         protected LearningRoadmap() { }

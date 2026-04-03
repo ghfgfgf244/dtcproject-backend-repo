@@ -1,13 +1,8 @@
-using dtc.Application.Features.Notifications.Interfaces;
 using dtc.Application.Features.Notifications.DTOs;
 using dtc.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using dtc.Application.Features.Notifications.Interfaces;
-using dtc.Application.Features.Notifications.DTOs;
-using dtc.Application.Features.Notifications.Interfaces;
-using dtc.Application.Features.Notifications.DTOs;
 
 namespace dtc.Application.Features.Notifications.Interfaces
 {

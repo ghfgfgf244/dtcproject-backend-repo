@@ -139,6 +139,12 @@ namespace dtc.Domain.Entities
         Cancelled = 4
     }
 
+    public enum ClassType
+    {
+        Theory = 1,
+        Practice = 2
+    }
+
     public enum ExamBatchStatus
     {
         [Description("Chưa mở đăng ký")]

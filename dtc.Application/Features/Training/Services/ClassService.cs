@@ -25,7 +25,13 @@ namespace dtc.Application.Features.Training.Services
             if (term == null)
                 throw new Exception("Term not found");
 
-            var newClass = new Class(request.TermId, request.InstructorId, request.ClassName, request.MaxStudents, adminId);
+            var newClass = new Class(
+                request.TermId,
+                request.InstructorId,
+                request.ClassName,
+                request.ClassType,
+                request.MaxStudents,
+                adminId);
             
             await _unitOfWork.Classes.AddAsync(newClass);
             await _unitOfWork.SaveChangesAsync();
@@ -39,7 +45,7 @@ namespace dtc.Application.Features.Training.Services
             if (existingClass == null)
                 throw new Exception("Class not found");
 
-            var changed = existingClass.UpdateInfo(request.ClassName, request.MaxStudents, adminId);
+            var changed = existingClass.UpdateInfo(request.ClassName, request.ClassType, request.MaxStudents, adminId);
             
             if (request.Status.HasValue && existingClass.Status != request.Status.Value)
             {
@@ -158,9 +164,54 @@ namespace dtc.Application.Features.Training.Services
                 ClassName = classEntity.ClassName,
                 CurrentStudents = classEntity.CurrentStudents,
                 MaxStudents = classEntity.MaxStudents,
+                ClassType = classEntity.ClassType.ToString(),
                 Status = classEntity.Status.ToString(),
                 CreatedAt = classEntity.CreatedAt
             };
+        }
+
+        public async Task<IEnumerable<ClassResponseDto>> GetClassesByInstructorAsync(Guid instructorId)
+        {
+            var classes = await _unitOfWork.Classes.FindAsync(c => c.InstructorId == instructorId);
+            return classes.Select(MapToDto);
+        }
+
+        public async Task<IEnumerable<ClassStudentResponseDto>> GetClassStudentsAsync(Guid classId)
+        {
+            var enrollment = await _unitOfWork.ClassStudents.FindAsync(cs => cs.ClassId == classId);
+            if (!enrollment.Any()) return new List<ClassStudentResponseDto>();
+
+            var studentIds = enrollment.Select(e => e.StudentId).ToList();
+            var students = await _unitOfWork.Users.FindAsync(u => studentIds.Contains(u.Id));
+            
+            // Get driving distance records
+            var distances = await _unitOfWork.StudentDrivingDistances.FindAsync(d => studentIds.Contains(d.StudentId));
+            var distanceMap = distances.ToDictionary(d => d.StudentId);
+
+            var result = new List<ClassStudentResponseDto>();
+            foreach (var student in students)
+            {
+                distanceMap.TryGetValue(student.Id, out var dist);
+                result.Add(new ClassStudentResponseDto
+                {
+                    Id = student.Id,
+                    FullName = student.FullName,
+                    Email = student.Email.Value,
+                    Phone = student.Phone?.Value ?? "",
+                    AvatarUrl = student.AvatarUrl,
+                    IsActive = student.IsActive,
+                    LastLoginAt = student.LastLoginAt,
+                    Roles = new List<string> { student.RoleId.ToString() },
+                    
+                    MorningDistanceKm = dist?.MorningDistanceKm ?? 0,
+                    EveningDistanceKm = dist?.EveningDistanceKm ?? 0,
+                    MaxMorningDistanceKm = dist?.MaxMorningDistanceKm ?? 0,
+                    MaxEveningDistanceKm = dist?.MaxEveningDistanceKm ?? 0,
+                    DistanceRecordId = dist?.Id
+                });
+            }
+
+            return result;
         }
     }
 }

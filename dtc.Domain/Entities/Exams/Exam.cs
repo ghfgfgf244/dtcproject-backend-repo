@@ -10,6 +10,7 @@ namespace dtc.Domain.Entities.Exams
     {
         public Guid ExamBatchId { get; private set; }
         public Guid CourseId { get; private set; }
+        public int AddressId { get; private set; }
         public string ExamName { get; private set; } = default!;
         public DateTime ExamDate { get; private set; }
         public ExamType ExamType { get; private set; }
@@ -25,6 +26,7 @@ namespace dtc.Domain.Entities.Exams
         public Exam(
             Guid examBatchId,
             Guid courseId,
+            int addressId,
             string name,
             DateTime examDate,
             ExamType examType,
@@ -38,6 +40,9 @@ namespace dtc.Domain.Entities.Exams
 
             if (courseId == Guid.Empty)
                 throw new ArgumentException("CourseId is required");
+
+            if (addressId <= 0)
+                throw new ArgumentException("AddressId is required");
 
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("ExamName is required");
@@ -54,6 +59,7 @@ namespace dtc.Domain.Entities.Exams
             Id = Guid.NewGuid();
             ExamBatchId = examBatchId;
             CourseId = courseId;
+            AddressId = addressId;
             ExamName = name.Trim();
             ExamDate = examDate;
             ExamType = examType;
@@ -69,8 +75,8 @@ namespace dtc.Domain.Entities.Exams
 
         public void Schedule(DateTime examDate, Guid? updatedBy = null)
         {
-            if (Status != ExamStatus.Draft)
-                throw new InvalidOperationException("Only draft exam can be scheduled");
+            if (Status != ExamStatus.Draft && Status != ExamStatus.Scheduled)
+                throw new InvalidOperationException("Only draft or scheduled exam can be scheduled");
 
             ExamDate = examDate;
             Status = ExamStatus.Scheduled;
@@ -110,6 +116,7 @@ namespace dtc.Domain.Entities.Exams
         
         public bool UpdateInfo(
             string? name, 
+            int? addressId,
             int? durationMinutes,
             ExamType? examType,
             Guid? updatedBy = null)
@@ -119,6 +126,15 @@ namespace dtc.Domain.Entities.Exams
             if (!string.IsNullOrWhiteSpace(name) && ExamName != name.Trim())
             {
                 ExamName = name.Trim();
+                changed = true;
+            }
+
+            if (addressId.HasValue && AddressId != addressId.Value)
+            {
+                if (addressId.Value <= 0)
+                    throw new ArgumentException("AddressId must be greater than 0");
+
+                AddressId = addressId.Value;
                 changed = true;
             }
 

@@ -17,7 +17,7 @@ namespace dtc.Infrastructure.Persistence.Seeding
             SetBaseFields(
                 new Blog(
                     title: "Kinh nghiem hoc lai xe trong thanh pho",
-                    categoryId: 1,
+                    categoryId: SeedIds.CategoryA,
                     content: "Tong hop kinh nghiem giu khoang cach, vao bai va xu ly tinh huong giao thong do thi.",
                     createdBy: SeedIds.UserA,
                     summary: "Mau bai viet gioi thieu kinh nghiem hoc lai xe.",
@@ -28,7 +28,7 @@ namespace dtc.Infrastructure.Persistence.Seeding
             SetBaseFields(
                 new Blog(
                     title: "Checklist truoc ngay thi sat hach",
-                    categoryId: 2,
+                    categoryId: SeedIds.CategoryB,
                     content: "Kiem tra ho so, lich thi, suc khoe va thoi gian co mat tai trung tam truoc ky thi.",
                     createdBy: SeedIds.UserA,
                     summary: "Mau bai viet nhac viec truoc ky thi.",

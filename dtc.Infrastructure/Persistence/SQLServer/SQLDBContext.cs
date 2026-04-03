@@ -346,6 +346,10 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                 e.Property(x => x.ClassName).HasMaxLength(255).IsRequired();
                 e.Property(x => x.CurrentStudents);
                 e.Property(x => x.MaxStudents);
+                e.Property(x => x.ClassType)
+                    .HasConversion<string>()
+                    .HasMaxLength(50)
+                    .IsRequired();
                 
                 e.Property(x => x.Status)
                     .HasConversion<string>()
@@ -390,7 +394,7 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                 e.ToTable("ClassSchedules");
                 e.HasKey(x => x.Id);
 
-                e.Property(x => x.Location).HasMaxLength(255);
+                e.Property(x => x.AddressId).IsRequired();
 
                 e.HasOne<Class>()
                     .WithMany()
@@ -520,6 +524,7 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
 
                 e.Property(x => x.ExamName).HasMaxLength(255);
                 e.Property(x => x.ExamDate);
+                e.Property(x => x.AddressId).IsRequired();
                 
                 e.Property(x => x.ExamType)
                     .HasConversion<string>()

@@ -32,6 +32,8 @@ namespace dtc.Application.Features.Exams.DTOs
         public DateTime? RegistrationStartDate { get; set; }
         public DateTime? RegistrationEndDate { get; set; }
         public DateTime? ExamStartDate { get; set; }
+        public int? MaxCandidates { get; set; }
+        public ExamBatchStatus? Status { get; set; }
     }
 
     public class UpdateExamBatchStatusRequestDto

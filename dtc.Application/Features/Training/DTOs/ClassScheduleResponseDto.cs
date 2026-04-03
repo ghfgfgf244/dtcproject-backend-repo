@@ -13,6 +13,8 @@ namespace dtc.Application.Features.Training.DTOs
         
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
+        public int AddressId { get; set; }
+        public string AddressName { get; set; } = string.Empty;
         public string Location { get; set; } = string.Empty;
         
         public DateTime CreatedAt { get; set; }

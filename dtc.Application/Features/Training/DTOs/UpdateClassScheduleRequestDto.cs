@@ -11,8 +11,7 @@ namespace dtc.Application.Features.Training.DTOs
         [Required]
         public DateTime EndTime { get; set; }
 
-        [MaxLength(255)]
-        public string? Location { get; set; }
+        public int? AddressId { get; set; }
         
         public Guid? InstructorId { get; set; }
     }

@@ -18,5 +18,7 @@ namespace dtc.Application.Features.Exams.Interfaces
         Task<object> GetExamResultsAsync(Guid examId);
         Task<bool> UpdateExamResultAsync(Guid resultId, UpdateExamResultRequestDto request, Guid adminId);
         Task<bool> EnterBulkExamResultsAsync(BulkExamResultRequestDto request, Guid adminId);
+        Task<object> GetMyExamResultsAsync(Guid studentId);
+        Task<IEnumerable<ExamResponseDto>> GetMyExamsAsync(Guid studentId);
     }
 }

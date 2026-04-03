@@ -19,9 +19,9 @@ namespace dtc.API.Controllers
 
         [HttpPost]
         [Authorize(Roles = "Student")]
-        public async Task<IActionResult> RegisterCourse([FromBody] RegisterCourseRequestDto request)
+        public async Task<IActionResult> RegisterCourse([FromForm] RegisterCourseRequestDto request)
         {
-            var studentId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var studentId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _registrationService.RegisterCourseAsync(request, studentId);
@@ -37,7 +37,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> CancelRegistration(Guid id, [FromBody] CancelRegistrationRequestDto request)
         {
-            var studentId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var studentId = await GetInternalUserIdAsync();
             try
             {
                 await _registrationService.CancelRegistrationAsync(id, request.Reason, studentId);
@@ -69,7 +69,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> GetMyRegistrations()
         {
-            var studentId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var studentId = await GetInternalUserIdAsync();
             var response = await _registrationService.GetMyRegistrationsAsync(studentId);
             return Ok(response);
         }

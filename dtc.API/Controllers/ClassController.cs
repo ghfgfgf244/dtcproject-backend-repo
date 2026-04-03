@@ -117,5 +117,22 @@ namespace dtc.API.Controllers
                 return Fail(ex.Message);
             }
         }
+
+        [HttpGet("teaching")]
+        [Authorize(Roles = "Instructor,Admin,TrainingManager")]
+        public async Task<IActionResult> GetTeachingClasses()
+        {
+            var instructorId = await GetInternalUserIdAsync();
+            var response = await _classService.GetClassesByInstructorAsync(instructorId);
+            return Ok(response);
+        }
+
+        [HttpGet("{id}/students")]
+        [Authorize(Roles = "Instructor,Admin,TrainingManager")]
+        public async Task<IActionResult> GetClassStudents(Guid id)
+        {
+            var response = await _classService.GetClassStudentsAsync(id);
+            return Ok(response);
+        }
     }
 }

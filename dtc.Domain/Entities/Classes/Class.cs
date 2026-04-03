@@ -10,9 +10,9 @@ namespace dtc.Domain.Entities.Classes
         public Guid InstructorId { get; private set; }
 
         public string ClassName { get; private set; } = default!;
-
         public int CurrentStudents { get; private set; }
         public int MaxStudents { get; set; }
+        public ClassType ClassType { get; private set; }
         public ClassStatus Status { get; private set; }
 
         protected Class() { }
@@ -24,6 +24,7 @@ namespace dtc.Domain.Entities.Classes
             Guid termId,
             Guid instructorId,
             string className,
+            ClassType classType,
             int maxStudents,
             Guid? createdBy = null)
         {
@@ -33,6 +34,7 @@ namespace dtc.Domain.Entities.Classes
                 throw new ArgumentException("InstructorId is required");
 
             SetName(className);
+            SetClassType(classType);
             SetMaxStudents(maxStudents);
 
             TermId = termId;
@@ -91,6 +93,7 @@ namespace dtc.Domain.Entities.Classes
 
         public bool UpdateInfo(
             string? className,
+            ClassType? classType,
             int? maxStudents,
             Guid? updatedBy = null)
         {
@@ -100,6 +103,12 @@ namespace dtc.Domain.Entities.Classes
                 ClassName != className.Trim())
             {
                 ClassName = className.Trim();
+                changed = true;
+            }
+
+            if (classType.HasValue && classType.Value != ClassType)
+            {
+                SetClassType(classType.Value);
                 changed = true;
             }
 
@@ -156,6 +165,14 @@ namespace dtc.Domain.Entities.Classes
                 throw new ArgumentException("MaxStudents must be greater than 0");
 
             MaxStudents = max;
+        }
+
+        private void SetClassType(ClassType classType)
+        {
+            if (!Enum.IsDefined(typeof(ClassType), classType))
+                throw new ArgumentException("ClassType is invalid");
+
+            ClassType = classType;
         }
     }
 }

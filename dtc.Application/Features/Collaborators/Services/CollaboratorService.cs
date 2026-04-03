@@ -56,7 +56,7 @@ namespace dtc.Application.Features.Collaborators.Services
         public async Task<ReferralCodeResponseDto?> GenerateReferralCodeAsync(Guid collaboratorId, string code)
         {
             var existing = await _unitOfWork.ReferralCodes.FindAsync(c => c.Code == code.Trim().ToUpper());
-            if (existing.Any()) throw new Exception("Referral code already exists.");
+            if (existing.Any()) throw new InvalidOperationException("Referral code already exists.");
 
             var newCode = new ReferralCode(code, collaboratorId, collaboratorId);
             await _unitOfWork.ReferralCodes.AddAsync(newCode);
@@ -87,7 +87,7 @@ namespace dtc.Application.Features.Collaborators.Services
         {
             var codes = await _unitOfWork.ReferralCodes.FindAsync(c => c.CollaboratorId == collaboratorId);
             var code = codes.FirstOrDefault();
-            if (code == null) throw new Exception("No referral code found for this collaborator.");
+            if (code == null) throw new KeyNotFoundException("No referral code found for this collaborator.");
 
             var referrals = await _unitOfWork.ReferralRegistrations.FindAsync(r => r.ReferralCodeId == code.Id);
             var studentIds = referrals.Select(r => r.StudentId).ToList();

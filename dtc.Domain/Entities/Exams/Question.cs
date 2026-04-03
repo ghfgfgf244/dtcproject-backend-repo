@@ -3,7 +3,7 @@
     public class Question
     {
         public int Id { get; private set; }
-        public string Content { get; private set; }
+        public string Content { get; private set; } = string.Empty;
         public string? AnswerA { get; private set; }
         public string? AnswerB { get; private set; }
         public string? AnswerC { get; private set; }

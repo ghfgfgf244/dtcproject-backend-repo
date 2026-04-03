@@ -18,5 +18,6 @@ namespace dtc.Application.Features.Users.Interfaces
         Task AddStudentRoleAsync(Guid userId);
         Task UpdateUserRolesAsync(Guid targetUserId, UpdateUserRolesRequestDto request);
         Task ApplyForStaffAsync(Guid userId, ApplyStaffRequestDto request);
+        Task DeleteUserAsync(Guid targetUserId);
     }
 }

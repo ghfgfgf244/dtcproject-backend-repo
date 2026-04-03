@@ -65,5 +65,14 @@ namespace dtc.API.Controllers
             var response = await _attendanceService.GetStudentAttendanceSummaryAsync(studentId, classId);
             return Ok(response);
         }
+
+        [HttpGet("me")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetMyAttendance()
+        {
+            var studentId = await GetInternalUserIdAsync();
+            var response = await _attendanceService.GetMyAttendanceReportAsync(studentId);
+            return Ok(response);
+        }
     }
 }

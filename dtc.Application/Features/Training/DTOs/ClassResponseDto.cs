@@ -9,6 +9,7 @@ namespace dtc.Application.Features.Training.DTOs
         public string ClassName { get; set; } = string.Empty;
         public int CurrentStudents { get; set; }
         public int MaxStudents { get; set; }
+        public string ClassType { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
     }
