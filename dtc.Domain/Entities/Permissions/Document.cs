@@ -6,12 +6,12 @@ namespace dtc.Domain.Entities.Permissions
         public Guid UserId { get; private set; }
         
         // Cloudinary specific fields
-        public string ProviderPublicId { get; private set; } // e.g. "user_docs/id_123"
-        public string Version { get; private set; }          // e.g. "167890123"
-        public string ResourceType { get; private set; }     // "image", "raw", or "video"
+        public string ProviderPublicId { get; private set; } = string.Empty; // e.g. "user_docs/id_123"
+        public string Version { get; private set; } = string.Empty;          // e.g. "167890123"
+        public string ResourceType { get; private set; } = string.Empty;     // "image", "raw", or "video"
         
-        public string FileName { get; private set; }         // Original name (e.g. "cccd.pdf")
-        public string Extension { get; private set; }        // .pdf, .jpg, .png
+        public string FileName { get; private set; } = string.Empty;         // Original name (e.g. "cccd.pdf")
+        public string Extension { get; private set; } = string.Empty;        // .pdf, .jpg, .png
         public int Size { get; private set; }               // Byte
         
         public bool IsVerified { get; private set; }
@@ -129,4 +129,4 @@ namespace dtc.Domain.Entities.Permissions
             IsVerified = false;
         }
     }
-}
+}

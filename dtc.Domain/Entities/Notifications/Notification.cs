@@ -10,13 +10,11 @@ namespace dtc.Domain.Entities.Notifications
     /// </summary>
     public class Notification : BaseEntity
     {
-        public string Title { get; private set; }
-        public string Content { get; private set; }
+        public string Title { get; private set; } = string.Empty;
+        public string Content { get; private set; } = string.Empty;
         public NotificationType Type { get; private set; }
         public Guid? CenterId { get; private set; }
-
-        private readonly List<UserRole> _targetRoles = new();
-        public IReadOnlyCollection<UserRole> TargetRoles => _targetRoles.AsReadOnly();
+        public List<UserRole> TargetRoles { get; private set; } = new();
 
         protected Notification() { }
 
@@ -43,7 +41,7 @@ namespace dtc.Domain.Entities.Notifications
             if (target != null)
             {
                 foreach (var role in target.Distinct())
-                    _targetRoles.Add(role);
+                    TargetRoles.Add(role);
             }
 
             SetCreated(createdBy);
@@ -87,9 +85,9 @@ namespace dtc.Domain.Entities.Notifications
 
             if (targetRoles != null)
             {
-                _targetRoles.Clear();
+                TargetRoles.Clear();
                 foreach (var role in targetRoles.Distinct())
-                    _targetRoles.Add(role);
+                    TargetRoles.Add(role);
                 changed = true;
             }
 
@@ -102,21 +100,21 @@ namespace dtc.Domain.Entities.Notifications
 
         public bool AddRole(UserRole role)
         {
-            if (_targetRoles.Contains(role))
+            if (TargetRoles.Contains(role))
                 return false;
 
-            _targetRoles.Add(role);
+            TargetRoles.Add(role);
             return true;
         }
 
         public void RemoveRole(UserRole role)
         {
-            _targetRoles.Remove(role);
+            TargetRoles.Remove(role);
         }
 
         public bool IsTargetFor(UserRole role)
         {
-            return _targetRoles.Count == 0 || _targetRoles.Contains(role);
+            return TargetRoles.Count == 0 || TargetRoles.Contains(role);
         }
     }
 }

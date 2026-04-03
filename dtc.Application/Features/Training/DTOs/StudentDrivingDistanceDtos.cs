@@ -6,7 +6,7 @@ namespace dtc.Application.Features.Training.DTOs
     {
         public Guid Id { get; set; }
         public Guid StudentId { get; set; }
-        public string StudentName { get; set; }
+        public string StudentName { get; set; } = string.Empty;
         public double MorningDistanceKm { get; set; }
         public double EveningDistanceKm { get; set; }
         public double MaxMorningDistanceKm { get; set; }

@@ -83,12 +83,21 @@ namespace dtc.API
             {
                 options.AddPolicy("AllowNextJs", policy =>
                 {
-                    policy.WithOrigins(
-                              "http://localhost:3000",
-                              "https://localhost:3000")
-                          .AllowAnyHeader()
-                          .AllowAnyMethod()
-                          .AllowCredentials();
+                    if (builder.Environment.IsDevelopment())
+                    {
+                        policy.AllowAnyOrigin()
+                              .AllowAnyHeader()
+                              .AllowAnyMethod();
+                    }
+                    else
+                    {
+                        policy.WithOrigins(
+                                  "http://localhost:3000",
+                                  "https://localhost:3000")
+                              .AllowAnyHeader()
+                              .AllowAnyMethod()
+                              .AllowCredentials();
+                    }
                 });
             });
 
@@ -110,8 +119,10 @@ namespace dtc.API
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-
-            app.UseHttpsRedirection();
+            else
+            {
+                app.UseHttpsRedirection();
+            }
 
             // Apply CORS before Auth — ORDER MATTERS
             app.UseCors("AllowNextJs");

@@ -24,6 +24,7 @@ namespace dtc.Tests.Features.Training
         private readonly Mock<IUnitOfWork> _unitOfWorkMock;
         private readonly Mock<INotificationService> _notificationServiceMock;
         private readonly Mock<IEmailService> _emailServiceMock;
+        private readonly Mock<dtc.Application.Interfaces.ICloudinaryService> _cloudinaryServiceMock;
 
         private readonly CourseRegistrationService _service;
 
@@ -32,8 +33,13 @@ namespace dtc.Tests.Features.Training
             _unitOfWorkMock = new Mock<IUnitOfWork>();
             _notificationServiceMock = new Mock<INotificationService>();
             _emailServiceMock = new Mock<IEmailService>();
+            _cloudinaryServiceMock = new Mock<dtc.Application.Interfaces.ICloudinaryService>();
 
-            _service = new CourseRegistrationService(_unitOfWorkMock.Object, _notificationServiceMock.Object, _emailServiceMock.Object);
+            _service = new CourseRegistrationService(
+                _unitOfWorkMock.Object, 
+                _notificationServiceMock.Object, 
+                _emailServiceMock.Object,
+                _cloudinaryServiceMock.Object);
         }
 
 

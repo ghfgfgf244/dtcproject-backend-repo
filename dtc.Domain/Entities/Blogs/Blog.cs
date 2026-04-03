@@ -4,7 +4,7 @@ public class Blog : BaseEntity
 {
     public string Title { get; private set; } = default!;
     public string? Avatar { get; private set; }
-    public int CategoryId { get; private set; }
+    public Guid CategoryId { get; private set; }
     public string? Summary { get; private set; }
     public string Content { get; private set; } = default!;
     public bool Status { get; private set; }   // true = published
@@ -16,7 +16,7 @@ public class Blog : BaseEntity
     // =========================
     public Blog(
         string title,
-        int categoryId,
+        Guid categoryId,
         string content,
         Guid? createdBy,
         string? summary = null,
@@ -39,7 +39,7 @@ public class Blog : BaseEntity
     // =========================
     public bool Update(
         string? title,
-        int? categoryId,
+        Guid? categoryId,
         string? content,
         string? summary,
         string? avatar,
@@ -53,7 +53,7 @@ public class Blog : BaseEntity
             changed = true;
         }
 
-        if (categoryId.HasValue && categoryId.Value > 0 && CategoryId != categoryId.Value)
+        if (categoryId.HasValue && categoryId.Value != Guid.Empty && CategoryId != categoryId.Value)
         {
             CategoryId = categoryId.Value;
             changed = true;
@@ -122,9 +122,9 @@ public class Blog : BaseEntity
         Content = content.Trim();
     }
 
-    private void SetCategory(int categoryId)
+    private void SetCategory(Guid categoryId)
     {
-        if (categoryId <= 0)
+        if (categoryId == Guid.Empty)
             throw new ArgumentException("CategoryId is invalid", nameof(categoryId));
 
         CategoryId = categoryId;

@@ -45,8 +45,14 @@ namespace dtc.Application.Features.Exams.Services
                 regStart: request.RegistrationStartDate,
                 regEnd: request.RegistrationEndDate,
                 examStart: request.ExamStartDate,
+                maxCandidates: request.MaxCandidates,
                 updatedBy: adminId
             );
+
+            if (request.Status.HasValue)
+            {
+                batch.ChangeStatus(request.Status.Value, adminId);
+            }
 
             await _unitOfWork.ExamBatches.UpdateAsync(batch);
             await _unitOfWork.SaveChangesAsync();
@@ -97,9 +103,9 @@ namespace dtc.Application.Features.Exams.Services
             return true;
         }
 
-        private async Task<ExamBatchResponseDto> MapToDtoAsync(ExamBatch batch)
+        private Task<ExamBatchResponseDto> MapToDtoAsync(ExamBatch batch)
         {
-            return new ExamBatchResponseDto
+            return Task.FromResult(new ExamBatchResponseDto
             {
                 Id = batch.Id,
                 BatchName = batch.BatchName,
@@ -110,7 +116,7 @@ namespace dtc.Application.Features.Exams.Services
                 MaxCandidates = batch.MaxCandidates,
                 Status = batch.Status,
                 CreatedAt = batch.CreatedAt
-            };
+            });
         }
     }
 }

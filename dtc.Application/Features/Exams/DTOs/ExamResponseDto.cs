@@ -8,7 +8,11 @@ namespace dtc.Application.Features.Exams.DTOs
     {
         public Guid Id { get; set; }
         public Guid ExamBatchId { get; set; }
+        public Guid CourseId { get; set; }
+        public int AddressId { get; set; }
+        public string AddressName { get; set; } = string.Empty;
         public string ExamName { get; set; } = string.Empty;
+        public ExamLevel? LicenseType { get; set; }
         public DateTime ExamDate { get; set; }
         public ExamType ExamType { get; set; }
         public int DurationMinutes { get; set; }

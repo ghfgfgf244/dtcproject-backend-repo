@@ -15,5 +15,9 @@ namespace dtc.Application.Features.Training.DTOs
         public string? Notes { get; set; }
 
         public string? ReferralCode { get; set; }
+
+        public Microsoft.AspNetCore.Http.IFormFile? Photo { get; set; }
+        public Microsoft.AspNetCore.Http.IFormFile? IdFront { get; set; }
+        public Microsoft.AspNetCore.Http.IFormFile? IdBack { get; set; }
     }
 }

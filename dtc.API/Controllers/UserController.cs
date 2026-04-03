@@ -174,5 +174,20 @@ namespace dtc.API.Controllers
                 return Fail(ex.Message);
             }
         }
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteUser(Guid id)
+        {
+            try
+            {
+                await _userService.DeleteUserAsync(id);
+                return NoContent("User soft-deleted successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
     }
 }

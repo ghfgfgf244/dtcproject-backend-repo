@@ -38,6 +38,30 @@ namespace dtc.API.Middlewares
                 await WriteResponseAsync(context, HttpStatusCode.Conflict,
                     "The resource was modified by another user. Please reload and try again.");
             }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Unauthorized access detected.");
+                await WriteResponseAsync(context, HttpStatusCode.Unauthorized,
+                    "Unauthorized.", ex.Message);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Requested resource was not found.");
+                await WriteResponseAsync(context, HttpStatusCode.NotFound,
+                    "The requested resource was not found.", ex.Message);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid request payload.");
+                await WriteResponseAsync(context, HttpStatusCode.BadRequest,
+                    "The request is invalid.", ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Business rule conflict detected.");
+                await WriteResponseAsync(context, HttpStatusCode.Conflict,
+                    "The requested operation conflicts with the current resource state.", ex.Message);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An unhandled exception occurred during the request.");

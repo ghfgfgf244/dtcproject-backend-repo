@@ -2,7 +2,7 @@
 
 public class ReferralCode : BaseEntity
 {
-    public string Code { get; private set; }
+    public string Code { get; private set; } = string.Empty;
     public Guid CollaboratorId { get; private set; }
 
     public int UsedCount { get; private set; }

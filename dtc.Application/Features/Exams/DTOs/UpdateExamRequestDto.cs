@@ -10,6 +10,9 @@ namespace dtc.Application.Features.Exams.DTOs
         [MaxLength(255)]
         public string? ExamName { get; set; }
 
+        [Range(1, int.MaxValue)]
+        public int? AddressId { get; set; }
+
         public DateTime? ExamDate { get; set; }
 
         public ExamType? ExamType { get; set; }

@@ -41,7 +41,7 @@ namespace dtc.API.Controllers
 
         // POST /api/Blog - Tạo bài post mới
         [HttpPost]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,Collaborator,EnrollmentManager")]
         public async Task<IActionResult> CreateBlog([FromBody] CreateBlogRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -58,7 +58,7 @@ namespace dtc.API.Controllers
 
         // PUT /api/Blog/{id} - Cập nhật bài post
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,Collaborator,EnrollmentManager")]
         public async Task<IActionResult> UpdateBlog(Guid id, [FromBody] UpdateBlogRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -75,7 +75,7 @@ namespace dtc.API.Controllers
 
         // DELETE /api/Blog/{id} - Xóa mềm bài post
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,Collaborator,EnrollmentManager")]
         public async Task<IActionResult> DeleteBlog(Guid id)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -92,7 +92,7 @@ namespace dtc.API.Controllers
 
         // PATCH /api/Blog/{id}/publish - Xuất bản bài post
         [HttpPatch("{id}/publish")]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,Collaborator,EnrollmentManager")]
         public async Task<IActionResult> PublishBlog(Guid id)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -109,7 +109,7 @@ namespace dtc.API.Controllers
 
         // PATCH /api/Blog/{id}/unpublish - Ẩn bài post
         [HttpPatch("{id}/unpublish")]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,Collaborator,EnrollmentManager")]
         public async Task<IActionResult> UnpublishBlog(Guid id)
         {
             var adminId = await GetInternalUserIdAsync();

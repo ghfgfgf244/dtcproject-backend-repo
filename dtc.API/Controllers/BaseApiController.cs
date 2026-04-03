@@ -29,16 +29,32 @@ namespace dtc.API.Controllers
             => base.NotFound(ApiResponse<object?>.NotFound(resource));
 
         protected IActionResult NoContent(string? message = null)
-            => base.Ok(ApiResponse<object?>.NoContent(message));
+            => base.NoContent();
 
         protected async Task<Guid> GetInternalUserIdAsync()
         {
-            var clerkId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(clerkId)) return Guid.Empty;
+            var userIdClaim = User.FindFirst("userid")?.Value
+                ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (Guid.TryParse(userIdClaim, out var userId))
+            {
+                return userId;
+            }
+
+            var clerkId = User.FindFirst("clerkid")?.Value;
+            if (string.IsNullOrEmpty(clerkId))
+            {
+                throw new UnauthorizedAccessException("Unable to resolve the current user from claims.");
+            }
 
             var userRepository = HttpContext.RequestServices.GetRequiredService<IUserRepository>();
             var user = await userRepository.FirstOrDefaultAsync(u => u.ClerkId == clerkId);
-            return user?.Id ?? Guid.Empty;
+            if (user == null)
+            {
+                throw new UnauthorizedAccessException("The authenticated user is not synced with the internal user store.");
+            }
+
+            return user.Id;
         }
 
         protected Guid? GetCurrentCenterId()

@@ -4,8 +4,8 @@
     {
         public Guid CourseId { get; private set; }
         public ResourceType ResourceType { get; private set; }
-        public string Title { get; private set; }
-        public string ResourceUrl { get; private set; }
+        public string Title { get; private set; } = string.Empty;
+        public string ResourceUrl { get; private set; } = string.Empty;
         public bool IsActive { get; private set; }
 
         protected ResourceLearning() { }

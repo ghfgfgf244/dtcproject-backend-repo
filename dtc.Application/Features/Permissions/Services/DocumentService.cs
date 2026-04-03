@@ -46,7 +46,7 @@ namespace dtc.Application.Features.Permissions.Services
         {
             var document = await _unitOfWork.Documents.GetByIdAsync(documentId);
             if (document == null || document.UserId != userId)
-                throw new Exception("Document not found or access denied.");
+                throw new UnauthorizedAccessException("Document not found or access denied.");
 
             document.ChangeFile(
                 request.ProviderPublicId, 
@@ -66,7 +66,7 @@ namespace dtc.Application.Features.Permissions.Services
         {
             var document = await _unitOfWork.Documents.GetByIdAsync(documentId);
             if (document == null || document.UserId != userId)
-                throw new Exception("Document not found or access denied.");
+                throw new UnauthorizedAccessException("Document not found or access denied.");
 
             await _unitOfWork.Documents.RemoveAsync(document);
             await _unitOfWork.SaveChangesAsync();
@@ -89,7 +89,7 @@ namespace dtc.Application.Features.Permissions.Services
         public async Task<DocumentResponseDto> GetDocumentByIdAsync(Guid documentId)
         {
             var document = await _unitOfWork.Documents.GetByIdAsync(documentId);
-            if (document == null) throw new Exception("Document not found.");
+            if (document == null) throw new KeyNotFoundException("Document not found.");
 
             return MapToDto(document);
         }
@@ -98,7 +98,7 @@ namespace dtc.Application.Features.Permissions.Services
         public async Task<bool> VerifyDocumentAsync(Guid documentId)
         {
             var document = await _unitOfWork.Documents.GetByIdAsync(documentId);
-            if (document == null) throw new Exception("Document not found.");
+            if (document == null) throw new KeyNotFoundException("Document not found.");
 
             document.Verify();
             await _unitOfWork.Documents.UpdateAsync(document);

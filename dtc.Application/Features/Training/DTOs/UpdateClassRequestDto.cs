@@ -11,6 +11,7 @@ namespace dtc.Application.Features.Training.DTOs
         [Range(1, int.MaxValue)]
         public int? MaxStudents { get; set; }
 
+        public ClassType? ClassType { get; set; }
         public ClassStatus? Status { get; set; }
     }
 }

@@ -13,5 +13,7 @@ namespace dtc.Application.Features.Training.Interfaces
         Task<object> GetAttendanceReportByClassAsync(Guid classId);
         Task<IEnumerable<AttendanceResponseDto>> GetAttendanceByStudentAsync(Guid studentId);
         Task<object> GetStudentAttendanceSummaryAsync(Guid studentId, Guid? classId = null);
+        Task<IEnumerable<AttendanceResponseDto>> GetMyAttendanceAsync(Guid studentId);
+        Task<StudentAttendanceReportDto> GetMyAttendanceReportAsync(Guid studentId);
     }
 }

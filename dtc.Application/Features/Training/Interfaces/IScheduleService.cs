@@ -14,5 +14,7 @@ namespace dtc.Application.Features.Training.Interfaces
         Task<ClassScheduleResponseDto> GetScheduleDetailAsync(Guid id);
         Task<IEnumerable<ClassScheduleResponseDto>> GetSchedulesByClassAsync(Guid classId);
         Task<bool> AssignLocationAsync(Guid id, AssignLocationRequestDto request, Guid adminId);
+        Task<IEnumerable<ClassScheduleResponseDto>> GetMySchedulesAsync(Guid studentId);
+        Task<IEnumerable<ClassScheduleResponseDto>> GetTeachingScheduleAsync(Guid instructorId);
     }
 }

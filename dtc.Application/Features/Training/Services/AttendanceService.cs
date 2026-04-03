@@ -266,5 +266,87 @@ namespace dtc.Application.Features.Training.Services
                 AttendanceRate = rate
             };
         }
+
+        public async Task<IEnumerable<AttendanceResponseDto>> GetMyAttendanceAsync(Guid studentId)
+        {
+            var attendances = await _unitOfWork.Attendances.FindAsync(a => a.StudentId == studentId);
+            var dtos = new List<AttendanceResponseDto>();
+            
+            foreach (var a in attendances)
+            {
+                var schedule = await _unitOfWork.ClassSchedules.GetByIdAsync(a.ClassScheduleId);
+                var theClass = schedule != null ? await _unitOfWork.Classes.GetByIdAsync(schedule.ClassId) : null;
+                
+                dtos.Add(new AttendanceResponseDto
+                {
+                    Id = a.Id,
+                    ClassScheduleId = a.ClassScheduleId,
+                    StudentId = a.StudentId,
+                    IsPresent = a.IsPresent,
+                    CheckedAt = a.CheckedAt,
+                    SessionDate = schedule?.StartTime,
+                    SubjectName = theClass?.ClassName
+                });
+            }
+
+            return dtos.OrderByDescending(d => d.CheckedAt);
+        }
+
+        public async Task<StudentAttendanceReportDto> GetMyAttendanceReportAsync(Guid studentId)
+        {
+            var report = new StudentAttendanceReportDto();
+
+            // 1. Get all classes student is enrolled in
+            var enrollments = await _unitOfWork.ClassStudents.FindAsync(cs => cs.StudentId == studentId);
+            var classIds = enrollments.Select(e => e.ClassId).ToList();
+            if (!classIds.Any()) return report;
+
+            // 2. Get all schedules for these classes
+            var schedules = await _unitOfWork.ClassSchedules.FindAsync(s => classIds.Contains(s.ClassId));
+            var scheduleIds = schedules.Select(s => s.Id).ToList();
+
+            // 3. Get all attendance records for this student
+            var attendances = await _unitOfWork.Attendances.FindAsync(a => a.StudentId == studentId && scheduleIds.Contains(a.ClassScheduleId));
+            var attendanceMap = attendances.ToDictionary(a => a.ClassScheduleId);
+
+            // 4. Get metadata (Instructors and Classes)
+            var instructorIds = schedules.Select(s => s.InstructorId).Distinct().ToList();
+            var instructors = await _unitOfWork.Users.FindAsync(u => instructorIds.Contains(u.Id));
+            var instructorMap = instructors.ToDictionary(u => u.Id, u => u.FullName);
+
+            var classes = await _unitOfWork.Classes.FindAsync(c => classIds.Contains(c.Id));
+            var classMap = classes.ToDictionary(c => c.Id, c => c.ClassName);
+
+            // 5. Build session list
+            foreach (var s in schedules.OrderByDescending(s => s.StartTime))
+            {
+                var status = "Pending";
+                if (attendanceMap.TryGetValue(s.Id, out var att))
+                {
+                    status = att.IsPresent ? "Present" : "Absent";
+                }
+
+                report.Sessions.Add(new StudentAttendanceSessionDto
+                {
+                    ScheduleId = s.Id,
+                    Date = s.StartTime.Date,
+                    StartTime = s.StartTime.ToString("HH:mm"),
+                    EndTime = s.EndTime.ToString("HH:mm"),
+                    LessonName = classMap.GetValueOrDefault(s.ClassId, "Unknown Lesson"),
+                    InstructorName = instructorMap.GetValueOrDefault(s.InstructorId, "Unknown Instructor"),
+                    Status = status
+                });
+            }
+
+            // 6. Calculate summary
+            report.Summary.TotalSessions = schedules.Count();
+            report.Summary.PresentCount = attendances.Count(a => a.IsPresent);
+            report.Summary.AbsentCount = attendances.Count(a => !a.IsPresent);
+            report.Summary.AttendanceRate = report.Summary.TotalSessions > 0 
+                ? Math.Round(((double)report.Summary.PresentCount / report.Summary.TotalSessions) * 100, 2) 
+                : 0;
+
+            return report;
+        }
     }
 }
