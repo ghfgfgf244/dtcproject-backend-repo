@@ -10,6 +10,8 @@ namespace dtc.Application.Features.Location.DTOs
         public string Phone { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public bool IsActive { get; set; }
+        public int NumberOfClasses { get; set; }
+        public int MaxStudentPerClass { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 }

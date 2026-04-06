@@ -96,5 +96,13 @@ namespace dtc.API.Controllers
                 return NotFound("CourseRegistration");
             }
         }
+
+        [HttpGet("stats")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        public async Task<IActionResult> GetRegistrationStats()
+        {
+            var response = await _registrationService.GetRegistrationStatsAsync();
+            return Ok(response);
+        }
     }
 }

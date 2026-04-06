@@ -16,5 +16,8 @@ namespace dtc.Application.Features.Location.DTOs
         [EmailAddress]
         [MaxLength(255)]
         public string? Email { get; set; }
+
+        public int? NumberOfClasses { get; set; }
+        public int? MaxStudentPerClass { get; set; }
     }
 }

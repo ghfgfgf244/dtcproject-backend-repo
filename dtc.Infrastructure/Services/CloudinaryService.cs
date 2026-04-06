@@ -63,6 +63,7 @@ namespace dtc.Infrastructure.Services
             {
                 return _cloudinary.Api.UrlImgUp
                     .ResourceType(resourceType)
+                    .Secure(true)
                     .Version(version)
                     .BuildUrl(publicId);
             }

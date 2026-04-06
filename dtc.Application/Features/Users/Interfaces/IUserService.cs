@@ -16,8 +16,9 @@ namespace dtc.Application.Features.Users.Interfaces
         Task<IEnumerable<UserResponseDto>> GetUsersByRoleAsync(int roleId);
         Task<UserResponseDto> CreateUserAsync(CreateUserRequestDto request, Guid adminId);
         Task AddStudentRoleAsync(Guid userId);
-        Task UpdateUserRolesAsync(Guid targetUserId, UpdateUserRolesRequestDto request);
         Task ApplyForStaffAsync(Guid userId, ApplyStaffRequestDto request);
         Task DeleteUserAsync(Guid targetUserId);
+        Task UpdateUserRolesAsync(Guid targetUserId, UpdateUserRolesRequestDto request);
+        Task<UserStatsDto> GetUserStatsAsync();
     }
 }

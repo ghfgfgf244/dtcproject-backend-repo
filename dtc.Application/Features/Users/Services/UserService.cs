@@ -309,5 +309,19 @@ namespace dtc.Application.Features.Users.Services
             user.SoftDelete();
             await _unitOfWork.SaveChangesAsync();
         }
+
+        public async Task<UserStatsDto> GetUserStatsAsync()
+        {
+            var users = await _unitOfWork.Users.FindAsync(u => !u.IsDeleted);
+            
+            return new UserStatsDto
+            {
+                TotalUsers = users.Count(),
+                StaffCount = users.Count(u => u.RoleId == UserRole.TrainingManager || u.RoleId == UserRole.EnrollmentManager),
+                InstructorCount = users.Count(u => u.RoleId == UserRole.Instructor),
+                CollaboratorCount = users.Count(u => u.RoleId == UserRole.Collaborator),
+                StudentCount = users.Count(u => u.RoleId == UserRole.Student)
+            };
+        }
     }
 }

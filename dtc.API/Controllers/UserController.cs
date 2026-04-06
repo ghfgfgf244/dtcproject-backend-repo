@@ -159,6 +159,21 @@ namespace dtc.API.Controllers
             return Ok(users);
         }
 
+        [HttpGet("stats")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetUserStats()
+        {
+            try
+            {
+                var stats = await _userService.GetUserStatsAsync();
+                return Ok(stats);
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
         [HttpPut("{id}/toggle-status")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ToggleUserStatus(Guid id)

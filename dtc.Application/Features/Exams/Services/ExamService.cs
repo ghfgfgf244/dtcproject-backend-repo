@@ -270,8 +270,7 @@ namespace dtc.Application.Features.Exams.Services
             var exam = await _unitOfWork.Exams.GetByIdAsync(request.ExamId);
             if (exam == null) throw new KeyNotFoundException("Exam not found");
 
-            await _unitOfWork.BeginTransactionAsync();
-            try
+            var processedResults = await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
                 var studentIds = request.Results.Select(r => r.StudentId).Distinct().ToList();
                 var students = await _unitOfWork.Users.FindAsync(u => studentIds.Contains(u.Id));
@@ -302,20 +301,15 @@ namespace dtc.Application.Features.Exams.Services
                 }
 
                 await _unitOfWork.SaveChangesAsync();
-                await _unitOfWork.CommitTransactionAsync();
+                return processedResults;
+            });
 
-                foreach (var processed in processedResults)
-                {
-                    await NotifyStudentResultAsync(processed, exam);
-                }
-
-                return true;
-            }
-            catch
+            foreach (var processed in processedResults)
             {
-                await _unitOfWork.RollbackTransactionAsync();
-                throw;
+                await NotifyStudentResultAsync(processed, exam);
             }
+
+            return true;
         }
 
         public async Task<object> GetMyExamResultsAsync(Guid studentId)

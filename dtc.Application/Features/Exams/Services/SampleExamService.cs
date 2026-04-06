@@ -163,8 +163,7 @@ namespace dtc.Application.Features.Exams.Services
             if (foundQuestions.Count() != questionIds.Count)
                 throw new Exception("One or more questions not found");
 
-            await _unitOfWork.BeginTransactionAsync();
-            try
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
                 var sampleExam = new SampleExam(
                     courseId: request.CourseId,
@@ -187,15 +186,8 @@ namespace dtc.Application.Features.Exams.Services
                 await _unitOfWork.SampleExams.UpdateAsync(sampleExam);
 
                 await _unitOfWork.SaveChangesAsync();
-                await _unitOfWork.CommitTransactionAsync();
-
                 return MapToDto(sampleExam);
-            }
-            catch
-            {
-                await _unitOfWork.RollbackTransactionAsync();
-                throw;
-            }
+            });
         }
 
         public async Task<SampleTestResultResponseDto> DoSampleTestAsync(Guid sampleExamId, Guid studentId, SubmitSampleTestRequestDto request)

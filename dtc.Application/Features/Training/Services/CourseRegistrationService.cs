@@ -1,10 +1,10 @@
-using dtc.Application.Features.Training.Interfaces;
 using dtc.Application.Features.Training.DTOs;
 using dtc.Application.Features.Email.Interfaces;
 using dtc.Application.Features.Notifications.Interfaces;
+using dtc.Application.Features.Training.Interfaces;
 using dtc.Domain.Entities;
-using dtc.Domain.Entities.Terms;
 using dtc.Domain.Entities.Collaborators;
+using dtc.Domain.Entities.Terms;
 using dtc.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -40,14 +40,13 @@ namespace dtc.Application.Features.Training.Services
             if (course == null || !course.IsActive)
                 throw new Exception("Course not found or inactive");
 
-            await _unitOfWork.BeginTransactionAsync();
-            try
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                // Upload documents if any
+                // Upload documents with specific names for easy retrieval
                 var uploadedDocs = new List<dtc.Domain.Entities.Permissions.Document>();
-                if (request.Photo != null) uploadedDocs.Add(await UploadFileAsync(request.Photo, studentId, "image"));
-                if (request.IdFront != null) uploadedDocs.Add(await UploadFileAsync(request.IdFront, studentId, "image"));
-                if (request.IdBack != null) uploadedDocs.Add(await UploadFileAsync(request.IdBack, studentId, "image"));
+                if (request.Photo != null) uploadedDocs.Add(await UploadFileAsync(request.Photo, studentId, "image", "PROFILE_PHOTO"));
+                if (request.IdFront != null) uploadedDocs.Add(await UploadFileAsync(request.IdFront, studentId, "image", "ID_FRONT"));
+                if (request.IdBack != null) uploadedDocs.Add(await UploadFileAsync(request.IdBack, studentId, "image", "ID_BACK"));
 
                 foreach(var doc in uploadedDocs)
                 {
@@ -90,22 +89,17 @@ namespace dtc.Application.Features.Training.Services
                     catch { /* Referral logic side-effect should not fail registration */ }
                 }
 
-                await _unitOfWork.CommitTransactionAsync();
-                return MapToDto(registration);
-            }
-            catch
-            {
-                await _unitOfWork.RollbackTransactionAsync();
-                throw;
-            }
+                return await MapToDto(registration);
+            });
         }
 
-        private async Task<dtc.Domain.Entities.Permissions.Document> UploadFileAsync(IFormFile file, Guid studentId, string resourceType)
+        private async Task<dtc.Domain.Entities.Permissions.Document> UploadFileAsync(IFormFile file, Guid studentId, string resourceType, string? customName = null)
         {
+            var fileName = customName ?? file.FileName;
             using var stream = file.OpenReadStream();
             var (publicId, version) = await _cloudinaryService.UploadAsync(
                 stream, 
-                file.FileName, 
+                fileName, 
                 $"user_docs/{studentId}", 
                 resourceType);
 
@@ -114,7 +108,7 @@ namespace dtc.Application.Features.Training.Services
                 publicId,
                 version,
                 resourceType,
-                file.FileName,
+                fileName,
                 System.IO.Path.GetExtension(file.FileName),
                 (int)file.Length);
         }
@@ -202,13 +196,23 @@ namespace dtc.Application.Features.Training.Services
         public async Task<IEnumerable<CourseRegistrationResponseDto>> GetMyRegistrationsAsync(Guid studentId)
         {
             var registrations = await _unitOfWork.CourseRegistrations.FindAsync(r => r.UserId == studentId);
-            return registrations.Select(MapToDto);
+            var response = new List<CourseRegistrationResponseDto>();
+            foreach (var reg in registrations)
+            {
+                response.Add(await MapToDto(reg));
+            }
+            return response;
         }
 
         public async Task<IEnumerable<CourseRegistrationResponseDto>> GetAllRegistrationsAsync()
         {
             var registrations = await _unitOfWork.CourseRegistrations.GetAllAsync();
-            return registrations.Select(MapToDto);
+            var response = new List<CourseRegistrationResponseDto>();
+            foreach (var reg in registrations)
+            {
+                response.Add(await MapToDto(reg));
+            }
+            return response;
         }
 
         public async Task<CourseRegistrationResponseDto> GetRegistrationDetailAsync(Guid registrationId)
@@ -217,11 +221,38 @@ namespace dtc.Application.Features.Training.Services
             if (registration == null)
                 throw new Exception("Registration not found");
 
-            return MapToDto(registration);
+            return await MapToDto(registration);
         }
 
-        private CourseRegistrationResponseDto MapToDto(CourseRegistration registration)
+        public async Task<object> GetRegistrationStatsAsync()
         {
+            var now = DateTime.UtcNow;
+            var startOfMonth = new DateTime(now.Year, now.Month, 1);
+            
+            var allRegistrations = await _unitOfWork.CourseRegistrations.GetAllAsync();
+            var list = allRegistrations.ToList();
+
+            var newThisMonth = list.Count(r => r.RegistrationDate >= startOfMonth);
+            var pendingCount = list.Count(r => r.Status == CourseRegistrationStatus.Pending);
+
+            return new
+            {
+                NewRegistrationsThisMonth = newThisMonth,
+                PendingRegistrations = pendingCount
+            };
+        }
+
+        private async Task<CourseRegistrationResponseDto> MapToDto(CourseRegistration registration)
+        {
+            var user = await _unitOfWork.Users.GetByIdAsync(registration.UserId);
+            var course = await _unitOfWork.Courses.GetByIdAsync(registration.CourseId);
+            var docs = await _unitOfWork.Documents.FindAsync(d => d.UserId == registration.UserId);
+            var docList = docs.ToList();
+
+            string? photoUrl = GetDocUrl(docList, "PROFILE_PHOTO", new[] { "photo", "avatar", "profile" });
+            string? idFrontUrl = GetDocUrl(docList, "ID_FRONT", new[] { "front", "truoc" });
+            string? idBackUrl = GetDocUrl(docList, "ID_BACK", new[] { "back", "sau" });
+
             return new CourseRegistrationResponseDto
             {
                 Id = registration.Id,
@@ -231,8 +262,45 @@ namespace dtc.Application.Features.Training.Services
                 Status = registration.Status.ToString(),
                 TotalFee = registration.TotalFee,
                 Notes = registration.Notes,
-                CreatedAt = registration.CreatedAt
+                CreatedAt = registration.CreatedAt,
+                
+                // User Info
+                StudentName = user?.FullName ?? "N/A",
+                Email = user?.Email.Value ?? "N/A",
+                Phone = user?.Phone.Value ?? "N/A",
+
+                // Course Info
+                CourseName = course?.CourseName ?? "N/A",
+                LicenseTypeLabel = course?.LicenseType.ToString() ?? "N/A",
+
+                // Docs
+                PhotoUrl = photoUrl,
+                IdFrontUrl = idFrontUrl,
+                IdBackUrl = idBackUrl
             };
+        }
+
+        private string? GetDocUrl(List<dtc.Domain.Entities.Permissions.Document> docs, string exactName, string[] keywords)
+        {
+            // 1. Try exact match (new naming convention)
+            var doc = docs.OrderByDescending(d => d.CreatedAt).FirstOrDefault(d => d.FileName == exactName);
+            
+            // 2. Fallback to keyword search (for legacy or original filenames)
+            if (doc == null)
+            {
+                doc = docs.OrderByDescending(d => d.CreatedAt)
+                          .FirstOrDefault(d => keywords.Any(k => d.FileName.Contains(k, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            // 3. Last resort for Photo: take first image found if it's the PROFILE_PHOTO request
+            if (doc == null && exactName == "PROFILE_PHOTO")
+            {
+                doc = docs.OrderByDescending(d => d.CreatedAt)
+                          .FirstOrDefault(d => d.ResourceType == "image");
+            }
+
+            if (doc == null) return null;
+            return _cloudinaryService.GetUrl(doc.ProviderPublicId, doc.Version, doc.ResourceType);
         }
     }
 }

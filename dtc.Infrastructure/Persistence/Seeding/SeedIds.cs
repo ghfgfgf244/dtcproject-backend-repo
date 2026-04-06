@@ -60,6 +60,8 @@ namespace dtc.Infrastructure.Persistence.Seeding
         public static readonly Guid CategoryB = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee2");
         public static readonly Guid BlogA = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee3");
         public static readonly Guid BlogB = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee4");
+        public static readonly Guid CategoryC = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeef");
+        public static readonly Guid BlogC = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeef0");
         public static readonly Guid SampleExamA = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee5");
         public static readonly Guid SampleExamB = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee6");
         public static readonly Guid SampleExamQuestionA = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee7");

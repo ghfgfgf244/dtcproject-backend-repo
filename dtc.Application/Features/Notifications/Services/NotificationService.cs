@@ -90,6 +90,23 @@ namespace dtc.Application.Features.Notifications.Services
                 });
         }
 
+        public async Task<IEnumerable<NotificationResponseDto>> GetAllNotificationsAsync()
+        {
+            var allNotifications = await _unitOfWork.Notifications.FindAsync(n => true);
+            return allNotifications
+                .OrderByDescending(n => n.CreatedAt)
+                .Select(n => new NotificationResponseDto
+                {
+                    Id = n.Id,
+                    Title = n.Title,
+                    Content = n.Content,
+                    Type = n.Type.ToString(),
+                    CenterId = n.CenterId,
+                    IsRead = false, // Not relevant for admin-all view
+                    CreatedAt = n.CreatedAt
+                });
+        }
+
         public async Task MarkAsReadAsync(Guid notificationId, Guid userId)
         {
             // First check if a receipt already exists

@@ -12,7 +12,7 @@ using dtc.Domain.Interfaces.Training;
 
 namespace dtc.Domain.Interfaces
 {
-    public interface IUnitOfWork : IDisposable
+    public interface IUnitOfWork
     {
         // Blogs
         IBlogRepository Blogs { get; }
@@ -67,6 +67,9 @@ namespace dtc.Domain.Interfaces
         IStudentEvaluationRepository StudentEvaluations { get; }
 
         Task<int> SaveChangesAsync();
+        
+        Task ExecuteInTransactionAsync(Func<Task> action);
+        Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> action);
 
         Task BeginTransactionAsync();
         Task CommitTransactionAsync();

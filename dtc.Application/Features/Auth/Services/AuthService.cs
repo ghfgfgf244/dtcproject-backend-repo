@@ -100,7 +100,8 @@ namespace dtc.Application.Features.Auth.Services
                 UserId = user.Id,
                 Email = user.Email.Value,
                 FullName = user.FullName,
-                Token = ""
+                Token = "",
+                Role = user.RoleId.ToString()
             };
         }
 

@@ -29,7 +29,7 @@ namespace dtc.Application.Features.Training.Services
             await _unitOfWork.Terms.AddAsync(term);
             await _unitOfWork.SaveChangesAsync();
 
-            return MapToDto(term);
+            return await MapToDtoAsync(term);
         }
 
         public async Task<TermResponseDto> UpdateTermAsync(Guid termId, UpdateTermRequestDto request, Guid adminId)
@@ -38,20 +38,27 @@ namespace dtc.Application.Features.Training.Services
             if (term == null)
                 throw new Exception("Term not found");
 
-            var changed = term.UpdateInfo(request.TermName, request.StartDate, request.EndDate, adminId);
+            var changed = term.UpdateInfo(request.TermName, request.StartDate, request.EndDate, request.MaxStudents, request.IsActive, adminId);
             if (changed)
             {
                 await _unitOfWork.Terms.UpdateAsync(term);
                 await _unitOfWork.SaveChangesAsync();
             }
 
-            return MapToDto(term);
+            return await MapToDtoAsync(term);
         }
 
         public async Task<IEnumerable<TermResponseDto>> GetAllTermsAsync()
         {
-            var terms = await _unitOfWork.Terms.GetAllAsync();
-            return terms.Select(MapToDto);
+            var terms = (await _unitOfWork.Terms.GetAllAsync()).ToList();
+            var courses = (await _unitOfWork.Courses.GetAllAsync()).ToDictionary(c => c.Id, c => c.CourseName);
+
+            return terms.Select(term => {
+                var dto = MapToDtoInternal(term);
+                if (courses.TryGetValue(term.CourseId, out var courseName))
+                    dto.CourseName = courseName;
+                return dto;
+            });
         }
 
         public async Task<TermResponseDto> GetTermDetailAsync(Guid termId)
@@ -60,7 +67,7 @@ namespace dtc.Application.Features.Training.Services
             if (term == null)
                 throw new Exception("Term not found");
 
-            return MapToDto(term);
+            return await MapToDtoAsync(term);
         }
 
         public async Task<bool> DeleteTermAsync(Guid termId, Guid adminId)
@@ -82,7 +89,17 @@ namespace dtc.Application.Features.Training.Services
             return true;
         }
 
-        private TermResponseDto MapToDto(Term term)
+        private async Task<TermResponseDto> MapToDtoAsync(Term term)
+        {
+            var dto = MapToDtoInternal(term);
+            var course = await _unitOfWork.Courses.GetByIdAsync(term.CourseId);
+            if (course != null)
+                dto.CourseName = course.CourseName;
+            
+            return dto;
+        }
+
+        private TermResponseDto MapToDtoInternal(Term term)
         {
             return new TermResponseDto
             {
@@ -91,6 +108,9 @@ namespace dtc.Application.Features.Training.Services
                 TermName = term.TermName,
                 StartDate = term.StartDate,
                 EndDate = term.EndDate,
+                CurrentStudents = term.CurrentStudents,
+                MaxStudents = term.MaxStudents,
+                IsActive = term.IsActive,
                 CreatedAt = term.CreatedAt
             };
         }

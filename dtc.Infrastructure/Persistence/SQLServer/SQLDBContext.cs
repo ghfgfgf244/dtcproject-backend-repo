@@ -298,6 +298,9 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                 e.Property(x => x.TermName).HasMaxLength(255).IsRequired();
                 e.Property(x => x.StartDate);
                 e.Property(x => x.EndDate);
+                e.Property(x => x.CurrentStudents);
+                e.Property(x => x.MaxStudents);
+                e.Property(x => x.IsActive);
 
                 e.HasOne<Course>()
                     .WithMany()

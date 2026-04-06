@@ -56,6 +56,19 @@ namespace dtc.Application.Features.Training.Services
             if (request.DurationInWeeks.HasValue)
                 changed |= course.ChangeDuration(request.DurationInWeeks.Value, adminId);
 
+            if (request.IsActive.HasValue)
+            {
+                if (request.IsActive.Value)
+                {
+                    course.Activate(adminId);
+                }
+                else
+                {
+                    course.Deactivate(false, adminId);
+                }
+                changed = true;
+            }
+
             if (changed)
             {
                 await _unitOfWork.Courses.UpdateAsync(course);
@@ -72,10 +85,10 @@ namespace dtc.Application.Features.Training.Services
                 throw new Exception("Course not found");
 
             // Check if there are active classes for this course's terms
-            var terms = await _unitOfWork.Terms.FindAsync(t => t.CourseId == courseId);
+            var terms = await _unitOfWork.Terms.FindAsync(t => t.CourseId == courseId && !t.IsDeleted && t.IsActive);
             var termIds = terms.Select(t => t.Id).ToList();
             
-            var classes = await _unitOfWork.Classes.FindAsync(c => termIds.Contains(c.TermId));
+            var classes = await _unitOfWork.Classes.FindAsync(c => termIds.Contains(c.TermId) && !c.IsDeleted);
             var hasActiveClasses = classes.Any(c => c.Status == dtc.Domain.Entities.ClassStatus.InProgress);
 
             course.Deactivate(hasActiveClasses, adminId);

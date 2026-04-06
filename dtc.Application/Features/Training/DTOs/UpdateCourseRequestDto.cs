@@ -18,5 +18,7 @@ namespace dtc.Application.Features.Training.DTOs
 
         [Range(1, int.MaxValue)]
         public int? DurationInWeeks { get; set; }
+
+        public bool? IsActive { get; set; }
     }
 }

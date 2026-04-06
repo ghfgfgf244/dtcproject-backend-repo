@@ -20,10 +20,14 @@ namespace dtc.Application.Features.Blogs.Services
 
         public async Task<BlogResponseDto> CreateBlogAsync(CreateBlogRequestDto request, Guid adminId)
         {
-            var category = await _unitOfWork.Categories.GetByIdAsync(request.CategoryId);
+            var category = (await _unitOfWork.Categories.FindAsync(c => c.CategoryId == request.CategoryId)).FirstOrDefault();
             if (category == null) throw new KeyNotFoundException("Category not found");
 
             var blog = new Blog(request.Title, request.CategoryId, request.Content, adminId, request.Summary, request.Avatar);
+            if (request.Status)
+            {
+                blog.Publish(adminId);
+            }
             
             await _unitOfWork.Blogs.AddAsync(blog);
             await _unitOfWork.SaveChangesAsync();
@@ -38,7 +42,7 @@ namespace dtc.Application.Features.Blogs.Services
 
             if (request.CategoryId.HasValue)
             {
-                var category = await _unitOfWork.Categories.GetByIdAsync(request.CategoryId.Value);
+                var category = (await _unitOfWork.Categories.FindAsync(c => c.CategoryId == request.CategoryId.Value)).FirstOrDefault();
                 if (category == null) throw new KeyNotFoundException("Category not found");
             }
 
@@ -50,6 +54,18 @@ namespace dtc.Application.Features.Blogs.Services
                 content: request.Content,
                 updatedBy: adminId
             );
+
+            if (request.Status.HasValue)
+            {
+                if (request.Status.Value)
+                {
+                    blog.Publish(adminId);
+                }
+                else
+                {
+                    blog.Unpublish(adminId);
+                }
+            }
 
             await _unitOfWork.Blogs.UpdateAsync(blog);
             await _unitOfWork.SaveChangesAsync();
@@ -92,7 +108,15 @@ namespace dtc.Application.Features.Blogs.Services
             var dtos = new List<BlogResponseDto>();
             foreach (var blog in blogs.OrderByDescending(b => b.CreatedAt))
             {
-                dtos.Add(await MapToDtoAsync(blog));
+                try
+                {
+                    dtos.Add(await MapToDtoAsync(blog));
+                }
+                catch (Exception ex)
+                {
+                    // Defensive: skip items that fail to map instead of return 500
+                    Console.WriteLine($"Error mapping blog {blog.Id}: {ex.Message}");
+                }
             }
             return dtos;
         }
@@ -134,18 +158,33 @@ namespace dtc.Application.Features.Blogs.Services
 
         private async Task<BlogResponseDto> MapToDtoAsync(Blog blog)
         {
-            var user = await _unitOfWork.Users.GetByIdAsync(blog.CreatedBy);
+            dtc.Domain.Entities.Permissions.User? user = null;
+            if (blog.CreatedBy.HasValue && blog.CreatedBy.Value != Guid.Empty)
+            {
+                try
+                {
+                    user = await _unitOfWork.Users.GetByIdAsync(blog.CreatedBy.Value);
+                }
+                catch
+                {
+                    // Fallback to null if user lookup fails
+                }
+            }
+
+            var category = (await _unitOfWork.Categories.FindAsync(c => c.CategoryId == blog.CategoryId)).FirstOrDefault();
+
             return new BlogResponseDto
             {
                 Id = blog.Id,
                 Title = blog.Title,
                 Avatar = blog.Avatar,
                 CategoryId = blog.CategoryId,
+                CategoryName = category?.CategoryName,
                 Summary = blog.Summary,
                 Content = blog.Content,
                 Status = blog.Status,
                 CreatedAt = blog.CreatedAt,
-                AuthorName = user?.FullName ?? "Unknown",
+                AuthorName = user?.FullName ?? "Tác giả",
                 AuthorAvatar = user?.AvatarUrl
             };
         }

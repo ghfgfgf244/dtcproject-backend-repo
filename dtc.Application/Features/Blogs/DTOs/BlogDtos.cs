@@ -7,7 +7,8 @@ namespace dtc.Application.Features.Blogs.DTOs
         public Guid Id { get; set; }
         public string Title { get; set; } = string.Empty;
         public string? Avatar { get; set; }
-        public Guid CategoryId { get; set; }
+        public int CategoryId { get; set; }
+        public string? CategoryName { get; set; }
         public string? Summary { get; set; }
         public string Content { get; set; } = string.Empty;
         public bool Status { get; set; }
@@ -21,18 +22,20 @@ namespace dtc.Application.Features.Blogs.DTOs
     public class CreateBlogRequestDto
     {
         public string Title { get; set; } = string.Empty;
-        public Guid CategoryId { get; set; }
+        public int CategoryId { get; set; }
         public string Content { get; set; } = string.Empty;
         public string? Summary { get; set; }
         public string? Avatar { get; set; }
+        public bool Status { get; set; }
     }
 
     public class UpdateBlogRequestDto
     {
         public string? Title { get; set; }
-        public Guid? CategoryId { get; set; }
+        public int? CategoryId { get; set; }
         public string? Content { get; set; }
         public string? Summary { get; set; }
         public string? Avatar { get; set; }
+        public bool? Status { get; set; }
     }
 }
