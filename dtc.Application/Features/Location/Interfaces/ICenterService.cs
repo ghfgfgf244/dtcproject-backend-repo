@@ -11,6 +11,7 @@ namespace dtc.Application.Features.Location.Interfaces
         Task<CenterResponseDto> CreateCenterAsync(CreateCenterRequestDto request, Guid adminId);
         Task<CenterResponseDto> UpdateCenterAsync(Guid id, UpdateCenterRequestDto request, Guid adminId);
         Task<bool> DeactivateCenterAsync(Guid id, Guid adminId);
+        Task<bool> ActivateCenterAsync(Guid id, Guid adminId);
         Task<IEnumerable<CenterResponseDto>> GetAllCentersAsync();
         Task<CenterResponseDto> GetCenterDetailAsync(Guid id);
         Task<bool> AssignUsersToCenterAsync(Guid id, AssignUsersRequestDto request, Guid adminId);

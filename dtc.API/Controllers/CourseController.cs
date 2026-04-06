@@ -18,7 +18,7 @@ namespace dtc.API.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> CreateCourse([FromBody] CreateCourseRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -34,7 +34,7 @@ namespace dtc.API.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> UpdateCourse(Guid id, [FromBody] UpdateCourseRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -50,7 +50,7 @@ namespace dtc.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> DeactivateCourse(Guid id)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -66,7 +66,7 @@ namespace dtc.API.Controllers
         }
 
         [HttpGet("admin/all")]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> GetAllCourses()
         {
             var response = await _courseService.GetAllCoursesAsync();

@@ -63,6 +63,16 @@ namespace dtc.Application.Features.Location.Services
                 updatedBy: adminId
             );
 
+            // Update class limits if provided
+            if (request.NumberOfClasses.HasValue || request.MaxStudentPerClass.HasValue)
+            {
+                center.UpdateClassLimits(
+                    request.NumberOfClasses ?? center.NumberOfClasses,
+                    request.MaxStudentPerClass ?? center.MaxStudentPerClass,
+                    adminId);
+                isUpdated = true;
+            }
+
             if (isUpdated)
             {
                 await _unitOfWork.Centers.UpdateAsync(center);
@@ -77,17 +87,25 @@ namespace dtc.Application.Features.Location.Services
             var center = await _unitOfWork.Centers.GetByIdAsync(id);
             if (center == null) throw new Exception("Center not found");
 
-            // Check if there are active courses in this center before deleting
+            // Check for active courses before deactivating
             var courses = await _unitOfWork.Courses.FindAsync(c => c.CenterId == id && c.IsActive);
             if (courses != null && courses.Any())
-            {
-                throw new InvalidOperationException("Cannot delete center because there are active courses in this center.");
-            }
+                throw new InvalidOperationException("Không thể tạm dừng trung tâm vì đang có khóa học đang hoạt động.");
 
-            center.SoftDelete(adminId);
+            center.Deactivate(adminId);
             await _unitOfWork.Centers.UpdateAsync(center);
             await _unitOfWork.SaveChangesAsync();
+            return true;
+        }
 
+        public async Task<bool> ActivateCenterAsync(Guid id, Guid adminId)
+        {
+            var center = await _unitOfWork.Centers.GetByIdAsync(id);
+            if (center == null) throw new Exception("Center not found");
+
+            center.Activate(adminId);
+            await _unitOfWork.Centers.UpdateAsync(center);
+            await _unitOfWork.SaveChangesAsync();
             return true;
         }
 
@@ -149,6 +167,8 @@ namespace dtc.Application.Features.Location.Services
                 Phone = center.Phone.Value,
                 Email = center.Email.Value,
                 IsActive = center.IsActive,
+                NumberOfClasses = center.NumberOfClasses,
+                MaxStudentPerClass = center.MaxStudentPerClass,
                 CreatedAt = center.CreatedAt
             };
         }

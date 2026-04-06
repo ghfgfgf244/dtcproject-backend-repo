@@ -23,7 +23,7 @@ namespace dtc.Application.Features.Blogs.Services
             await _unitOfWork.Categories.AddAsync(category);
             await _unitOfWork.SaveChangesAsync();
 
-            return new CategoryResponseDto { Id = category.Id, Name = category.CategoryName, ParentCategoryId = category.ParentCategoryId, ShowMenuStatus = category.ShowMenuStatus };
+            return new CategoryResponseDto { Id = category.Id, CategoryId = category.CategoryId, Name = category.CategoryName, ParentCategoryId = category.ParentCategoryId, ShowMenuStatus = category.ShowMenuStatus };
         }
 
         public async Task<CategoryResponseDto> UpdateCategoryAsync(Guid id, UpdateCategoryRequestDto request)
@@ -35,7 +35,7 @@ namespace dtc.Application.Features.Blogs.Services
             await _unitOfWork.Categories.UpdateAsync(category);
             await _unitOfWork.SaveChangesAsync();
 
-            return new CategoryResponseDto { Id = category.Id, Name = category.CategoryName, ParentCategoryId = category.ParentCategoryId, ShowMenuStatus = category.ShowMenuStatus };
+            return new CategoryResponseDto { Id = category.Id, CategoryId = category.CategoryId, Name = category.CategoryName, ParentCategoryId = category.ParentCategoryId, ShowMenuStatus = category.ShowMenuStatus };
         }
 
         public async Task<bool> DeleteCategoryAsync(Guid id)
@@ -53,13 +53,13 @@ namespace dtc.Application.Features.Blogs.Services
             var category = await _unitOfWork.Categories.GetByIdAsync(id);
             if (category == null) throw new System.Exception("Category not found");
 
-            return new CategoryResponseDto { Id = category.Id, Name = category.CategoryName, ParentCategoryId = category.ParentCategoryId, ShowMenuStatus = category.ShowMenuStatus };
+            return new CategoryResponseDto { Id = category.Id, CategoryId = category.CategoryId, Name = category.CategoryName, ParentCategoryId = category.ParentCategoryId, ShowMenuStatus = category.ShowMenuStatus };
         }
 
         public async Task<IEnumerable<CategoryResponseDto>> GetAllCategoriesAsync()
         {
             var categories = await _unitOfWork.Categories.GetAllAsync();
-            return categories.Select(c => new CategoryResponseDto { Id = c.Id, Name = c.CategoryName, ParentCategoryId = c.ParentCategoryId, ShowMenuStatus = c.ShowMenuStatus });
+            return categories.Select(c => new CategoryResponseDto { Id = c.Id, CategoryId = c.CategoryId, Name = c.CategoryName, ParentCategoryId = c.ParentCategoryId, ShowMenuStatus = c.ShowMenuStatus });
         }
     }
 }

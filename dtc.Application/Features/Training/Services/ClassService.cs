@@ -22,8 +22,10 @@ namespace dtc.Application.Features.Training.Services
         public async Task<ClassResponseDto> CreateClassAsync(CreateClassRequestDto request, Guid adminId)
         {
             var term = await _unitOfWork.Terms.GetByIdAsync(request.TermId);
-            if (term == null)
-                throw new Exception("Term not found");
+            if (term == null || term.IsDeleted)
+                throw new KeyNotFoundException("Term not found");
+            if (!term.IsActive)
+                throw new InvalidOperationException("Cannot create a class in an inactive term.");
 
             var newClass = new Class(
                 request.TermId,
@@ -64,15 +66,15 @@ namespace dtc.Application.Features.Training.Services
 
         public async Task<IEnumerable<ClassResponseDto>> GetAllClassesAsync()
         {
-            var classes = await _unitOfWork.Classes.GetAllAsync();
+            var classes = await _unitOfWork.Classes.FindAsync(c => !c.IsDeleted);
             return classes.Select(MapToDto);
         }
 
         public async Task<ClassResponseDto> GetClassDetailAsync(Guid classId)
         {
             var existingClass = await _unitOfWork.Classes.GetByIdAsync(classId);
-            if (existingClass == null)
-                throw new Exception("Class not found");
+            if (existingClass == null || existingClass.IsDeleted)
+                throw new KeyNotFoundException("Class not found");
 
             return MapToDto(existingClass);
         }
@@ -119,8 +121,7 @@ namespace dtc.Application.Features.Training.Services
             if (distinctIds.Count > classEntity.MaxStudents)
                 throw new InvalidOperationException("Too many students for this class capacity.");
 
-            await _unitOfWork.BeginTransactionAsync();
-            try
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
                 var existing = await _unitOfWork.ClassStudents.FindAsync(cs => cs.ClassId == classId);
                 var existingSet = existing.Select(e => e.StudentId).ToHashSet();
@@ -145,14 +146,8 @@ namespace dtc.Application.Features.Training.Services
                 await _unitOfWork.Classes.UpdateAsync(classEntity);
 
                 await _unitOfWork.SaveChangesAsync();
-                await _unitOfWork.CommitTransactionAsync();
                 return true;
-            }
-            catch
-            {
-                await _unitOfWork.RollbackTransactionAsync();
-                throw;
-            }
+            });
         }
 
         private ClassResponseDto MapToDto(Class classEntity)
@@ -172,7 +167,7 @@ namespace dtc.Application.Features.Training.Services
 
         public async Task<IEnumerable<ClassResponseDto>> GetClassesByInstructorAsync(Guid instructorId)
         {
-            var classes = await _unitOfWork.Classes.FindAsync(c => c.InstructorId == instructorId);
+            var classes = await _unitOfWork.Classes.FindAsync(c => c.InstructorId == instructorId && !c.IsDeleted);
             return classes.Select(MapToDto);
         }
 

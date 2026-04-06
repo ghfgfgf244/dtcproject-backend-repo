@@ -19,7 +19,7 @@ namespace dtc.API.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> SendNotification([FromBody] SendNotificationRequestDto request)
         {
             if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var adminId))
@@ -49,6 +49,14 @@ namespace dtc.API.Controllers
                 .ToList();
 
             var notifications = await _notificationService.GetMyNotificationsAsync(userId, userRoleIds);
+            return Ok(notifications);
+        }
+
+        [HttpGet("all")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        public async Task<IActionResult> GetAllNotifications()
+        {
+            var notifications = await _notificationService.GetAllNotificationsAsync();
             return Ok(notifications);
         }
 

@@ -18,7 +18,7 @@ namespace dtc.API.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> CreateTerm([FromBody] CreateTermRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -34,7 +34,7 @@ namespace dtc.API.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> UpdateTerm(Guid id, [FromBody] UpdateTermRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -50,7 +50,7 @@ namespace dtc.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> DeleteTerm(Guid id)
         {
             var adminId = await GetInternalUserIdAsync();

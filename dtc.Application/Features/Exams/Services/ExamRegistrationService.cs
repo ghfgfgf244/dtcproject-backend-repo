@@ -125,8 +125,7 @@ namespace dtc.Application.Features.Exams.Services
             if (students.Count() != studentIds.Count)
                 throw new Exception("One or more students not found");
 
-            await _unitOfWork.BeginTransactionAsync();
-            try
+            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
                 var existingRegs = await _unitOfWork.ExamRegistrations.FindAsync(r => 
                     r.ExamBatchId == request.ExamBatchId && studentIds.Contains(r.StudentId));
@@ -150,14 +149,8 @@ namespace dtc.Application.Features.Exams.Services
                 }
 
                 await _unitOfWork.SaveChangesAsync();
-                await _unitOfWork.CommitTransactionAsync();
                 return true;
-            }
-            catch
-            {
-                await _unitOfWork.RollbackTransactionAsync();
-                throw;
-            }
+            });
         }
 
         private async Task<ExamRegistrationResponseDto> MapToDtoAsync(ExamRegistration reg)
