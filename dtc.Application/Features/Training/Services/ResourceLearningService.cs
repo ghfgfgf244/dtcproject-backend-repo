@@ -33,7 +33,7 @@ namespace dtc.Application.Features.Training.Services
             await _unitOfWork.ResourceLearnings.AddAsync(resource);
             await _unitOfWork.SaveChangesAsync();
 
-            return MapToDto(resource);
+            return await GetResourceLearningByIdAsync(resource.Id);
         }
 
         public async Task<ResourceLearningResponseDto> GetResourceLearningByIdAsync(Guid id)
@@ -41,13 +41,26 @@ namespace dtc.Application.Features.Training.Services
             var resource = await _unitOfWork.ResourceLearnings.GetByIdAsync(id);
             if (resource == null) throw new Exception("Resource learning not found");
 
-            return MapToDto(resource);
+            var course = await _unitOfWork.Courses.GetByIdAsync(resource.CourseId);
+            return MapToDto(resource, course?.CourseName ?? "Unknown Course");
         }
 
         public async Task<IEnumerable<ResourceLearningResponseDto>> GetResourceLearningsByCourseAsync(Guid courseId)
         {
+            var course = await _unitOfWork.Courses.GetByIdAsync(courseId);
+            var courseName = course?.CourseName ?? "Unknown Course";
+
             var resources = await _unitOfWork.ResourceLearnings.FindAsync(r => r.CourseId == courseId);
-            return resources.Select(MapToDto).ToList();
+            return resources.Select(r => MapToDto(r, courseName)).ToList();
+        }
+
+        public async Task<IEnumerable<ResourceLearningResponseDto>> GetAllResourceLearningsAsync()
+        {
+            var resources = await _unitOfWork.ResourceLearnings.GetAllAsync();
+            var courses = await _unitOfWork.Courses.GetAllAsync();
+            var courseMap = courses.ToDictionary(c => c.Id, c => c.CourseName);
+
+            return resources.Select(r => MapToDto(r, courseMap.GetValueOrDefault(r.CourseId, "Unknown Course"))).ToList();
         }
 
         public async Task<ResourceLearningResponseDto> UpdateResourceLearningAsync(Guid id, UpdateResourceLearningRequestDto request)
@@ -64,7 +77,7 @@ namespace dtc.Application.Features.Training.Services
             await _unitOfWork.ResourceLearnings.UpdateAsync(resource);
             await _unitOfWork.SaveChangesAsync();
 
-            return MapToDto(resource);
+            return await GetResourceLearningByIdAsync(id);
         }
 
         public async Task<bool> DeleteResourceLearningAsync(Guid id)
@@ -80,12 +93,13 @@ namespace dtc.Application.Features.Training.Services
             return true;
         }
 
-        private ResourceLearningResponseDto MapToDto(ResourceLearning resource)
+        private ResourceLearningResponseDto MapToDto(ResourceLearning resource, string courseName = "Unknown Course")
         {
             return new ResourceLearningResponseDto
             {
                 Id = resource.Id,
                 CourseId = resource.CourseId,
+                CourseName = courseName,
                 ResourceType = resource.ResourceType,
                 Title = resource.Title,
                 ResourceUrl = resource.ResourceUrl,

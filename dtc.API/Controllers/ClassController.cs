@@ -134,5 +134,45 @@ namespace dtc.API.Controllers
             var response = await _classService.GetClassStudentsAsync(id);
             return Ok(response);
         }
+
+        [HttpGet("{id}/available-students")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        public async Task<IActionResult> GetAvailableStudents(Guid id)
+        {
+            var response = await _classService.GetAvailableStudentsAsync(id);
+            return Ok(response);
+        }
+
+        [HttpDelete("{id}/students/{studentId}")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        public async Task<IActionResult> RemoveStudentFromClass(Guid id, Guid studentId)
+        {
+            var adminId = await GetInternalUserIdAsync();
+            try
+            {
+                await _classService.RemoveStudentFromClassAsync(id, studentId, adminId);
+                return NoContent("Student removed successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpPost("auto-assign")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> AutoAssignClasses([FromBody] AutoAssignClassesRequestDto request)
+        {
+            var adminId = await GetInternalUserIdAsync();
+            try
+            {
+                var response = await _classService.AutoAssignClassesAsync(request, adminId);
+                return Ok(response, response.Message);
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
     }
 }

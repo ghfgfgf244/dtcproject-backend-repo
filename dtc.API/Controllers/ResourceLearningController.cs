@@ -32,6 +32,14 @@ namespace dtc.API.Controllers
             }
         }
 
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetAllResourceLearnings()
+        {
+            var response = await _resourceLearningService.GetAllResourceLearningsAsync();
+            return Ok(response);
+        }
+
         // DEV-126: View resource learning
         [HttpGet("course/{courseId}")]
         [AllowAnonymous]

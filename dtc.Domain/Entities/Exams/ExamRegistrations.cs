@@ -50,6 +50,14 @@ namespace dtc.Domain.Entities.Exams
             SetUpdated(updatedBy);
         }
 
+        public void SetPaymentStatus(bool isPaid, Guid? updatedBy = null)
+        {
+            if (IsPaid == isPaid) return;
+
+            IsPaid = isPaid;
+            SetUpdated(updatedBy);
+        }
+
         public void Approve(Guid? updatedBy = null)
         {
             if (Status != ExamRegistrationStatus.Pending)

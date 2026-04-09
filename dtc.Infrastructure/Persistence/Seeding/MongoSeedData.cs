@@ -74,6 +74,7 @@ namespace dtc.Infrastructure.Persistence.Seeding
         public static IReadOnlyCollection<Question> Questions => new[]
         {
             SetProperty(new Question(
+                category: QuestionCategoryNames.Theory,
                 content: "Khi gap den vang nhap nhay, nguoi lai xe phai lam gi?",
                 correctAnswer: AnswerOption.A,
                 a: "Giam toc do va quan sat ky.",
@@ -83,6 +84,7 @@ namespace dtc.Infrastructure.Persistence.Seeding
                 "Id",
                 1),
             SetProperty(new Question(
+                category: QuestionCategoryNames.Sign,
                 content: "Khoang cach an toan trong do thi duoc uu tien theo yeu to nao?",
                 correctAnswer: AnswerOption.B,
                 a: "Mau xe.",
@@ -90,7 +92,17 @@ namespace dtc.Infrastructure.Persistence.Seeding
                 c: "So ghe tren xe.",
                 d: "Muc xang."),
                 "Id",
-                2)
+                2),
+            SetProperty(new Question(
+                category: QuestionCategoryNames.Simulation,
+                content: "Trong bai thi sa hinh, khi vao bai ghep doc can uu tien dieu gi?",
+                correctAnswer: AnswerOption.C,
+                a: "Danh lai that nhanh.",
+                b: "Tang ga lien tuc.",
+                c: "Quan sat guong va can khoang cach deu.",
+                d: "Dung sat vach de nhin ro hon."),
+                "Id",
+                3)
         };
 
         public static IReadOnlyCollection<SampleExam> SampleExams => new[]

@@ -7,6 +7,6 @@ namespace dtc.Application.Features.Location.Interfaces
 {
     public interface IAddressService
     {
-        // TODO: Define DTO-based methods, e.g. Task<IEnumerable<AddressDto>> GetAllAsync();
+        Task<IEnumerable<AddressResponseDto>> GetAllAsync();
     }
 }

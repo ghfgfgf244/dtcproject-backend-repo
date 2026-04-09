@@ -19,12 +19,13 @@ namespace dtc.API.Controllers
 
         // DEV-103: User register exam batch
         [HttpPost]
-        [Authorize(Roles = "Student")]
+        [Authorize(Roles = "Student,Admin,TrainingManager")]
         public async Task<IActionResult> Register([FromBody] CreateExamRegistrationRequestDto request)
         {
             var userId = await GetInternalUserIdAsync();
+            var isStudent = User.IsInRole("Student");
 
-            if (request.StudentId != userId)
+            if (isStudent && request.StudentId != userId)
                 return Fail("Students can only register themselves.");
 
             try
@@ -40,7 +41,7 @@ namespace dtc.API.Controllers
 
         // DEV-104: Update status register exam batch
         [HttpPatch("{id}/status")]
-        [Authorize(Roles = "Admin,EnrollmentManager")]
+        [Authorize(Roles = "Admin,EnrollmentManager,TrainingManager")]
         public async Task<IActionResult> UpdateRegistrationStatus(Guid id, [FromBody] UpdateExamRegistrationStatusRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -56,7 +57,7 @@ namespace dtc.API.Controllers
         }
 
         [HttpPatch("{id}/pay")]
-        [Authorize(Roles = "Admin,EnrollmentManager")]
+        [Authorize(Roles = "Admin,EnrollmentManager,TrainingManager")]
         public async Task<IActionResult> MarkAsPaid(Guid id)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -71,12 +72,43 @@ namespace dtc.API.Controllers
             }
         }
 
+        [HttpPatch("{id}/payment")]
+        [Authorize(Roles = "Admin,EnrollmentManager,TrainingManager")]
+        public async Task<IActionResult> UpdatePaymentStatus(Guid id, [FromBody] UpdateExamRegistrationPaymentRequestDto request)
+        {
+            var adminId = await GetInternalUserIdAsync();
+            try
+            {
+                await _examRegistrationService.UpdatePaymentStatusAsync(id, request.IsPaid, adminId);
+                return NoContent("Registration payment status updated.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
         [HttpGet("Batch/{examBatchId}")]
         [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> GetByExamBatch(Guid examBatchId)
         {
             var response = await _examRegistrationService.GetByExamBatchAsync(examBatchId);
             return Ok(response);
+        }
+
+        [HttpGet("Term/{termId}/candidates")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        public async Task<IActionResult> GetCandidatesByTerm(Guid termId, [FromQuery] Guid examBatchId)
+        {
+            try
+            {
+                var response = await _examRegistrationService.GetCandidatesByTermAsync(termId, examBatchId);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
         }
 
         [HttpGet("Student/{studentId}")]
@@ -94,7 +126,7 @@ namespace dtc.API.Controllers
         }
 
         [HttpPost("bulk")]
-        [Authorize(Roles = "Admin,EnrollmentManager")]
+        [Authorize(Roles = "Admin,EnrollmentManager,TrainingManager")]
         public async Task<IActionResult> CreateBulkRegistrations([FromBody] BulkExamRegistrationRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();

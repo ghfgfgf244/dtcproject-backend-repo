@@ -17,5 +17,12 @@ namespace dtc.Application.Features.Collaborators.Interfaces
         Task<decimal> GetCommissionRateAsync();
         Task<IEnumerable<CollaboratorCommissionResponseDto>> CalculateAndGetCommissionsAsync(Guid collaboratorId);
         Task<IEnumerable<CollaboratorCommissionResponseDto>> GetMyCommissionsAsync(Guid collaboratorId);
+
+        // Admin Methods
+        Task<CollaboratorAdminStatsDto> GetAdminStatsAsync();
+        Task<IEnumerable<CollaboratorAdminResponseDto>> GetAdminCollaboratorsAsync();
+        Task<IEnumerable<CommissionAdminResponseDto>> GetAdminCommissionsAsync();
+        Task<bool> ToggleReferralCodeAsync(Guid collaboratorId);
+        Task<bool> PayCommissionAsync(Guid collaboratorId);
     }
 }

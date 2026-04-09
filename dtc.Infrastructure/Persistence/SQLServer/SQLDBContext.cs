@@ -333,6 +333,11 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                     .WithMany()
                     .HasForeignKey(x => x.UserId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne<Term>()
+                    .WithMany()
+                    .HasForeignKey(x => x.AssignedTermId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
 

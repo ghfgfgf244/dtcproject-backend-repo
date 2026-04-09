@@ -13,5 +13,7 @@ namespace dtc.Application.Features.Users.DTOs
         public bool IsActive { get; set; }
         public DateTime? LastLoginAt { get; set; }
         public List<string> Roles { get; set; } = new List<string>();
+        public Guid? CenterId { get; set; }
+        public string? CenterName { get; set; }
     }
 }

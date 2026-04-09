@@ -1,6 +1,7 @@
 using dtc.Application.Features.Exams.DTOs;
 using dtc.Application.Features.Exams.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
@@ -16,7 +17,6 @@ namespace dtc.API.Controllers
             _questionService = questionService;
         }
 
-        // DEV-111: Create question
         [HttpPost]
         public async Task<IActionResult> CreateQuestion([FromBody] CreateQuestionRequestDto request)
         {
@@ -31,7 +31,30 @@ namespace dtc.API.Controllers
             }
         }
 
-        // DEV-112: View question
+        [HttpPost("import")]
+        public async Task<IActionResult> ImportQuestions([FromForm] IFormFile file)
+        {
+            try
+            {
+                var response = await _questionService.ImportQuestionsAsync(file);
+                return Ok(response, "Question file imported successfully.");
+            }
+            catch (System.Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpGet("import-template")]
+        public async Task<IActionResult> DownloadImportTemplate()
+        {
+            var content = await _questionService.GenerateImportTemplateAsync();
+            return File(
+                fileContents: content,
+                contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileDownloadName: "question-import-template.xlsx");
+        }
+
         [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetQuestionDetail(int id)
@@ -49,13 +72,12 @@ namespace dtc.API.Controllers
 
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> GetAllQuestions()
+        public async Task<IActionResult> GetAllQuestions([FromQuery] string? category = null)
         {
-            var response = await _questionService.GetAllQuestionsAsync();
+            var response = await _questionService.GetAllQuestionsAsync(category);
             return Ok(response);
         }
 
-        // DEV-113: Update question
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateQuestion(int id, [FromBody] UpdateQuestionRequestDto request)
         {
@@ -70,7 +92,6 @@ namespace dtc.API.Controllers
             }
         }
 
-        // DEV-114: Delete question
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteQuestion(int id)
         {

@@ -1,4 +1,6 @@
-﻿namespace dtc.Domain.Entities.Collaborators;
+namespace dtc.Domain.Entities.Collaborators;
+
+using System;
 
 public class ReferralCode : BaseEntity
 {
@@ -59,6 +61,12 @@ public class ReferralCode : BaseEntity
             throw new InvalidOperationException("Referral code is inactive");
 
         UsedCount++;
+        SetUpdated(updatedBy);
+    }
+
+    public void ResetUsage(Guid? updatedBy = null)
+    {
+        UsedCount = 0;
         SetUpdated(updatedBy);
     }
 }

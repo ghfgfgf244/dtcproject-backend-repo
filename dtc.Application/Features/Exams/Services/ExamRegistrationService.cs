@@ -1,6 +1,7 @@
 using dtc.Application.Features.Exams.Interfaces;
 using dtc.Application.Features.Exams.DTOs;
 using dtc.Domain.Entities;
+using dtc.Domain.Entities.Classes;
 using dtc.Domain.Entities.Exams;
 using dtc.Domain.Interfaces;
 using System;
@@ -46,8 +47,13 @@ namespace dtc.Application.Features.Exams.Services
                 createdBy: request.StudentId
             );
 
-            await _unitOfWork.ExamRegistrations.AddAsync(reg);
-            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                batch.AddCandidate(request.StudentId);
+                await _unitOfWork.ExamBatches.UpdateAsync(batch);
+                await _unitOfWork.ExamRegistrations.AddAsync(reg);
+                await _unitOfWork.SaveChangesAsync();
+            });
 
             return await MapToDtoAsync(reg);
         }
@@ -56,6 +62,7 @@ namespace dtc.Application.Features.Exams.Services
         {
             var reg = await _unitOfWork.ExamRegistrations.GetByIdAsync(id);
             if (reg == null) throw new Exception("Registration not found");
+            var previousStatus = reg.Status;
 
             switch (request.Status)
             {
@@ -71,19 +78,39 @@ namespace dtc.Application.Features.Exams.Services
                     break;
             }
 
-            await _unitOfWork.ExamRegistrations.UpdateAsync(reg);
-            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                await _unitOfWork.ExamRegistrations.UpdateAsync(reg);
+
+                if (previousStatus != request.Status &&
+                    (request.Status == ExamRegistrationStatus.Cancelled || request.Status == ExamRegistrationStatus.Rejected))
+                {
+                    var batch = await _unitOfWork.ExamBatches.GetByIdAsync(reg.ExamBatchId);
+                    if (batch != null)
+                    {
+                        batch.RemoveCandidate(adminId);
+                        await _unitOfWork.ExamBatches.UpdateAsync(batch);
+                    }
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+            });
 
             return true;
         }
 
         public async Task<bool> MarkAsPaidAsync(Guid id, Guid adminId)
         {
+            return await UpdatePaymentStatusAsync(id, true, adminId);
+        }
+
+        public async Task<bool> UpdatePaymentStatusAsync(Guid id, bool isPaid, Guid adminId)
+        {
             var reg = await _unitOfWork.ExamRegistrations.GetByIdAsync(id);
             if (reg == null) throw new Exception("Registration not found");
 
-            reg.MarkAsPaid(adminId);
-            
+            reg.SetPaymentStatus(isPaid, adminId);
+
             await _unitOfWork.ExamRegistrations.UpdateAsync(reg);
             await _unitOfWork.SaveChangesAsync();
 
@@ -99,6 +126,59 @@ namespace dtc.Application.Features.Exams.Services
                 dtos.Add(await MapToDtoAsync(r));
             }
             return dtos;
+        }
+
+        public async Task<IEnumerable<TermExamRegistrationCandidateDto>> GetCandidatesByTermAsync(Guid termId, Guid examBatchId)
+        {
+            var term = await _unitOfWork.Terms.GetByIdAsync(termId);
+            if (term == null) throw new Exception("Term not found");
+
+            var batch = await _unitOfWork.ExamBatches.GetByIdAsync(examBatchId);
+            if (batch == null) throw new Exception("Exam batch not found");
+
+            var registrations = (await _unitOfWork.CourseRegistrations.FindAsync(r =>
+                    r.AssignedTermId == termId &&
+                    r.Status == CourseRegistrationStatus.Approved))
+                .ToList();
+
+            var studentIds = registrations.Select(r => r.UserId).Distinct().ToList();
+            if (studentIds.Count == 0)
+            {
+                return new List<TermExamRegistrationCandidateDto>();
+            }
+
+            var existingExamRegistrations = (await _unitOfWork.ExamRegistrations.FindAsync(r =>
+                    r.ExamBatchId == examBatchId &&
+                    studentIds.Contains(r.StudentId) &&
+                    r.Status != ExamRegistrationStatus.Cancelled &&
+                    r.Status != ExamRegistrationStatus.Rejected))
+                .ToList();
+
+            var existingSet = existingExamRegistrations.Select(r => r.StudentId).ToHashSet();
+            var students = (await _unitOfWork.Users.FindAsync(u => studentIds.Contains(u.Id))).ToList();
+            var course = await _unitOfWork.Courses.GetByIdAsync(term.CourseId);
+
+            var result = new List<TermExamRegistrationCandidateDto>();
+            foreach (var student in students.OrderBy(s => s.FullName))
+            {
+                var metrics = await CalculateAttendanceMetricsAsync(termId, student.Id);
+                result.Add(new TermExamRegistrationCandidateDto
+                {
+                    StudentId = student.Id,
+                    StudentName = student.FullName,
+                    Email = student.Email.Value,
+                    Phone = student.Phone?.Value ?? string.Empty,
+                    CourseName = course?.CourseName ?? string.Empty,
+                    LicenseTypeLabel = course?.LicenseType.ToString() ?? string.Empty,
+                    AttendanceRate = metrics.AttendanceRate,
+                    TotalSessions = metrics.TotalSessions,
+                    PresentCount = metrics.PresentCount,
+                    IsEligibleForApproval = metrics.AttendanceRate >= 80,
+                    AlreadyRegistered = existingSet.Contains(student.Id)
+                });
+            }
+
+            return result;
         }
 
         public async Task<IEnumerable<ExamRegistrationResponseDto>> GetByStudentAsync(Guid studentId)
@@ -139,6 +219,7 @@ namespace dtc.Application.Features.Exams.Services
                 {
                     if (activeByStudent.Contains(studentId)) continue; // skip already registered
 
+                    batch.AddCandidate(adminId);
                     var reg = new ExamRegistration(
                         examBatchId: request.ExamBatchId,
                         studentId: studentId,
@@ -148,6 +229,7 @@ namespace dtc.Application.Features.Exams.Services
                     await _unitOfWork.ExamRegistrations.AddAsync(reg);
                 }
 
+                await _unitOfWork.ExamBatches.UpdateAsync(batch);
                 await _unitOfWork.SaveChangesAsync();
                 return true;
             });
@@ -157,6 +239,23 @@ namespace dtc.Application.Features.Exams.Services
         {
             var batch = await _unitOfWork.ExamBatches.GetByIdAsync(reg.ExamBatchId);
             var student = await _unitOfWork.Users.GetByIdAsync(reg.StudentId);
+            var courseRegistration = (await _unitOfWork.CourseRegistrations.FindAsync(r =>
+                    r.UserId == reg.StudentId &&
+                    r.Status == CourseRegistrationStatus.Approved))
+                .OrderByDescending(r => r.RegistrationDate)
+                .FirstOrDefault();
+
+            var term = courseRegistration?.AssignedTermId.HasValue == true
+                ? await _unitOfWork.Terms.GetByIdAsync(courseRegistration.AssignedTermId.Value)
+                : null;
+
+            var course = term != null
+                ? await _unitOfWork.Courses.GetByIdAsync(term.CourseId)
+                : null;
+
+            var metrics = term != null
+                ? await CalculateAttendanceMetricsAsync(term.Id, reg.StudentId)
+                : new AttendanceMetrics();
 
             return new ExamRegistrationResponseDto
             {
@@ -164,12 +263,71 @@ namespace dtc.Application.Features.Exams.Services
                 ExamBatchId = reg.ExamBatchId,
                 StudentId = reg.StudentId,
                 StudentName = student?.FullName ?? "Unknown",
+                Email = student?.Email.Value ?? string.Empty,
+                Phone = student?.Phone?.Value ?? string.Empty,
                 BatchName = batch?.BatchName ?? "Unknown",
+                TermId = term?.Id,
+                TermName = term?.TermName,
+                CourseName = course?.CourseName ?? string.Empty,
+                LicenseTypeLabel = course?.LicenseType.ToString() ?? string.Empty,
                 RegistrationDate = reg.RegistrationDate,
                 IsPaid = reg.IsPaid,
+                AttendanceRate = metrics.AttendanceRate,
+                TotalSessions = metrics.TotalSessions,
+                PresentCount = metrics.PresentCount,
+                IsEligibleForApproval = reg.IsPaid && metrics.AttendanceRate >= 80,
                 Status = reg.Status,
                 CreatedAt = reg.CreatedAt
             };
+        }
+
+        private async Task<AttendanceMetrics> CalculateAttendanceMetricsAsync(Guid termId, Guid studentId)
+        {
+            var classes = (await _unitOfWork.Classes.FindAsync(c => c.TermId == termId && !c.IsDeleted)).ToList();
+            if (classes.Count == 0)
+            {
+                return new AttendanceMetrics();
+            }
+
+            var classIds = classes.Select(c => c.Id).ToList();
+            var studentClassIds = (await _unitOfWork.ClassStudents.FindAsync(cs => cs.StudentId == studentId && classIds.Contains(cs.ClassId)))
+                .Select(cs => cs.ClassId)
+                .Distinct()
+                .ToList();
+
+            if (studentClassIds.Count == 0)
+            {
+                return new AttendanceMetrics();
+            }
+
+            var schedules = (await _unitOfWork.ClassSchedules.FindAsync(s => studentClassIds.Contains(s.ClassId))).ToList();
+            if (schedules.Count == 0)
+            {
+                return new AttendanceMetrics();
+            }
+
+            var scheduleIds = schedules.Select(s => s.Id).ToList();
+            var attendances = (await _unitOfWork.Attendances.FindAsync(a => a.StudentId == studentId && scheduleIds.Contains(a.ClassScheduleId))).ToList();
+
+            var totalSessions = schedules.Count;
+            var presentCount = attendances.Count(a => a.IsPresent);
+            var attendanceRate = totalSessions > 0
+                ? Math.Round((double)presentCount * 100 / totalSessions, 2)
+                : 0;
+
+            return new AttendanceMetrics
+            {
+                TotalSessions = totalSessions,
+                PresentCount = presentCount,
+                AttendanceRate = attendanceRate
+            };
+        }
+
+        private sealed class AttendanceMetrics
+        {
+            public int TotalSessions { get; set; }
+            public int PresentCount { get; set; }
+            public double AttendanceRate { get; set; }
         }
     }
 }

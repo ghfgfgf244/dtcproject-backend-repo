@@ -10,6 +10,7 @@ namespace dtc.Domain.Entities.Terms
     {
         public Guid CourseId { get; private set; }
         public Guid UserId { get; private set; }
+        public Guid? AssignedTermId { get; private set; }
         public DateTime RegistrationDate { get; private set; }
         public CourseRegistrationStatus Status { get; private set; }
         public decimal TotalFee { get; private set; }
@@ -49,6 +50,27 @@ namespace dtc.Domain.Entities.Terms
                 throw new InvalidOperationException("Can only approve pending registrations");
 
             Status = CourseRegistrationStatus.Approved;
+            SetUpdated(updatedBy);
+        }
+
+        public void AssignTerm(Guid termId, Guid? updatedBy = null)
+        {
+            if (termId == Guid.Empty)
+                throw new ArgumentException("TermId is required", nameof(termId));
+
+            if (AssignedTermId == termId)
+                return;
+
+            AssignedTermId = termId;
+            SetUpdated(updatedBy);
+        }
+
+        public void ClearAssignedTerm(Guid? updatedBy = null)
+        {
+            if (!AssignedTermId.HasValue)
+                return;
+
+            AssignedTermId = null;
             SetUpdated(updatedBy);
         }
 

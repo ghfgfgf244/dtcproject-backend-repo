@@ -22,15 +22,46 @@ namespace dtc.Application.Features.Exams.DTOs
         public ExamRegistrationStatus Status { get; set; }
     }
 
+    public class UpdateExamRegistrationPaymentRequestDto
+    {
+        [Required]
+        public bool IsPaid { get; set; }
+    }
+
+    public class TermExamRegistrationCandidateDto
+    {
+        public Guid StudentId { get; set; }
+        public string StudentName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string CourseName { get; set; } = string.Empty;
+        public string LicenseTypeLabel { get; set; } = string.Empty;
+        public double AttendanceRate { get; set; }
+        public int TotalSessions { get; set; }
+        public int PresentCount { get; set; }
+        public bool IsEligibleForApproval { get; set; }
+        public bool AlreadyRegistered { get; set; }
+    }
+
     public class ExamRegistrationResponseDto
     {
         public Guid Id { get; set; }
         public Guid ExamBatchId { get; set; }
         public Guid StudentId { get; set; }
         public string StudentName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
         public string BatchName { get; set; } = string.Empty;
+        public Guid? TermId { get; set; }
+        public string? TermName { get; set; }
+        public string CourseName { get; set; } = string.Empty;
+        public string LicenseTypeLabel { get; set; } = string.Empty;
         public DateTime RegistrationDate { get; set; }
         public bool IsPaid { get; set; }
+        public double AttendanceRate { get; set; }
+        public int TotalSessions { get; set; }
+        public int PresentCount { get; set; }
+        public bool IsEligibleForApproval { get; set; }
         public ExamRegistrationStatus Status { get; set; }
         public DateTime CreatedAt { get; set; }
     }

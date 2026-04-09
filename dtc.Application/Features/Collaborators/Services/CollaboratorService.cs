@@ -134,5 +134,119 @@ namespace dtc.Application.Features.Collaborators.Services
                 PaidAt = c.PaidAt
             }).OrderByDescending(c => c.CreatedAt).ToList();
         }
+
+        // ==========================================
+        // ADMIN METHODS
+        // ==========================================
+
+        public async Task<CollaboratorAdminStatsDto> GetAdminStatsAsync()
+        {
+            var collaborators = await _userService.GetUsersByRoleAsync((int)UserRole.Collaborator);
+            var commissions = await _unitOfWork.CollaboratorCommissions.GetAllAsync();
+
+            return new CollaboratorAdminStatsDto
+            {
+                TotalCollaborators = collaborators.Count(),
+                TotalCommissions = commissions.Sum(c => c.Amount),
+                PaidCommissions = commissions.Where(c => c.Status == CommissionStatus.Paid).Sum(c => c.Amount),
+                UnpaidCommissions = commissions.Where(c => c.Status == CommissionStatus.Pending).Sum(c => c.Amount)
+            };
+        }
+
+        public async Task<IEnumerable<CollaboratorAdminResponseDto>> GetAdminCollaboratorsAsync()
+        {
+            var users = await _userService.GetUsersByRoleAsync((int)UserRole.Collaborator);
+            var codes = await _unitOfWork.ReferralCodes.GetAllAsync();
+            var commissions = await _unitOfWork.CollaboratorCommissions.GetAllAsync();
+
+            var result = new List<CollaboratorAdminResponseDto>();
+
+            foreach (var user in users)
+            {
+                var userCode = codes.FirstOrDefault(c => c.CollaboratorId == user.Id);
+                var userCommissions = commissions.Where(c => c.CollaboratorId == user.Id);
+
+                result.Add(new CollaboratorAdminResponseDto
+                {
+                    UserId = user.Id,
+                    FullName = user.FullName,
+                    Email = user.Email,
+                    ReferralCode = userCode?.Code ?? "Chưa có",
+                    UsedCount = userCode?.UsedCount ?? 0,
+                    IsCodeActive = userCode?.IsActive ?? false,
+                    TotalPaidCommission = userCommissions.Where(c => c.Status == CommissionStatus.Paid).Sum(c => c.Amount),
+                    TotalPendingCommission = userCommissions.Where(c => c.Status == CommissionStatus.Pending).Sum(c => c.Amount)
+                });
+            }
+
+            return result;
+        }
+
+        public async Task<IEnumerable<CommissionAdminResponseDto>> GetAdminCommissionsAsync()
+        {
+            var commissions = await _unitOfWork.CollaboratorCommissions.GetAllAsync();
+            var users = await _userService.GetUsersByRoleAsync((int)UserRole.Collaborator);
+
+            return commissions.Select(c => new CommissionAdminResponseDto
+            {
+                Id = c.Id,
+                CollaboratorId = c.CollaboratorId,
+                Amount = c.Amount,
+                Status = c.Status.ToString(),
+                CreatedAt = c.CreatedAt,
+                PaidAt = c.PaidAt,
+                CollaboratorName = users.FirstOrDefault(u => u.Id == c.CollaboratorId)?.FullName ?? "Unknown"
+            }).OrderByDescending(c => c.CreatedAt).ToList();
+        }
+
+        public async Task<bool> ToggleReferralCodeAsync(Guid collaboratorId)
+        {
+            var codes = await _unitOfWork.ReferralCodes.FindAsync(c => c.CollaboratorId == collaboratorId);
+            var code = codes.FirstOrDefault();
+            if (code == null) return false;
+
+            if (code.IsActive)
+            {
+                code.Deactivate();
+            }
+            else
+            {
+                code.Activate();
+            }
+
+            await _unitOfWork.ReferralCodes.UpdateAsync(code);
+            await _unitOfWork.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> PayCommissionAsync(Guid collaboratorId)
+        {
+            // First, trigger a calculation to ensure any eligible unrecorded commissions are captured
+            await CalculateAndGetCommissionsAsync(collaboratorId);
+
+            // Fetch pending commissions
+            var pendingCommissions = await _unitOfWork.CollaboratorCommissions.FindAsync(c => c.CollaboratorId == collaboratorId && c.Status == CommissionStatus.Pending);
+            var codes = await _unitOfWork.ReferralCodes.FindAsync(c => c.CollaboratorId == collaboratorId);
+            var code = codes.FirstOrDefault();
+
+            if (!pendingCommissions.Any() && code == null) return false;
+
+            // Mark existing pending as paid
+            foreach (var comm in pendingCommissions)
+            {
+                comm.MarkAsPaid();
+                await _unitOfWork.CollaboratorCommissions.UpdateAsync(comm);
+            }
+
+            // Reset the usage count for the referral code
+            if (code != null)
+            {
+                code.ResetUsage();
+                await _unitOfWork.ReferralCodes.UpdateAsync(code);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+            return true;
+        }
     }
 }

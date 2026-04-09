@@ -77,10 +77,16 @@ namespace dtc.Domain.Entities
     }
     public enum AnswerOption
     {
-        A = 'A',
-        B = 'B',
-        C = 'C',
-        D = 'D'
+        A = 1,
+        B = 2,
+        C = 3,
+        D = 4
+    }
+    public enum QuestionCategoryType
+    {
+        Theory = 1,
+        Sign = 2,
+        Simulation = 3
     }
     public enum ExamLevel
     {
@@ -187,5 +193,32 @@ namespace dtc.Domain.Entities
         Approved,
         Rejected,
         Cancelled
+    }
+
+    public static class QuestionCategoryNames
+    {
+        public const string Theory = "Ly thuyet";
+        public const string Sign = "Bien bao";
+        public const string Simulation = "Sa hinh";
+
+        public static readonly string[] All =
+        {
+            Theory,
+            Sign,
+            Simulation
+        };
+
+        public static string Normalize(string? value)
+        {
+            var normalized = (value ?? string.Empty).Trim().ToLowerInvariant();
+
+            return normalized switch
+            {
+                "ly thuyet" or "lý thuyết" or "lythuyet" or "theory" => Theory,
+                "bien bao" or "biển báo" or "bienbao" or "sign" or "signs" => Sign,
+                "sa hinh" or "sa hình" or "sahinh" or "simulation" => Simulation,
+                _ => throw new ArgumentException("Question category is invalid.")
+            };
+        }
     }
 }
