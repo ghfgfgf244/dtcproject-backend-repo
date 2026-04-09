@@ -1,5 +1,6 @@
 using dtc.Application.Features.Exams.Interfaces;
 using dtc.Application.Features.Exams.DTOs;
+using dtc.Domain.Entities;
 using dtc.Domain.Entities.Exams;
 using dtc.Domain.Interfaces;
 using System;
@@ -130,6 +131,8 @@ namespace dtc.Application.Features.Exams.Services
                     questions.Add(new QuestionResponseDto
                     {
                         Id = qEntity.Id,
+                        Order = link.QuestionOrder,
+                        Category = qEntity.Category,
                         Content = qEntity.Content,
                         AnswerA = qEntity.AnswerA,
                         AnswerB = qEntity.AnswerB,
@@ -210,11 +213,12 @@ namespace dtc.Application.Features.Exams.Services
                 var qEntity = await _unitOfWork.Questions.GetByIdAsync(link.QuestionId);
                 if (qEntity != null)
                 {
-                    correctAnswersDict[qEntity.Id] = qEntity.CorrectAnswer.ToString();
+                    correctAnswersDict[qEntity.Id] = ((int)qEntity.CorrectAnswer).ToString();
 
                     if (request.Answers.TryGetValue(qEntity.Id, out var userAnswer))
                     {
-                        if (userAnswer.ToUpper() == qEntity.CorrectAnswer.ToString())
+                        var normalizedAnswer = NormalizeSubmittedAnswer(userAnswer);
+                        if (normalizedAnswer == qEntity.CorrectAnswer)
                         {
                             score += scorePerQuestion;
                         }
@@ -275,6 +279,23 @@ namespace dtc.Application.Features.Exams.Services
                 IsActive = sampleExam.IsActive,
                 CreatedAt = sampleExam.CreatedAt,
                 TotalQuestions = sampleExam.TotalQuestions
+            };
+        }
+
+        private static AnswerOption? NormalizeSubmittedAnswer(string? value)
+        {
+            var normalized = (value ?? string.Empty).Trim().ToUpperInvariant();
+
+            if (int.TryParse(normalized, out var numericValue) && numericValue >= 1 && numericValue <= 4)
+                return (AnswerOption)numericValue;
+
+            return normalized switch
+            {
+                "A" => AnswerOption.A,
+                "B" => AnswerOption.B,
+                "C" => AnswerOption.C,
+                "D" => AnswerOption.D,
+                _ => null
             };
         }
     }

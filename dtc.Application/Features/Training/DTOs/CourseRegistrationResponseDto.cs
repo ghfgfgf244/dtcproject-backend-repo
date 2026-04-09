@@ -21,6 +21,14 @@ namespace dtc.Application.Features.Training.DTOs
         // Course Info
         public string? CourseName { get; set; }
         public string? LicenseTypeLabel { get; set; }
+        public Guid? AssignedTermId { get; set; }
+        public string? AssignedTermName { get; set; }
+        public Guid? AssignedClassId { get; set; }
+        public string? AssignedClassName { get; set; }
+        public Guid? SuggestedTermId { get; set; }
+        public string? SuggestedTermName { get; set; }
+        public DateTime? SuggestedTermStartDate { get; set; }
+        public string? PlacementMessage { get; set; }
 
         // Image URLs from Document table
         public string? PhotoUrl { get; set; }

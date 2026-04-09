@@ -11,6 +11,7 @@ namespace dtc.Application.Features.Training.Interfaces
         Task<ResourceLearningResponseDto> CreateResourceLearningAsync(CreateResourceLearningRequestDto request);
         Task<ResourceLearningResponseDto> GetResourceLearningByIdAsync(Guid id);
         Task<IEnumerable<ResourceLearningResponseDto>> GetResourceLearningsByCourseAsync(Guid courseId);
+        Task<IEnumerable<ResourceLearningResponseDto>> GetAllResourceLearningsAsync();
         Task<ResourceLearningResponseDto> UpdateResourceLearningAsync(Guid id, UpdateResourceLearningRequestDto request);
         Task<bool> DeleteResourceLearningAsync(Guid id); // Soft delete
     }

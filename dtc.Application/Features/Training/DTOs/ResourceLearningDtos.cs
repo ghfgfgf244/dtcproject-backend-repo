@@ -34,6 +34,7 @@ namespace dtc.Application.Features.Training.DTOs
     {
         public Guid Id { get; set; }
         public Guid CourseId { get; set; }
+        public string CourseName { get; set; } = string.Empty;
         public ResourceType ResourceType { get; set; }
         public string Title { get; set; } = string.Empty;
         public string ResourceUrl { get; set; } = string.Empty;

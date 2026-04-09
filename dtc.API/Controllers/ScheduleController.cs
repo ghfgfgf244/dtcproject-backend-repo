@@ -91,6 +91,37 @@ namespace dtc.API.Controllers
             return Ok(response);
         }
 
+        [HttpPost("bulk")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> CreateBulkSchedules([FromBody] BulkCreateClassScheduleRequestDto request)
+        {
+            var adminId = await GetInternalUserIdAsync();
+            try
+            {
+                var response = await _scheduleService.CreateBulkSchedulesAsync(request, adminId);
+                return Ok(response, "Schedules created successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpPost("import-preview")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> ImportSchedulePreview([FromForm] IFormFile file)
+        {
+            try
+            {
+                var response = await _scheduleService.ImportSchedulePreviewAsync(file);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
         // DEV-88: Assign/Update Location
         [HttpPatch("{id}/location")]
         [Authorize(Roles = "Admin,TrainingManager")]

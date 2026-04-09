@@ -54,6 +54,7 @@ namespace dtc.Application
             services.AddScoped<IClassService, ClassService>();
             services.AddScoped<ICourseRegistrationService, CourseRegistrationService>();
             services.AddScoped<IInstructorLeaveRequestService, InstructorLeaveRequestService>();
+            services.AddScoped<ILearningRoadmapService, LearningRoadmapService>();
 
             // Feature: Collaborators
             services.AddScoped<ICollaboratorService, CollaboratorService>();
@@ -63,6 +64,7 @@ namespace dtc.Application
 
             // Feature: Location
             services.AddScoped<ICenterService, CenterService>();
+            services.AddScoped<IAddressService, AddressService>();
 
             // Feature: Notifications
             services.AddScoped<INotificationService, NotificationService>();

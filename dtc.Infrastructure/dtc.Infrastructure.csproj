@@ -7,6 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Repositories\Others\**" />
+    <EmbeddedResource Remove="Repositories\Others\**" />
+    <None Remove="Repositories\Others\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Configurations\" />
     <Folder Include="Persistence\MongoDB\" />
     <Folder Include="Persistence\SQLServer\Migrations\" />
@@ -15,7 +21,6 @@
     <Folder Include="Repositories\Collaborators\" />
     <Folder Include="Repositories\Exams\" />
     <Folder Include="Repositories\Notifications\" />
-    <Folder Include="Repositories\Others\" />
     <Folder Include="Repositories\Permissions\" />
     <Folder Include="Repositories\Training\" />
   </ItemGroup>
