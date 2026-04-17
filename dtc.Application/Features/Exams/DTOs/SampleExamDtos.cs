@@ -55,6 +55,24 @@ namespace dtc.Application.Features.Exams.DTOs
         public List<QuestionResponseDto> Questions { get; set; } = new();
     }
 
+    public class PublicSampleExamDetailResponseDto : SampleExamResponseDto
+    {
+        public List<PublicQuestionResponseDto> Questions { get; set; } = new();
+    }
+
+    public class PublicQuestionResponseDto
+    {
+        public int Id { get; set; }
+        public int? Order { get; set; }
+        public string Category { get; set; } = QuestionCategoryNames.Theory;
+        public string Content { get; set; } = string.Empty;
+        public string? AnswerA { get; set; }
+        public string? AnswerB { get; set; }
+        public string? AnswerC { get; set; }
+        public string? AnswerD { get; set; }
+        public string? ImageLink { get; set; }
+    }
+
     public class SubmitSampleTestRequestDto
     {
         [Required]
@@ -70,6 +88,34 @@ namespace dtc.Application.Features.Exams.DTOs
         public double TotalScore { get; set; }
         public int DurationSeconds { get; set; }
         public bool IsPassed { get; set; }
+        public int TotalQuestions { get; set; }
+        public int CorrectCount { get; set; }
+        public int WrongCount { get; set; }
         public Dictionary<int, string> CorrectAnswers { get; set; } = new();
+        public Dictionary<int, string> Explanations { get; set; } = new();
+        public List<SampleExamQuestionReviewDto> ReviewItems { get; set; } = new();
+        public SampleExamInsightDto? Insight { get; set; }
+    }
+
+    public class SampleExamQuestionReviewDto
+    {
+        public int QuestionId { get; set; }
+        public string Category { get; set; } = QuestionCategoryNames.Theory;
+        public bool IsCorrect { get; set; }
+        public string? SelectedAnswer { get; set; }
+        public string CorrectAnswer { get; set; } = string.Empty;
+        public string? Explanation { get; set; }
+        public string StudyTip { get; set; } = string.Empty;
+        public int AttemptCount { get; set; }
+        public int WrongAttemptCount { get; set; }
+        public double WrongRate { get; set; }
+    }
+
+    public class SampleExamInsightDto
+    {
+        public string Summary { get; set; } = string.Empty;
+        public string Model { get; set; } = string.Empty;
+        public Dictionary<string, int> WrongCountsByCategory { get; set; } = new();
+        public List<string> SuggestedTopics { get; set; } = new();
     }
 }

@@ -12,6 +12,11 @@
         public AnswerOption CorrectAnswer { get; private set; }
         public string? ImageLink { get; private set; }
         public string? Explanation { get; private set; }
+        public int AttemptCount { get; private set; }
+        public int WrongAttemptCount { get; private set; }
+        public double WrongRate => AttemptCount <= 0
+            ? 0
+            : Math.Round((double)WrongAttemptCount / AttemptCount, 4);
         public DateTime CreatedAt { get; private set; }
 
         protected Question() { }
@@ -41,6 +46,8 @@
             AnswerD = d;
             ImageLink = imageLink;
             Explanation = explanation;
+            AttemptCount = 0;
+            WrongAttemptCount = 0;
             CreatedAt = DateTime.UtcNow;
         }
 
@@ -79,6 +86,16 @@
             CorrectAnswer = correctAnswer;
             ImageLink = imageLink;
             Explanation = explanation;
+        }
+
+        public void RegisterAttempt(bool isCorrect)
+        {
+            AttemptCount++;
+
+            if (!isCorrect)
+            {
+                WrongAttemptCount++;
+            }
         }
 
         // ================== DOMAIN VALIDATION ==================

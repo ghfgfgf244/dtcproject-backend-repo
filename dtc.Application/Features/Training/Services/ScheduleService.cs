@@ -1,5 +1,6 @@
 using dtc.Application.Features.Training.DTOs;
 using dtc.Application.Features.Training.Interfaces;
+using dtc.Application.Features.AI.Interfaces;
 using dtc.Domain.Entities;
 using dtc.Domain.Entities.Classes;
 using dtc.Domain.Entities.Location;
@@ -20,10 +21,12 @@ namespace dtc.Application.Features.Training.Services
     public class ScheduleService : IScheduleService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IScheduleInsightService _scheduleInsightService;
 
-        public ScheduleService(IUnitOfWork unitOfWork)
+        public ScheduleService(IUnitOfWork unitOfWork, IScheduleInsightService scheduleInsightService)
         {
             _unitOfWork = unitOfWork;
+            _scheduleInsightService = scheduleInsightService;
         }
 
         public async Task<ClassScheduleResponseDto> CreateScheduleAsync(CreateClassScheduleRequestDto request, Guid adminId)
@@ -32,7 +35,7 @@ namespace dtc.Application.Features.Training.Services
             await GetInstructorOrThrowAsync(request.InstructorId);
             var address = await GetAddressOrThrowAsync(request.AddressId);
 
-            await EnsureInstructorAvailableAsync(request.InstructorId, request.StartTime, request.EndTime);
+            await EnsureNoConflictsAsync(request.ClassId, request.InstructorId, request.AddressId, request.StartTime, request.EndTime);
 
             var schedule = new ClassSchedule(
                 classId: request.ClassId,
@@ -64,13 +67,13 @@ namespace dtc.Application.Features.Training.Services
                     var draft = drafts[i];
                     await GetInstructorOrThrowAsync(draft.InstructorId);
                     await GetAddressOrThrowAsync(draft.AddressId);
-                    await EnsureInstructorAvailableAsync(draft.InstructorId, draft.StartTime, draft.EndTime);
+                    await EnsureNoConflictsAsync(request.ClassId, draft.InstructorId, draft.AddressId, draft.StartTime, draft.EndTime);
 
                     var overlapsInBatch = created.Any(s =>
-                        s.InstructorId == draft.InstructorId &&
-                        s.IsOverlapping(draft.StartTime, draft.EndTime));
+                        s.IsOverlapping(draft.StartTime, draft.EndTime) &&
+                        (s.InstructorId == draft.InstructorId || s.AddressId == draft.AddressId || s.ClassId == request.ClassId));
                     if (overlapsInBatch)
-                        throw new InvalidOperationException("One or more imported schedules overlap for the same instructor.");
+                        throw new InvalidOperationException("One or more imported schedules overlap for the same instructor, class, or address.");
 
                     var schedule = new ClassSchedule(
                         request.ClassId,
@@ -96,7 +99,7 @@ namespace dtc.Application.Features.Training.Services
             return responses.OrderBy(s => s.StartTime);
         }
 
-        public async Task<ScheduleImportPreviewDto> ImportSchedulePreviewAsync(IFormFile file)
+        public async Task<ScheduleImportPreviewDto> ImportSchedulePreviewAsync(IFormFile file, Guid? defaultInstructorId = null)
         {
             if (file == null || file.Length == 0)
                 throw new InvalidOperationException("Schedule file is required.");
@@ -124,7 +127,7 @@ namespace dtc.Application.Features.Training.Services
                 var start = ParseDateTime(GetValue(row, "starttime", "start", "batdau", "start_time"), lineLabel, "StartTime");
                 var end = ParseDateTime(GetValue(row, "endtime", "end", "ketthuc", "end_time"), lineLabel, "EndTime");
                 var addressId = ResolveAddressId(row, addresses, lineLabel);
-                var instructorId = ResolveInstructorId(row, instructors, lineLabel);
+                var instructorId = ResolveInstructorId(row, instructors, lineLabel, defaultInstructorId);
 
                 schedules.Add(new ClassScheduleDraftDto
                 {
@@ -174,7 +177,7 @@ namespace dtc.Application.Features.Training.Services
 
             if (isUpdated)
             {
-                await EnsureInstructorAvailableAsync(schedule.InstructorId, schedule.StartTime, schedule.EndTime, schedule.Id);
+                await EnsureNoConflictsAsync(schedule.ClassId, schedule.InstructorId, schedule.AddressId, schedule.StartTime, schedule.EndTime, schedule.Id);
                 await _unitOfWork.ClassSchedules.UpdateAsync(schedule);
                 await _unitOfWork.SaveChangesAsync();
             }
@@ -234,11 +237,69 @@ namespace dtc.Application.Features.Training.Services
 
             if (isUpdated)
             {
+                await EnsureNoConflictsAsync(schedule.ClassId, schedule.InstructorId, schedule.AddressId, schedule.StartTime, schedule.EndTime, schedule.Id);
                 await _unitOfWork.ClassSchedules.UpdateAsync(schedule);
                 await _unitOfWork.SaveChangesAsync();
             }
 
             return true;
+        }
+
+        public async Task<ScheduleConflictExplainResponseDto> ExplainConflictAsync(ScheduleConflictExplainRequestDto request)
+        {
+            var classEntity = await GetClassOrThrowAsync(request.ClassId);
+            await GetInstructorOrThrowAsync(request.InstructorId);
+            await GetAddressOrThrowAsync(request.AddressId);
+
+            var conflicts = await DetectConflictsAsync(
+                request.ClassId,
+                request.InstructorId,
+                request.AddressId,
+                request.StartTime,
+                request.EndTime,
+                request.IgnoreScheduleId);
+
+            var suggestions = await SuggestAlternativeSlotsAsync(
+                request.ClassId,
+                request.InstructorId,
+                request.AddressId,
+                request.StartTime,
+                request.EndTime,
+                request.IgnoreScheduleId);
+
+            var summary = BuildConflictSummary(conflicts, suggestions);
+            var model = "rule-based";
+
+            if (conflicts.Count > 0)
+            {
+                try
+                {
+                    var insight = await _scheduleInsightService.ExplainAsync(new dtc.Application.Features.AI.DTOs.ScheduleInsightRequestDto
+                    {
+                        Scenario = summary,
+                        Context = $"Class: {classEntity.ClassName}. Suggestions: {string.Join("; ", suggestions.Select(s => $"{s.StartTime:dd/MM HH:mm}-{s.EndTime:HH:mm}"))}"
+                    });
+
+                    if (!string.IsNullOrWhiteSpace(insight.Summary))
+                    {
+                        summary = insight.Summary;
+                        model = string.IsNullOrWhiteSpace(insight.Model) ? "rule-based" : insight.Model;
+                    }
+                }
+                catch
+                {
+                    // fallback rule-based summary
+                }
+            }
+
+            return new ScheduleConflictExplainResponseDto
+            {
+                HasConflict = conflicts.Count > 0,
+                Summary = summary,
+                Model = model,
+                Conflicts = conflicts,
+                Suggestions = suggestions
+            };
         }
 
         public async Task<IEnumerable<ClassScheduleResponseDto>> GetMySchedulesAsync(Guid studentId)
@@ -317,16 +378,13 @@ namespace dtc.Application.Features.Training.Services
             return address;
         }
 
-        private async Task EnsureInstructorAvailableAsync(Guid instructorId, DateTime startTime, DateTime endTime, Guid? ignoreScheduleId = null)
+        private async Task EnsureNoConflictsAsync(Guid classId, Guid instructorId, int addressId, DateTime startTime, DateTime endTime, Guid? ignoreScheduleId = null)
         {
-            var existingSchedules = await _unitOfWork.ClassSchedules.FindAsync(s =>
-                s.InstructorId == instructorId &&
-                (!ignoreScheduleId.HasValue || s.Id != ignoreScheduleId.Value) &&
-                s.StartTime < endTime &&
-                startTime < s.EndTime);
+            var conflicts = await DetectConflictsAsync(classId, instructorId, addressId, startTime, endTime, ignoreScheduleId);
+            if (conflicts.Count == 0)
+                return;
 
-            if (existingSchedules.Any())
-                throw new InvalidOperationException("Instructor is already scheduled for another class during this time period.");
+            throw new InvalidOperationException(BuildConflictSummary(conflicts, new List<ScheduleAlternativeSlotDto>()));
         }
 
         private async Task GetInstructorOrThrowAsync(Guid instructorId)
@@ -334,6 +392,145 @@ namespace dtc.Application.Features.Training.Services
             var instructor = await _unitOfWork.Users.GetByIdAsync(instructorId);
             if (instructor == null || instructor.RoleId != UserRole.Instructor)
                 throw new Exception("Instructor not found");
+        }
+
+        private async Task<List<ScheduleConflictDetailDto>> DetectConflictsAsync(
+            Guid classId,
+            Guid instructorId,
+            int addressId,
+            DateTime startTime,
+            DateTime endTime,
+            Guid? ignoreScheduleId = null)
+        {
+            var overlappingSchedules = (await _unitOfWork.ClassSchedules.FindAsync(s =>
+                    (!ignoreScheduleId.HasValue || s.Id != ignoreScheduleId.Value) &&
+                    s.StartTime < endTime &&
+                    startTime < s.EndTime &&
+                    (s.ClassId == classId || s.InstructorId == instructorId || s.AddressId == addressId)))
+                .ToList();
+
+            if (overlappingSchedules.Count == 0)
+                return new List<ScheduleConflictDetailDto>();
+
+            var classIds = overlappingSchedules.Select(s => s.ClassId).Distinct().ToList();
+            var instructorIds = overlappingSchedules.Select(s => s.InstructorId).Distinct().ToList();
+            var addressIds = overlappingSchedules.Select(s => s.AddressId).Distinct().ToList();
+
+            var classes = classIds.Count == 0
+                ? new Dictionary<Guid, Class>()
+                : (await _unitOfWork.Classes.FindAsync(c => classIds.Contains(c.Id))).ToDictionary(c => c.Id);
+            var instructors = instructorIds.Count == 0
+                ? new Dictionary<Guid, dtc.Domain.Entities.Permissions.User>()
+                : (await _unitOfWork.Users.FindAsync(u => instructorIds.Contains(u.Id))).ToDictionary(u => u.Id);
+            var addresses = addressIds.Count == 0
+                ? new Dictionary<int, Address>()
+                : (await _unitOfWork.Addresses.FindAsync(a => addressIds.Contains(a.Id))).ToDictionary(a => a.Id);
+
+            var conflicts = new List<ScheduleConflictDetailDto>();
+
+            foreach (var schedule in overlappingSchedules)
+            {
+                if (schedule.ClassId == classId)
+                {
+                    conflicts.Add(MapConflict("Class", "Lớp học này đã có một buổi khác trùng thời gian.", schedule, classes, instructors, addresses));
+                }
+
+                if (schedule.InstructorId == instructorId)
+                {
+                    conflicts.Add(MapConflict("Instructor", "Giảng viên đã được phân công ở một lớp khác trong khung giờ này.", schedule, classes, instructors, addresses));
+                }
+
+                if (schedule.AddressId == addressId)
+                {
+                    conflicts.Add(MapConflict("Address", "Địa điểm học đang được sử dụng cho một lịch học khác trong khung giờ này.", schedule, classes, instructors, addresses));
+                }
+            }
+
+            return conflicts
+                .OrderBy(c => c.StartTime)
+                .ThenBy(c => c.ConflictType)
+                .ToList();
+        }
+
+        private static ScheduleConflictDetailDto MapConflict(
+            string conflictType,
+            string message,
+            ClassSchedule schedule,
+            IReadOnlyDictionary<Guid, Class> classes,
+            IReadOnlyDictionary<Guid, dtc.Domain.Entities.Permissions.User> instructors,
+            IReadOnlyDictionary<int, Address> addresses)
+        {
+            classes.TryGetValue(schedule.ClassId, out var classEntity);
+            instructors.TryGetValue(schedule.InstructorId, out var instructor);
+            addresses.TryGetValue(schedule.AddressId, out var address);
+
+            return new ScheduleConflictDetailDto
+            {
+                ConflictType = conflictType,
+                ScheduleId = schedule.Id,
+                ClassId = schedule.ClassId,
+                ClassName = classEntity?.ClassName ?? "Unknown Class",
+                InstructorId = schedule.InstructorId,
+                InstructorName = instructor?.FullName ?? "Unknown Instructor",
+                AddressId = schedule.AddressId,
+                AddressName = address?.AddressName ?? "Unknown Address",
+                StartTime = schedule.StartTime,
+                EndTime = schedule.EndTime,
+                Message = message
+            };
+        }
+
+        private async Task<List<ScheduleAlternativeSlotDto>> SuggestAlternativeSlotsAsync(
+            Guid classId,
+            Guid instructorId,
+            int addressId,
+            DateTime startTime,
+            DateTime endTime,
+            Guid? ignoreScheduleId)
+        {
+            var duration = endTime - startTime;
+            var suggestions = new List<ScheduleAlternativeSlotDto>();
+
+            for (var step = 1; step <= 48 && suggestions.Count < 3; step++)
+            {
+                var candidateStart = startTime.AddMinutes(step * 30);
+                var candidateEnd = candidateStart.Add(duration);
+
+                var conflicts = await DetectConflictsAsync(classId, instructorId, addressId, candidateStart, candidateEnd, ignoreScheduleId);
+                if (conflicts.Count > 0)
+                    continue;
+
+                suggestions.Add(new ScheduleAlternativeSlotDto
+                {
+                    StartTime = candidateStart,
+                    EndTime = candidateEnd,
+                    Reason = step <= 4
+                        ? "Khung giờ gần nhất không bị trùng giảng viên, lớp hoặc địa điểm."
+                        : "Khung giờ thay thế tiếp theo đang trống cho cả giảng viên và địa điểm."
+                });
+            }
+
+            return suggestions;
+        }
+
+        private static string BuildConflictSummary(
+            IReadOnlyCollection<ScheduleConflictDetailDto> conflicts,
+            IReadOnlyCollection<ScheduleAlternativeSlotDto> suggestions)
+        {
+            if (conflicts.Count == 0)
+            {
+                return "Không phát hiện xung đột lịch cho khung giờ này. Bạn có thể lưu lịch học.";
+            }
+
+            var grouped = conflicts
+                .GroupBy(item => item.ConflictType)
+                .Select(group => $"{group.Key}: {group.Count()}");
+
+            var suggestionText = suggestions.Count == 0
+                ? "Chưa tìm thấy khung giờ thay thế phù hợp trong các lượt quét gần nhất."
+                : $"Đã tìm thấy {suggestions.Count} khung giờ thay thế gần nhất.";
+
+            return $"Phát hiện xung đột lịch ({string.Join(", ", grouped)}). {suggestionText}";
         }
 
         private static string? GetValue(Dictionary<string, string> row, params string[] keys)
@@ -364,7 +561,11 @@ namespace dtc.Application.Features.Training.Services
             throw new InvalidOperationException($"{lineLabel}: AddressId or AddressName is required.");
         }
 
-        private static Guid ResolveInstructorId(Dictionary<string, string> row, List<dtc.Domain.Entities.Permissions.User> instructors, string lineLabel)
+        private static Guid ResolveInstructorId(
+            Dictionary<string, string> row,
+            List<dtc.Domain.Entities.Permissions.User> instructors,
+            string lineLabel,
+            Guid? defaultInstructorId = null)
         {
             var instructorIdText = GetValue(row, "instructorid", "instructor_id", "teacherid");
             if (!string.IsNullOrWhiteSpace(instructorIdText) && Guid.TryParse(instructorIdText, out var instructorId))
@@ -386,7 +587,10 @@ namespace dtc.Application.Features.Training.Services
                     return instructor.Id;
             }
 
-            throw new InvalidOperationException($"{lineLabel}: InstructorId, InstructorEmail, or InstructorName is required.");
+            if (defaultInstructorId.HasValue && defaultInstructorId.Value != Guid.Empty)
+                return defaultInstructorId.Value;
+
+            throw new InvalidOperationException($"{lineLabel}: InstructorName/InstructorEmail is required when no default instructor is provided.");
         }
 
         private static DateTime ParseDateTime(string? value, string lineLabel, string fieldName)

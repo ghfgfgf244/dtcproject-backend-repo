@@ -3,10 +3,25 @@ using System.ComponentModel.DataAnnotations;
 
 namespace dtc.Application.Features.Training.DTOs
 {
+    public class UploadedFileDto
+    {
+        public required string FileName { get; set; }
+        public required string Extension { get; set; }
+        public required string ResourceType { get; set; }
+        public byte[] Content { get; set; } = Array.Empty<byte>();
+        public int Length => Content.Length;
+    }
+
     public class RegisterCourseRequestDto
     {
         [Required]
         public Guid CourseId { get; set; }
+
+        public string? FullName { get; set; }
+
+        public string? Email { get; set; }
+
+        public string? Phone { get; set; }
 
         [Required]
         [Range(0, double.MaxValue)]
@@ -16,8 +31,8 @@ namespace dtc.Application.Features.Training.DTOs
 
         public string? ReferralCode { get; set; }
 
-        public Microsoft.AspNetCore.Http.IFormFile? Photo { get; set; }
-        public Microsoft.AspNetCore.Http.IFormFile? IdFront { get; set; }
-        public Microsoft.AspNetCore.Http.IFormFile? IdBack { get; set; }
+        public UploadedFileDto? Photo { get; set; }
+        public UploadedFileDto? IdFront { get; set; }
+        public UploadedFileDto? IdBack { get; set; }
     }
 }

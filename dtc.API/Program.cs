@@ -37,6 +37,7 @@ namespace dtc.API
 
             // Register MongoDBContext
             builder.Services.AddSingleton<MongoDBContext>();
+            builder.Services.AddOptions();
             builder.Services.AddInfrastructureServices(builder.Configuration);
             builder.Services.AddApplicationServices();
 

@@ -8,7 +8,7 @@ namespace dtc.Application.Features.Training.Interfaces
 {
     public interface ICourseRegistrationService
     {
-        Task<CourseRegistrationResponseDto> RegisterCourseAsync(RegisterCourseRequestDto request, Guid studentId);
+        Task<CourseRegistrationResponseDto> RegisterCourseAsync(RegisterCourseRequestDto request, Guid? studentId);
         Task CancelRegistrationAsync(Guid registrationId, string reason, Guid studentId);
         Task UpdateRegistrationStatusAsync(Guid registrationId, UpdateRegistrationStatusDto request, Guid adminId);
         

@@ -109,11 +109,11 @@ namespace dtc.API.Controllers
 
         [HttpPost("import-preview")]
         [Authorize(Roles = "Admin,TrainingManager")]
-        public async Task<IActionResult> ImportSchedulePreview([FromForm] IFormFile file)
+        public async Task<IActionResult> ImportSchedulePreview([FromForm] IFormFile file, [FromForm] Guid? defaultInstructorId = null)
         {
             try
             {
-                var response = await _scheduleService.ImportSchedulePreviewAsync(file);
+                var response = await _scheduleService.ImportSchedulePreviewAsync(file, defaultInstructorId);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -132,6 +132,21 @@ namespace dtc.API.Controllers
             {
                 await _scheduleService.AssignLocationAsync(id, request, adminId);
                 return NoContent("Location assigned/updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpPost("conflict-explain")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> ExplainConflict([FromBody] ScheduleConflictExplainRequestDto request)
+        {
+            try
+            {
+                var response = await _scheduleService.ExplainConflictAsync(request);
+                return Ok(response);
             }
             catch (Exception ex)
             {
