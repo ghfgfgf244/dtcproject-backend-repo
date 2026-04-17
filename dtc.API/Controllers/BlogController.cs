@@ -1,8 +1,10 @@
 using dtc.Application.Features.Blogs.DTOs;
 using dtc.Application.Features.Blogs.Interfaces;
+using dtc.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
@@ -10,10 +12,12 @@ namespace dtc.API.Controllers
     public class BlogController : BaseApiController
     {
         private readonly IBlogService _blogService;
+        private readonly ICloudinaryService _cloudinaryService;
 
-        public BlogController(IBlogService blogService)
+        public BlogController(IBlogService blogService, ICloudinaryService cloudinaryService)
         {
             _blogService = blogService;
+            _cloudinaryService = cloudinaryService;
         }
 
         // GET /api/Blog - Danh sách bài post (có thể lọc chỉ bài đã publish)
@@ -41,7 +45,7 @@ namespace dtc.API.Controllers
 
         // POST /api/Blog - Tạo bài post mới
         [HttpPost]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,Collaborator,EnrollmentManager")]
         public async Task<IActionResult> CreateBlog([FromBody] CreateBlogRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -58,7 +62,7 @@ namespace dtc.API.Controllers
 
         // PUT /api/Blog/{id} - Cập nhật bài post
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,Collaborator,EnrollmentManager")]
         public async Task<IActionResult> UpdateBlog(Guid id, [FromBody] UpdateBlogRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -75,7 +79,7 @@ namespace dtc.API.Controllers
 
         // DELETE /api/Blog/{id} - Xóa mềm bài post
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,Collaborator,EnrollmentManager")]
         public async Task<IActionResult> DeleteBlog(Guid id)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -92,7 +96,7 @@ namespace dtc.API.Controllers
 
         // PATCH /api/Blog/{id}/publish - Xuất bản bài post
         [HttpPatch("{id}/publish")]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,Collaborator,EnrollmentManager")]
         public async Task<IActionResult> PublishBlog(Guid id)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -109,7 +113,7 @@ namespace dtc.API.Controllers
 
         // PATCH /api/Blog/{id}/unpublish - Ẩn bài post
         [HttpPatch("{id}/unpublish")]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,Collaborator,EnrollmentManager")]
         public async Task<IActionResult> UnpublishBlog(Guid id)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -130,6 +134,30 @@ namespace dtc.API.Controllers
         {
             var response = await _blogService.GetBlogsByUserAsync(userId);
             return Ok(response);
+        }
+
+        [HttpPost("upload-image")]
+        [Authorize(Roles = "Admin,TrainingManager,Collaborator,EnrollmentManager")]
+        public async Task<IActionResult> UploadImage([FromForm] IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return Fail("Image file is required.");
+            }
+
+            var userId = await GetInternalUserIdAsync();
+            var extension = Path.GetExtension(file.FileName);
+            var generatedFileName = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}{extension}";
+
+            await using var stream = file.OpenReadStream();
+            var (publicId, version) = await _cloudinaryService.UploadAsync(
+                stream,
+                generatedFileName,
+                $"blog-posts/{userId}",
+                "image");
+
+            var url = _cloudinaryService.GetUrl(publicId, version, "image");
+            return Ok(new { url }, "Blog image uploaded successfully.");
         }
     }
 }

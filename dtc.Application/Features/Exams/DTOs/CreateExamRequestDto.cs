@@ -14,6 +14,10 @@ namespace dtc.Application.Features.Exams.DTOs
         public Guid CourseId { get; set; }
 
         [Required]
+        [Range(1, int.MaxValue)]
+        public int AddressId { get; set; }
+
+        [Required]
         [MaxLength(255)]
         public string ExamName { get; set; } = string.Empty;
 

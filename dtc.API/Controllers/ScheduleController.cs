@@ -91,6 +91,37 @@ namespace dtc.API.Controllers
             return Ok(response);
         }
 
+        [HttpPost("bulk")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> CreateBulkSchedules([FromBody] BulkCreateClassScheduleRequestDto request)
+        {
+            var adminId = await GetInternalUserIdAsync();
+            try
+            {
+                var response = await _scheduleService.CreateBulkSchedulesAsync(request, adminId);
+                return Ok(response, "Schedules created successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpPost("import-preview")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> ImportSchedulePreview([FromForm] IFormFile file, [FromForm] Guid? defaultInstructorId = null)
+        {
+            try
+            {
+                var response = await _scheduleService.ImportSchedulePreviewAsync(file, defaultInstructorId);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
         // DEV-88: Assign/Update Location
         [HttpPatch("{id}/location")]
         [Authorize(Roles = "Admin,TrainingManager")]
@@ -106,6 +137,39 @@ namespace dtc.API.Controllers
             {
                 return Fail(ex.Message);
             }
+        }
+
+        [HttpPost("conflict-explain")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> ExplainConflict([FromBody] ScheduleConflictExplainRequestDto request)
+        {
+            try
+            {
+                var response = await _scheduleService.ExplainConflictAsync(request);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpGet("me")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetMySchedules()
+        {
+            var userId = await GetInternalUserIdAsync();
+            var response = await _scheduleService.GetMySchedulesAsync(userId);
+            return Ok(response);
+        }
+
+        [HttpGet("teaching")]
+        [Authorize(Roles = "Instructor,Admin,TrainingManager")]
+        public async Task<IActionResult> GetTeachingSchedule()
+        {
+            var instructorId = await GetInternalUserIdAsync();
+            var response = await _scheduleService.GetTeachingScheduleAsync(instructorId);
+            return Ok(response);
         }
     }
 }

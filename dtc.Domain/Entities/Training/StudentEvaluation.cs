@@ -9,7 +9,7 @@ namespace dtc.Domain.Entities.Training
         public Guid? ClassId { get; private set; }
         public int PunctualityScore { get; private set; }
         public int SkillLevel { get; private set; }
-        public string Note { get; private set; }
+        public string Note { get; private set; } = string.Empty;
         public DateTime EvaluationDate { get; private set; }
 
         protected StudentEvaluation() { }

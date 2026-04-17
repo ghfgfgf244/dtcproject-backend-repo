@@ -7,6 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Repositories\Others\**" />
+    <EmbeddedResource Remove="Repositories\Others\**" />
+    <None Remove="Repositories\Others\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Configurations\" />
     <Folder Include="Persistence\MongoDB\" />
     <Folder Include="Persistence\SQLServer\Migrations\" />
@@ -15,7 +21,6 @@
     <Folder Include="Repositories\Collaborators\" />
     <Folder Include="Repositories\Exams\" />
     <Folder Include="Repositories\Notifications\" />
-    <Folder Include="Repositories\Others\" />
     <Folder Include="Repositories\Permissions\" />
     <Folder Include="Repositories\Training\" />
   </ItemGroup>
@@ -34,6 +39,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.0" />
     <PackageReference Include="MongoDB.Driver" Version="3.6.0" />

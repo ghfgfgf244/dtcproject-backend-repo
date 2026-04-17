@@ -16,47 +16,65 @@ namespace dtc.Infrastructure.Persistence.Seeding
         {
             SetBaseFields(
                 new Blog(
-                    title: "Kinh nghiem hoc lai xe trong thanh pho",
+                    title: "5 buoc chuan bi truoc buoi hoc thuc hanh dau tien",
                     categoryId: 1,
-                    content: "Tong hop kinh nghiem giu khoang cach, vao bai va xu ly tinh huong giao thong do thi.",
+                    content: "Hoc vien nen mang theo giay to tuy than, giay but, nuoc uong va den som 15 phut de nghe huong dan an toan truoc khi len xe tap. Ngoai ra, can dieu chinh ghe, guong va day an toan ngay khi bat dau buoi hoc.",
                     createdBy: SeedIds.UserA,
-                    summary: "Mau bai viet gioi thieu kinh nghiem hoc lai xe.",
-                    avatar: "https://cdn.example.com/blog/kinh-nghiem-lai-xe.jpg"),
+                    summary: "Checklist co ban giup hoc vien tu tin hon trong buoi thuc hanh dau tien.",
+                    avatar: "https://cdn.example.com/blog/chuan-bi-buoi-hoc-thuc-hanh.jpg"),
                 SeedIds.BlogA,
-                new DateTime(2026, 1, 20, 8, 0, 0, DateTimeKind.Utc),
+                new DateTime(2026, 3, 20, 8, 0, 0, DateTimeKind.Utc),
                 SeedIds.UserA),
             SetBaseFields(
                 new Blog(
-                    title: "Checklist truoc ngay thi sat hach",
+                    title: "Huong dan on tap ly thuyet hieu qua trong 7 ngay",
                     categoryId: 2,
-                    content: "Kiem tra ho so, lich thi, suc khoe va thoi gian co mat tai trung tam truoc ky thi.",
+                    content: "Chia bo cau hoi thanh tung nhom bien bao, sa hinh, quy tac giao thong va tinh huong nguy hiem. Moi ngay nen lam de ngan, ghi lai cac cau sai va xem lai ly do dap an dung thay vi hoc thuoc may moc.",
                     createdBy: SeedIds.UserA,
-                    summary: "Mau bai viet nhac viec truoc ky thi.",
-                    avatar: "https://cdn.example.com/blog/checklist-thi.jpg"),
+                    summary: "Lo trinh 7 ngay on tap ly thuyet gon, de nho va sat de thi sat hach.",
+                    avatar: "https://cdn.example.com/blog/on-tap-ly-thuyet-7-ngay.jpg"),
                 SeedIds.BlogB,
-                new DateTime(2026, 1, 21, 8, 0, 0, DateTimeKind.Utc),
+                new DateTime(2026, 3, 22, 8, 0, 0, DateTimeKind.Utc),
+                SeedIds.UserA),
+            SetBaseFields(
+                new Blog(
+                    title: "Lich mo phong san tap cuoi tuan tai trung tam Thu Duc",
+                    categoryId: 3,
+                    content: "Trung tam se mo them cac khung gio 07:30, 09:30 va 14:00 vao thu Bay va Chu Nhat de hoc vien dang hoc B2, C dang ky tap sa hinh. Hoc vien can dat lich truoc tren he thong de duoc xep xe va giao vien phu trach.",
+                    createdBy: SeedIds.UserA,
+                    summary: "Thong bao khung gio mo rong san tap cuoi tuan cho hoc vien dang ky truoc.",
+                    avatar: "https://cdn.example.com/blog/lich-san-tap-cuoi-tuan.jpg"),
+                SeedIds.BlogC,
+                new DateTime(2026, 3, 24, 8, 0, 0, DateTimeKind.Utc),
                 SeedIds.UserA)
         };
 
         public static IReadOnlyCollection<Category> Categories => new[]
         {
             SetCategoryFields(
-                new Category("Tin dao tao", SeedIds.UserA),
+                new Category("Cam nang hoc vien", SeedIds.UserA),
                 SeedIds.CategoryA,
                 1,
-                new DateTime(2026, 1, 18, 8, 0, 0, DateTimeKind.Utc),
+                new DateTime(2026, 3, 18, 8, 0, 0, DateTimeKind.Utc),
                 SeedIds.UserA),
             SetCategoryFields(
-                new Category("Huong dan thi sat hach", SeedIds.UserA),
+                new Category("On tap sat hach", SeedIds.UserA),
                 SeedIds.CategoryB,
                 2,
-                new DateTime(2026, 1, 19, 8, 0, 0, DateTimeKind.Utc),
+                new DateTime(2026, 3, 19, 8, 0, 0, DateTimeKind.Utc),
+                SeedIds.UserA),
+            SetCategoryFields(
+                new Category("Thong bao trung tam", SeedIds.UserA),
+                SeedIds.CategoryC,
+                3,
+                new DateTime(2026, 3, 20, 8, 0, 0, DateTimeKind.Utc),
                 SeedIds.UserA)
         };
 
         public static IReadOnlyCollection<Question> Questions => new[]
         {
             SetProperty(new Question(
+                category: QuestionCategoryNames.Theory,
                 content: "Khi gap den vang nhap nhay, nguoi lai xe phai lam gi?",
                 correctAnswer: AnswerOption.A,
                 a: "Giam toc do va quan sat ky.",
@@ -66,6 +84,7 @@ namespace dtc.Infrastructure.Persistence.Seeding
                 "Id",
                 1),
             SetProperty(new Question(
+                category: QuestionCategoryNames.Sign,
                 content: "Khoang cach an toan trong do thi duoc uu tien theo yeu to nao?",
                 correctAnswer: AnswerOption.B,
                 a: "Mau xe.",
@@ -73,7 +92,17 @@ namespace dtc.Infrastructure.Persistence.Seeding
                 c: "So ghe tren xe.",
                 d: "Muc xang."),
                 "Id",
-                2)
+                2),
+            SetProperty(new Question(
+                category: QuestionCategoryNames.Simulation,
+                content: "Trong bai thi sa hinh, khi vao bai ghep doc can uu tien dieu gi?",
+                correctAnswer: AnswerOption.C,
+                a: "Danh lai that nhanh.",
+                b: "Tang ga lien tuc.",
+                c: "Quan sat guong va can khoang cach deu.",
+                d: "Dung sat vach de nhin ro hon."),
+                "Id",
+                3)
         };
 
         public static IReadOnlyCollection<SampleExam> SampleExams => new[]

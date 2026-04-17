@@ -1,9 +1,4 @@
-using dtc.Application.Features.Users.Interfaces;
-using dtc.Application.Features.Users.DTOs;
-using dtc.Application.Features.Users.Interfaces;
-using dtc.Application.Features.Users.DTOs;
 using System;
-using System.Collections.Generic;
 
 namespace dtc.Application.Features.Collaborators.DTOs
 {
@@ -29,5 +24,36 @@ namespace dtc.Application.Features.Collaborators.DTOs
         public string Status { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime? PaidAt { get; set; }
+    }
+
+    public class CollaboratorAdminResponseDto
+    {
+        public Guid UserId { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string ReferralCode { get; set; } = string.Empty;
+        public int UsedCount { get; set; }
+        public bool IsCodeActive { get; set; }
+        public decimal TotalPendingCommission { get; set; }
+        public decimal TotalPaidCommission { get; set; }
+    }
+
+    public class CommissionAdminResponseDto
+    {
+        public Guid Id { get; set; }
+        public Guid CollaboratorId { get; set; }
+        public string CollaboratorName { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public DateTime? PaidAt { get; set; }
+    }
+
+    public class CollaboratorAdminStatsDto
+    {
+        public int TotalCollaborators { get; set; }
+        public decimal TotalCommissions { get; set; }
+        public decimal PaidCommissions { get; set; }
+        public decimal UnpaidCommissions { get; set; }
     }
 }

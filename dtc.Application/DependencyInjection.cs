@@ -18,6 +18,8 @@ using dtc.Application.Features.Notifications.Interfaces;
 using dtc.Application.Features.Notifications.Services;
 using dtc.Application.Features.Permissions.Interfaces;
 using dtc.Application.Features.Permissions.Services;
+using dtc.Application.Features.AI.Interfaces;
+using dtc.Application.Features.AI.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace dtc.Application
@@ -54,6 +56,7 @@ namespace dtc.Application
             services.AddScoped<IClassService, ClassService>();
             services.AddScoped<ICourseRegistrationService, CourseRegistrationService>();
             services.AddScoped<IInstructorLeaveRequestService, InstructorLeaveRequestService>();
+            services.AddScoped<ILearningRoadmapService, LearningRoadmapService>();
 
             // Feature: Collaborators
             services.AddScoped<ICollaboratorService, CollaboratorService>();
@@ -63,12 +66,20 @@ namespace dtc.Application
 
             // Feature: Location
             services.AddScoped<ICenterService, CenterService>();
+            services.AddScoped<IAddressService, AddressService>();
 
             // Feature: Notifications
             services.AddScoped<INotificationService, NotificationService>();
 
             // Feature: Permissions
             services.AddScoped<IDocumentService, DocumentService>();
+
+            // Feature: AI
+            services.AddScoped<ICourseAdvisorService, CourseAdvisorService>();
+            services.AddScoped<ITheoryAssistantService, TheoryAssistantService>();
+            services.AddScoped<IScheduleInsightService, ScheduleInsightService>();
+            services.AddScoped<IDashboardInsightService, DashboardInsightService>();
+            services.AddScoped<IKnowledgeChunkService, KnowledgeChunkService>();
 
             return services;
         }

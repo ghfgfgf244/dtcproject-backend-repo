@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using dtc.Domain.Entities;
 
 namespace dtc.Application.Features.Training.DTOs
 {
@@ -18,5 +19,8 @@ namespace dtc.Application.Features.Training.DTOs
         [Required]
         [Range(1, int.MaxValue)]
         public int MaxStudents { get; set; }
+
+        [Required]
+        public ClassType ClassType { get; set; }
     }
 }

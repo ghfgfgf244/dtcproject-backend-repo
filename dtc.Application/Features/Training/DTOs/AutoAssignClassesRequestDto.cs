@@ -1,0 +1,21 @@
+using System;
+using System.ComponentModel.DataAnnotations;
+using dtc.Domain.Entities;
+
+namespace dtc.Application.Features.Training.DTOs
+{
+    public class AutoAssignClassesRequestDto
+    {
+        [Required]
+        public Guid TermId { get; set; }
+
+        [Required]
+        public ClassType ClassType { get; set; }
+
+        public int? PreferredClassSize { get; set; }
+
+        public int? TolerancePercent { get; set; }
+
+        public string? PreferredShift { get; set; }
+    }
+}

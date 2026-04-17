@@ -7,14 +7,18 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="DTOs\Blogs\" />
-    <Folder Include="DTOs\Classes\" />
-    <Folder Include="DTOs\Collaborators\" />
-    <Folder Include="DTOs\Exams\" />
-    <Folder Include="DTOs\Notifications\" />
-    <Folder Include="DTOs\Others\" />
-    <Folder Include="DTOs\Permissions\" />
-    <Folder Include="DTOs\Training\" />
+    <Compile Remove="DTOs\**" />
+    <Compile Remove="Services\**" />
+    <Compile Remove="UseCases\**" />
+    <EmbeddedResource Remove="DTOs\**" />
+    <EmbeddedResource Remove="Services\**" />
+    <EmbeddedResource Remove="UseCases\**" />
+    <None Remove="DTOs\**" />
+    <None Remove="Services\**" />
+    <None Remove="UseCases\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Interfaces\Blogs\" />
     <Folder Include="Interfaces\Classes\" />
     <Folder Include="Interfaces\Collaborators\" />
@@ -23,15 +27,6 @@
     <Folder Include="Interfaces\Training\" />
     <Folder Include="Interfaces\Permissions\" />
     <Folder Include="Interfaces\Notifications\" />
-    <Folder Include="Services\Blogs\" />
-    <Folder Include="Services\Classes\" />
-    <Folder Include="Services\Collaborators\" />
-    <Folder Include="Services\Exams\" />
-    <Folder Include="Services\Notifications\" />
-    <Folder Include="Services\Others\" />
-    <Folder Include="Services\Permissions\" />
-    <Folder Include="Services\Training\" />
-    <Folder Include="UseCases\" />
   </ItemGroup>
 
   <ItemGroup>
@@ -43,6 +38,10 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.3" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.16.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
 </Project>

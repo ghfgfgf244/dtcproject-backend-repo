@@ -12,5 +12,27 @@ namespace dtc.Application.Features.Training.DTOs
         public decimal TotalFee { get; set; }
         public string? Notes { get; set; }
         public DateTime CreatedAt { get; set; }
+
+        // Extra User Info for Manager View
+        public string StudentName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+
+        // Course Info
+        public string? CourseName { get; set; }
+        public string? LicenseTypeLabel { get; set; }
+        public Guid? AssignedTermId { get; set; }
+        public string? AssignedTermName { get; set; }
+        public Guid? AssignedClassId { get; set; }
+        public string? AssignedClassName { get; set; }
+        public Guid? SuggestedTermId { get; set; }
+        public string? SuggestedTermName { get; set; }
+        public DateTime? SuggestedTermStartDate { get; set; }
+        public string? PlacementMessage { get; set; }
+
+        // Image URLs from Document table
+        public string? PhotoUrl { get; set; }
+        public string? IdFrontUrl { get; set; }
+        public string? IdBackUrl { get; set; }
     }
 }

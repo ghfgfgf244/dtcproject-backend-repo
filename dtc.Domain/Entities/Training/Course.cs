@@ -7,12 +7,12 @@ namespace dtc.Domain.Entities.Training
     public class Course : BaseEntity
     {
         public Guid CenterId { get; private set; }
-        public string CourseName { get; private set; }
+        public string CourseName { get; private set; } = string.Empty;
         public ExamLevel LicenseType { get; private set; }
         public int DurationInWeeks { get; private set; }
         public int MaxStudents { get; private set; }
         public string? ThumbnailUrl { get; private set; }
-        public string Description { get; private set; }
+        public string Description { get; private set; } = string.Empty;
         public decimal Price { get; private set; }
         public bool IsActive { get; private set; }
 

@@ -19,13 +19,12 @@ namespace dtc.API.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin,TrainingManager")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> SendNotification([FromBody] SendNotificationRequestDto request)
         {
-            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var adminId))
-                return Fail("Invalid token.");
             try
             {
+                var adminId = await GetInternalUserIdAsync();
                 var response = await _notificationService.SendNotificationAsync(request, adminId);
                 return Created(response, "Notification sent.");
             }
@@ -39,9 +38,7 @@ namespace dtc.API.Controllers
         [Authorize]
         public async Task<IActionResult> GetMyNotifications()
         {
-            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
-                return Fail("Invalid token.");
-
+            var userId = await GetInternalUserIdAsync();
             var rolesClaim = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
             var userRoleIds = rolesClaim
                 .Where(r => Enum.TryParse<dtc.Domain.Entities.UserRole>(r, out _))
@@ -52,14 +49,21 @@ namespace dtc.API.Controllers
             return Ok(notifications);
         }
 
+        [HttpGet("all")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        public async Task<IActionResult> GetAllNotifications()
+        {
+            var notifications = await _notificationService.GetAllNotificationsAsync();
+            return Ok(notifications);
+        }
+
         [HttpPut("{id}/read")]
         [Authorize]
         public async Task<IActionResult> MarkAsRead(Guid id)
         {
-            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
-                return Fail("Invalid token.");
             try
             {
+                var userId = await GetInternalUserIdAsync();
                 await _notificationService.MarkAsReadAsync(id, userId);
                 return NoContent("Notification marked as read.");
             }

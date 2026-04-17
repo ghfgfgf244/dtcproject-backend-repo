@@ -28,10 +28,8 @@ namespace dtc.Application.Features.Training.Services
             return await MapToDtoAsync(leaveRequest);
         }
 
-        public async Task<InstructorLeaveRequestResponseDto> UpdateLeaveRequestAsync(Guid id, Guid instructorId, UpdateInstructorLeaveRequestDto request)
-        {
-            throw new Exception("Leave requests are immutable. Please delete and recreate.");
-        }
+        public Task<InstructorLeaveRequestResponseDto> UpdateLeaveRequestAsync(Guid id, Guid instructorId, UpdateInstructorLeaveRequestDto request)
+            => Task.FromException<InstructorLeaveRequestResponseDto>(new Exception("Leave requests are immutable. Please delete and recreate."));
 
         public async Task<bool> DeleteLeaveRequestAsync(Guid id, Guid instructorId)
         {

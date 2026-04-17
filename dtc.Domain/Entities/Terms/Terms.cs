@@ -14,6 +14,7 @@ namespace dtc.Domain.Entities.Terms
         public DateTime EndDate { get; private set; }
         public int CurrentStudents { get; private set; }
         public int MaxStudents { get; private set; }
+        public bool IsActive { get; private set; }
 
         protected Term() { }
 
@@ -33,6 +34,7 @@ namespace dtc.Domain.Entities.Terms
             SetSchedule(startDate, endDate);
             SetMaxStudents(maxStudents);
             CurrentStudents = 0;
+            IsActive = true;
             
             Id = Guid.NewGuid();
             SetCreated(createdBy);
@@ -46,6 +48,8 @@ namespace dtc.Domain.Entities.Terms
             string? termName,
             DateTime? startDate,
             DateTime? endDate,
+            int? maxStudents = null,
+            bool? isActive = null,
             Guid? updatedBy = null)
         {
             bool changed = false;
@@ -65,11 +69,37 @@ namespace dtc.Domain.Entities.Terms
                 changed = true;
             }
 
+            if (maxStudents.HasValue && MaxStudents != maxStudents.Value)
+            {
+                SetMaxStudents(maxStudents.Value);
+                changed = true;
+            }
+
+            if (isActive.HasValue && IsActive != isActive.Value)
+            {
+                IsActive = isActive.Value;
+                changed = true;
+            }
+
             if (!changed)
                 return false;
 
             SetUpdated(updatedBy);
             return true;
+        }
+
+        public void Activate(Guid? updatedBy = null)
+        {
+            if (IsActive) return;
+            IsActive = true;
+            SetUpdated(updatedBy);
+        }
+
+        public void Deactivate(Guid? updatedBy = null)
+        {
+            if (!IsActive) return;
+            IsActive = false;
+            SetUpdated(updatedBy);
         }
 
         public bool EnrollStudent(Guid? updatedBy = null)

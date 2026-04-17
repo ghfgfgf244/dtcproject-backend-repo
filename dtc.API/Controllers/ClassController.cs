@@ -117,5 +117,93 @@ namespace dtc.API.Controllers
                 return Fail(ex.Message);
             }
         }
+
+        [HttpGet("teaching")]
+        [Authorize(Roles = "Instructor,Admin,TrainingManager")]
+        public async Task<IActionResult> GetTeachingClasses()
+        {
+            var instructorId = await GetInternalUserIdAsync();
+            var response = await _classService.GetClassesByInstructorAsync(instructorId);
+            return Ok(response);
+        }
+
+        [HttpGet("{id}/students")]
+        [Authorize(Roles = "Instructor,Admin,TrainingManager")]
+        public async Task<IActionResult> GetClassStudents(Guid id)
+        {
+            var response = await _classService.GetClassStudentsAsync(id);
+            return Ok(response);
+        }
+
+        [HttpGet("{id}/available-students")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        public async Task<IActionResult> GetAvailableStudents(Guid id)
+        {
+            var response = await _classService.GetAvailableStudentsAsync(id);
+            return Ok(response);
+        }
+
+        [HttpDelete("{id}/students/{studentId}")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        public async Task<IActionResult> RemoveStudentFromClass(Guid id, Guid studentId)
+        {
+            var adminId = await GetInternalUserIdAsync();
+            try
+            {
+                await _classService.RemoveStudentFromClassAsync(id, studentId, adminId);
+                return NoContent("Student removed successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpPost("{id}/students/{studentId}/transfer")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        public async Task<IActionResult> TransferStudent(Guid id, Guid studentId, [FromBody] TransferStudentRequestDto request)
+        {
+            var adminId = await GetInternalUserIdAsync();
+            try
+            {
+                await _classService.TransferStudentAsync(id, studentId, request, adminId);
+                return NoContent("Student transferred successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpPost("auto-assign")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> AutoAssignClasses([FromBody] AutoAssignClassesRequestDto request)
+        {
+            var adminId = await GetInternalUserIdAsync();
+            try
+            {
+                var response = await _classService.AutoAssignClassesAsync(request, adminId);
+                return Ok(response, response.Message);
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpPost("auto-assign/explain")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> PreviewAutoAssignClasses([FromBody] AutoAssignClassesRequestDto request)
+        {
+            try
+            {
+                var response = await _classService.PreviewAutoAssignClassesAsync(request);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
     }
 }

@@ -47,35 +47,64 @@ namespace dtc.Application.Features.Notifications.Services
 
         public async Task<IEnumerable<NotificationResponseDto>> GetMyNotificationsAsync(Guid userId, List<int> userRoleIds)
         {
-            // 1. Get all notifications relevant to the user's roles (or broadcast/empty roles)
-            var allNotifications = await _unitOfWork.Notifications.FindAsync(n => true); // In a real app, optimize this query or get latest
-
-            var userEnums = userRoleIds.Select(id => (dtc.Domain.Entities.UserRole)id).ToList();
-
-            var relevantNotifications = allNotifications
-                .Where(n => !n.TargetRoles.Any() || n.TargetRoles.Any(role => userEnums.Contains(role)))
-                .OrderByDescending(n => n.CreatedAt)
-                .ToList();
-
-            // 2. Get the read receipts for this user
+            // 1. Get all read-receipts/links for this user to identify personal notifications
             var userReadReceipts = await _unitOfWork.UserNotifications
                 .FindAsync(un => un.UserId == userId);
             
+            var directNotificationIds = userReadReceipts.Select(un => un.NotificationId).ToHashSet();
+            var userEnums = userRoleIds.Select(id => (dtc.Domain.Entities.UserRole)id).ToList();
+
+            // 2. Query relevant notifications from MongoDB
+            // Split into two separate queries because complex OR logic with nested Any/Contains 
+            // can fail to translate in some MongoDB LINQ provider versions.
+            
+            // Query A: Notifications explicitly linked to this user
+            var directNotifications = await _unitOfWork.Notifications
+                .FindAsync(n => directNotificationIds.Contains(n.Id));
+
+            // Query B: Shared/Broadcast notifications matching user roles
+            var roleNotifications = await _unitOfWork.Notifications
+                .FindAsync(n => n.TargetRoles.Any(role => userEnums.Contains(role)));
+
+            // Combine and Deduplicate
+            var relevantNotifications = directNotifications
+                .Concat(roleNotifications)
+                .GroupBy(n => n.Id)
+                .Select(g => g.First())
+                .ToList();
+
             var readNotificationIds = userReadReceipts.Where(un => un.IsRead).Select(un => un.NotificationId).ToHashSet();
 
             // 3. Map to DTOs
-            var response = relevantNotifications.Select(n => new NotificationResponseDto
-            {
-                Id = n.Id,
-                Title = n.Title,
-                Content = n.Content,
-                Type = n.Type.ToString(),
-                CenterId = n.CenterId,
-                IsRead = readNotificationIds.Contains(n.Id),
-                CreatedAt = n.CreatedAt
-            });
+            return relevantNotifications
+                .OrderByDescending(n => n.CreatedAt)
+                .Select(n => new NotificationResponseDto
+                {
+                    Id = n.Id,
+                    Title = n.Title,
+                    Content = n.Content,
+                    Type = n.Type.ToString(),
+                    CenterId = n.CenterId,
+                    IsRead = readNotificationIds.Contains(n.Id),
+                    CreatedAt = n.CreatedAt
+                });
+        }
 
-            return response;
+        public async Task<IEnumerable<NotificationResponseDto>> GetAllNotificationsAsync()
+        {
+            var allNotifications = await _unitOfWork.Notifications.FindAsync(n => true);
+            return allNotifications
+                .OrderByDescending(n => n.CreatedAt)
+                .Select(n => new NotificationResponseDto
+                {
+                    Id = n.Id,
+                    Title = n.Title,
+                    Content = n.Content,
+                    Type = n.Type.ToString(),
+                    CenterId = n.CenterId,
+                    IsRead = false, // Not relevant for admin-all view
+                    CreatedAt = n.CreatedAt
+                });
         }
 
         public async Task MarkAsReadAsync(Guid notificationId, Guid userId)

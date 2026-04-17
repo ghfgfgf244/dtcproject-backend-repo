@@ -6,10 +6,10 @@ namespace dtc.Domain.Entities.Permissions
 {
     public class User : BaseEntity
     {
-        public string ClerkId { get; private set; } // Identifies user in Clerk
-        public Email Email { get; private set; }
-        public string FullName { get; private set; }
-        public PhoneNumber Phone { get; private set; }
+        public string ClerkId { get; private set; } = string.Empty; // Identifies user in Clerk
+        public Email Email { get; private set; } = default!;
+        public string FullName { get; private set; } = string.Empty;
+        public PhoneNumber Phone { get; private set; } = default!;
         public string? AvatarUrl { get; private set; }
         public bool IsActive { get; private set; }
         public DateTime? LastLoginAt { get; private set; }
@@ -67,9 +67,11 @@ namespace dtc.Domain.Entities.Permissions
             return true;
         }
 
-        public void SyncFromClerk(string? fullName, string? avatarUrl, Guid? updatedBy = null)
+        public void SyncFromClerk(string clerkId, string? fullName, string? avatarUrl, Guid? updatedBy = null)
         {
             bool changed = false;
+            changed |= SetClerkId(clerkId);
+
             if (!string.IsNullOrWhiteSpace(fullName))
                 changed |= SetFullName(fullName);
             
@@ -113,11 +115,17 @@ namespace dtc.Domain.Entities.Permissions
         // Internal setters
         // =========================
 
-        private void SetClerkId(string clerkId)
+        private bool SetClerkId(string clerkId)
         {
-            if (string.IsNullOrWhiteSpace(clerkId))
+            var normalized = clerkId?.Trim();
+            if (string.IsNullOrWhiteSpace(normalized))
                 throw new ArgumentException("ClerkId is required");
-            ClerkId = clerkId;
+
+            if (ClerkId == normalized)
+                return false;
+
+            ClerkId = normalized;
+            return true;
         }
 
         private void SetEmail(Email email)

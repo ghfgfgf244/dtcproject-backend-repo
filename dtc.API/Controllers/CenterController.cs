@@ -65,6 +65,22 @@ namespace dtc.API.Controllers
             }
         }
 
+        [HttpPost("{id}/activate")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ActivateCenter(Guid id)
+        {
+            var adminId = await GetInternalUserIdAsync();
+            try
+            {
+                await _centerService.ActivateCenterAsync(id, adminId);
+                return NoContent("Center activated successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
         [HttpGet]
         public async Task<IActionResult> GetAllCenters()
         {

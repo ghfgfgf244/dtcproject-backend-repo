@@ -50,11 +50,27 @@ namespace dtc.API.Controllers
 
         // DEV-106: View sample exam
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin,TrainingManager,Instructor")]
         public async Task<IActionResult> GetSampleExamDetail(Guid id)
         {
             try
             {
                 var response = await _sampleExamService.GetSampleExamDetailAsync(id);
+                return Ok(response);
+            }
+            catch
+            {
+                return NotFound("SampleExam");
+            }
+        }
+
+        [HttpGet("{id}/public")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPublicSampleExamDetail(Guid id)
+        {
+            try
+            {
+                var response = await _sampleExamService.GetPublicSampleExamDetailAsync(id);
                 return Ok(response);
             }
             catch
@@ -111,6 +127,21 @@ namespace dtc.API.Controllers
             try
             {
                 var response = await _sampleExamService.DoSampleTestAsync(id, studentId, request);
+                return Ok(response);
+            }
+            catch (System.Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpPost("{id}/public-submit")]
+        [AllowAnonymous]
+        public async Task<IActionResult> SubmitPublicSampleTest(Guid id, [FromBody] SubmitSampleTestRequestDto request)
+        {
+            try
+            {
+                var response = await _sampleExamService.DoPublicSampleTestAsync(id, request);
                 return Ok(response);
             }
             catch (System.Exception ex)

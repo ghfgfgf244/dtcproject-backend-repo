@@ -45,6 +45,7 @@ namespace dtc.Domain.Entities.Exams
             DateTime? regStart,
             DateTime? regEnd,
             DateTime? examStart,
+            int? maxCandidates = null,
             Guid? updatedBy = null)
         {
             bool changed = false;
@@ -62,6 +63,12 @@ namespace dtc.Domain.Entities.Exams
                 var newExamStart = examStart ?? ExamStartDate;
 
                 SetDates(newRegStart, newRegEnd, newExamStart);
+                changed = true;
+            }
+
+            if (maxCandidates.HasValue && maxCandidates.Value != MaxCandidates)
+            {
+                SetMaxCandidates(maxCandidates.Value);
                 changed = true;
             }
 

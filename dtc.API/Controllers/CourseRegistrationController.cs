@@ -1,5 +1,6 @@
 using dtc.Application.Features.Training.DTOs;
 using dtc.Application.Features.Training.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -12,19 +13,50 @@ namespace dtc.API.Controllers
     {
         private readonly ICourseRegistrationService _registrationService;
 
+        public class RegisterCourseApiRequest
+        {
+            public Guid CourseId { get; set; }
+            public string? FullName { get; set; }
+            public string? Email { get; set; }
+            public string? Phone { get; set; }
+            public decimal TotalFee { get; set; }
+            public string? Notes { get; set; }
+            public string? ReferralCode { get; set; }
+            public IFormFile? Photo { get; set; }
+            public IFormFile? IdFront { get; set; }
+            public IFormFile? IdBack { get; set; }
+        }
+
         public CourseRegistrationController(ICourseRegistrationService registrationService)
         {
             _registrationService = registrationService;
         }
 
         [HttpPost]
-        [Authorize(Roles = "Student")]
-        public async Task<IActionResult> RegisterCourse([FromBody] RegisterCourseRequestDto request)
+        [AllowAnonymous]
+        public async Task<IActionResult> RegisterCourse([FromForm] RegisterCourseApiRequest request)
         {
-            var studentId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             try
             {
-                var response = await _registrationService.RegisterCourseAsync(request, studentId);
+                Guid? studentId = null;
+                if (User?.Identity?.IsAuthenticated == true)
+                {
+                    studentId = await GetInternalUserIdAsync();
+                }
+
+                var response = await _registrationService.RegisterCourseAsync(new RegisterCourseRequestDto
+                {
+                    CourseId = request.CourseId,
+                    FullName = request.FullName,
+                    Email = request.Email,
+                    Phone = request.Phone,
+                    TotalFee = request.TotalFee,
+                    Notes = request.Notes,
+                    ReferralCode = request.ReferralCode,
+                    Photo = await MapFileAsync(request.Photo, "image"),
+                    IdFront = await MapFileAsync(request.IdFront, "image"),
+                    IdBack = await MapFileAsync(request.IdBack, "image")
+                }, studentId);
                 return Created(response, "Course registration submitted successfully.");
             }
             catch (Exception ex)
@@ -33,11 +65,30 @@ namespace dtc.API.Controllers
             }
         }
 
+        private static async Task<UploadedFileDto?> MapFileAsync(IFormFile? file, string resourceType)
+        {
+            if (file == null || file.Length <= 0)
+            {
+                return null;
+            }
+
+            using var memoryStream = new System.IO.MemoryStream();
+            await file.CopyToAsync(memoryStream);
+
+            return new UploadedFileDto
+            {
+                FileName = file.FileName,
+                Extension = System.IO.Path.GetExtension(file.FileName),
+                ResourceType = resourceType,
+                Content = memoryStream.ToArray()
+            };
+        }
+
         [HttpPut("{id}/cancel")]
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> CancelRegistration(Guid id, [FromBody] CancelRegistrationRequestDto request)
         {
-            var studentId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var studentId = await GetInternalUserIdAsync();
             try
             {
                 await _registrationService.CancelRegistrationAsync(id, request.Reason, studentId);
@@ -69,7 +120,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> GetMyRegistrations()
         {
-            var studentId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var studentId = await GetInternalUserIdAsync();
             var response = await _registrationService.GetMyRegistrationsAsync(studentId);
             return Ok(response);
         }
@@ -95,6 +146,14 @@ namespace dtc.API.Controllers
             {
                 return NotFound("CourseRegistration");
             }
+        }
+
+        [HttpGet("stats")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        public async Task<IActionResult> GetRegistrationStats()
+        {
+            var response = await _registrationService.GetRegistrationStatsAsync();
+            return Ok(response);
         }
     }
 }

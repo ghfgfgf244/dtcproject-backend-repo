@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using dtc.Application.Features.Exams.Services;
+using dtc.Application.Features.AI.Interfaces;
 using Moq;
 using FluentAssertions;
 using Xunit;
@@ -20,14 +21,16 @@ namespace dtc.Tests.Features.Exams
     public class SampleExamServiceTests
     {
         private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+        private readonly Mock<IAiRouterService> _aiRouterMock;
 
         private readonly SampleExamService _service;
 
         public SampleExamServiceTests()
         {
             _unitOfWorkMock = new Mock<IUnitOfWork>();
+            _aiRouterMock = new Mock<IAiRouterService>();
 
-            _service = new SampleExamService(_unitOfWorkMock.Object);
+            _service = new SampleExamService(_unitOfWorkMock.Object, _aiRouterMock.Object);
         }
 
 

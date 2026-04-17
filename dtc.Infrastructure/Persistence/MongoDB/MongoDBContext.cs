@@ -46,6 +46,7 @@ namespace dtc.Infrastructure.Persistence.MongoDB
         
         public virtual IMongoCollection<LearningRoadmap> LearningRoadmaps => _database.GetCollection<LearningRoadmap>("LearningRoadmaps");
         public virtual IMongoCollection<ResourceLearning> ResourceLearnings => _database.GetCollection<ResourceLearning>("ResourceLearnings");
+        public virtual IMongoCollection<BsonDocument> RawCollection(string collectionName) => _database.GetCollection<BsonDocument>(collectionName);
 
         public Task SeedSampleDataAsync(CancellationToken cancellationToken = default)
             => MongoDbSeeder.SeedAsync(this, cancellationToken);

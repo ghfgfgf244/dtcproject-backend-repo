@@ -54,7 +54,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> UpdateExam(Guid id, [FromBody] UpdateExamRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 var response = await _examService.UpdateExamAsync(id, request, adminId);
@@ -71,7 +71,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> DeleteExam(Guid id)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 await _examService.DeleteExamAsync(id, adminId);
@@ -111,7 +111,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager,Instructor")]
         public async Task<IActionResult> UpdateExamResult(Guid id, Guid resultId, [FromBody] UpdateExamResultRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 await _examService.UpdateExamResultAsync(resultId, request, adminId);
@@ -127,7 +127,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> EnterBulkExamResults([FromBody] BulkExamResultRequestDto request)
         {
-            var adminId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var adminId = await GetInternalUserIdAsync();
             try
             {
                 await _examService.EnterBulkExamResultsAsync(request, adminId);
@@ -137,6 +137,24 @@ namespace dtc.API.Controllers
             {
                 return Fail(ex.Message);
             }
+        }
+
+        [HttpGet("results/me")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetMyExamResults()
+        {
+            var studentId = await GetInternalUserIdAsync();
+            var response = await _examService.GetMyExamResultsAsync(studentId);
+            return Ok(response);
+        }
+
+        [HttpGet("me")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetMyExams()
+        {
+            var studentId = await GetInternalUserIdAsync();
+            var response = await _examService.GetMyExamsAsync(studentId);
+            return Ok(response);
         }
     }
 }

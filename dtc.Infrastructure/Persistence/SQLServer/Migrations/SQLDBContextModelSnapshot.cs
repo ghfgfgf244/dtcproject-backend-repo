@@ -106,6 +106,11 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<string>("ClassType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -157,6 +162,7 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         {
                             Id = new Guid("66666666-6666-6666-6666-666666666661"),
                             ClassName = "B2-01-Q1",
+                            ClassType = "Theory",
                             CreatedAt = new DateTime(2026, 1, 10, 8, 0, 0, 0, DateTimeKind.Utc),
                             CreatedBy = new Guid("11111111-1111-1111-1111-111111111111"),
                             CurrentStudents = 1,
@@ -172,6 +178,7 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         {
                             Id = new Guid("66666666-6666-6666-6666-666666666662"),
                             ClassName = "C-01-TD",
+                            ClassType = "Practice",
                             CreatedAt = new DateTime(2026, 1, 10, 8, 35, 0, 0, DateTimeKind.Utc),
                             CreatedBy = new Guid("11111111-1111-1111-1111-111111111111"),
                             CurrentStudents = 1,
@@ -191,6 +198,9 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("AddressId")
+                        .HasColumnType("int");
+
                     b.Property<Guid>("ClassId")
                         .HasColumnType("uniqueidentifier");
 
@@ -208,11 +218,6 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
-
-                    b.Property<string>("Location")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -241,25 +246,25 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         new
                         {
                             Id = new Guid("77777777-7777-7777-7777-777777777771"),
+                            AddressId = 1,
                             ClassId = new Guid("66666666-6666-6666-6666-666666666661"),
                             CreatedAt = new DateTime(2026, 1, 10, 8, 0, 0, 0, DateTimeKind.Utc),
                             CreatedBy = new Guid("11111111-1111-1111-1111-111111111111"),
                             EndTime = new DateTime(2026, 3, 15, 3, 0, 0, 0, DateTimeKind.Utc),
                             InstructorId = new Guid("11111111-1111-1111-1111-111111111111"),
                             IsDeleted = false,
-                            Location = "San tap Trung tam Quan 1",
                             StartTime = new DateTime(2026, 3, 15, 1, 0, 0, 0, DateTimeKind.Utc)
                         },
                         new
                         {
                             Id = new Guid("77777777-7777-7777-7777-777777777772"),
+                            AddressId = 2,
                             ClassId = new Guid("66666666-6666-6666-6666-666666666662"),
                             CreatedAt = new DateTime(2026, 1, 10, 8, 40, 0, 0, DateTimeKind.Utc),
                             CreatedBy = new Guid("11111111-1111-1111-1111-111111111111"),
                             EndTime = new DateTime(2026, 4, 20, 3, 30, 0, 0, DateTimeKind.Utc),
                             InstructorId = new Guid("11111111-1111-1111-1111-111111111111"),
                             IsDeleted = false,
-                            Location = "Bai tap Thu Duc",
                             StartTime = new DateTime(2026, 4, 20, 1, 30, 0, 0, DateTimeKind.Utc)
                         });
                 });
@@ -619,6 +624,9 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("AddressId")
+                        .HasColumnType("int");
+
                     b.Property<Guid>("CourseId")
                         .HasColumnType("uniqueidentifier");
 
@@ -685,6 +693,7 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         new
                         {
                             Id = new Guid("99999999-9999-9999-9999-999999999991"),
+                            AddressId = 1,
                             CourseId = new Guid("44444444-4444-4444-4444-444444444441"),
                             CreatedAt = new DateTime(2026, 1, 10, 8, 0, 0, 0, DateTimeKind.Utc),
                             CreatedBy = new Guid("11111111-1111-1111-1111-111111111111"),
@@ -703,6 +712,7 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         new
                         {
                             Id = new Guid("99999999-9999-9999-9999-999999999992"),
+                            AddressId = 2,
                             CourseId = new Guid("44444444-4444-4444-4444-444444444442"),
                             CreatedAt = new DateTime(2026, 1, 10, 10, 0, 0, 0, DateTimeKind.Utc),
                             CreatedBy = new Guid("11111111-1111-1111-1111-111111111111"),
@@ -1383,6 +1393,9 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("AssignedTermId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("CourseId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1428,6 +1441,8 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AssignedTermId");
+
                     b.HasIndex("CourseId");
 
                     b.HasIndex("UserId");
@@ -1438,6 +1453,7 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         new
                         {
                             Id = new Guid("dddddddd-dddd-dddd-dddd-ddddddddddd1"),
+                            AssignedTermId = new Guid("55555555-5555-5555-5555-555555555551"),
                             CourseId = new Guid("44444444-4444-4444-4444-444444444441"),
                             CreatedAt = new DateTime(2026, 1, 10, 8, 0, 0, 0, DateTimeKind.Utc),
                             CreatedBy = new Guid("11111111-1111-1111-1111-111111111111"),
@@ -1486,6 +1502,9 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -1527,6 +1546,7 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                             CreatedBy = new Guid("11111111-1111-1111-1111-111111111111"),
                             CurrentStudents = 1,
                             EndDate = new DateTime(2026, 5, 31, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
                             IsDeleted = false,
                             MaxStudents = 25,
                             StartDate = new DateTime(2026, 3, 1, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -1542,6 +1562,7 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                             CreatedBy = new Guid("11111111-1111-1111-1111-111111111111"),
                             CurrentStudents = 1,
                             EndDate = new DateTime(2026, 7, 20, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
                             IsDeleted = false,
                             MaxStudents = 20,
                             StartDate = new DateTime(2026, 4, 5, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -1925,6 +1946,11 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
 
             modelBuilder.Entity("dtc.Domain.Entities.Terms.CourseRegistration", b =>
                 {
+                    b.HasOne("dtc.Domain.Entities.Terms.Term", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedTermId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("dtc.Domain.Entities.Training.Course", null)
                         .WithMany()
                         .HasForeignKey("CourseId")
