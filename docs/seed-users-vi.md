@@ -253,17 +253,6 @@ Phần này được viết bám sát mô tả nghiệp vụ để vừa dùng s
 
 ## Script SQL tổng hợp
 
-```sql
-SET NOCOUNT ON;
-SET XACT_ABORT ON;
-
-BEGIN TRAN;
-
-DECLARE @Now DATETIME2(7) = SYSUTCDATETIME();
-DECLARE @Today DATE = CAST(@Now AS DATE);
-
-DECLARE @CreatedBy UNIQUEIDENTIFIER =
-(
     SELECT TOP (1) Id
     FROM dbo.Users
     WHERE IsDeleted = 0
@@ -813,12 +802,14 @@ SELECT
     s.Status,
     s.Price,
     s.Notes,
+
     @Now,
     @CreatedBy,
     @Now,
     @CreatedBy,
     0
 FROM @StudentRegistrationSeed s
+
 WHERE NOT EXISTS
 (
     SELECT 1
@@ -832,6 +823,7 @@ WHERE NOT EXISTS
    PHASE 9 - Đồng bộ UserCenters cho student theo CourseRegistration
    ========================================================= */
 
+
 INSERT INTO dbo.UserCenters (UserId, CenterId)
 SELECT DISTINCT
     cr.UserId,
@@ -841,6 +833,7 @@ JOIN dbo.Courses c
     ON c.Id = cr.CourseId
 WHERE cr.IsDeleted = 0
   AND c.IsDeleted = 0
+
   AND NOT EXISTS
   (
       SELECT 1
