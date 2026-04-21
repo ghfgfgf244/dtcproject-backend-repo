@@ -18,13 +18,13 @@ namespace dtc.Infrastructure.Persistence.Seeding
             await NormalizeQuestionAnswerValuesAsync(context, cancellationToken);
             await UpsertManyAsync(context.Blogs, MongoSeedData.Blogs, cancellationToken);
             await UpsertManyAsync(context.Categories, MongoSeedData.Categories, cancellationToken);
-            await UpsertManyAsync(context.Questions, MongoSeedData.Questions, cancellationToken);
-            await UpsertManyAsync(context.SampleExams, MongoSeedData.SampleExams, cancellationToken);
-            await UpsertManyAsync(context.SampleExamQuestions, MongoSeedData.SampleExamQuestions, cancellationToken);
+            //await UpsertManyAsync(context.Questions, MongoSeedData.Questions, cancellationToken);
+            //await UpsertManyAsync(context.SampleExams, MongoSeedData.SampleExams, cancellationToken);
+            //await UpsertManyAsync(context.SampleExamQuestions, MongoSeedData.SampleExamQuestions, cancellationToken);
             await UpsertManyAsync(context.Addresses, MongoSeedData.Addresses, cancellationToken);
             await UpsertManyAsync(context.LearningLocations, MongoSeedData.LearningLocations, cancellationToken);
-            await UpsertManyAsync(context.Notifications, MongoSeedData.Notifications, cancellationToken);
-            await UpsertManyAsync(context.UserNotifications, MongoSeedData.UserNotifications, cancellationToken);
+            //await UpsertManyAsync(context.Notifications, MongoSeedData.Notifications, cancellationToken);
+            //await UpsertManyAsync(context.UserNotifications, MongoSeedData.UserNotifications, cancellationToken);
             await UpsertManyAsync(context.LearningRoadmaps, MongoSeedData.LearningRoadmaps, cancellationToken);
             await UpsertManyAsync(context.ResourceLearnings, MongoSeedData.ResourceLearnings, cancellationToken);
         }

@@ -197,9 +197,9 @@ namespace dtc.Domain.Entities
 
     public static class QuestionCategoryNames
     {
-        public const string Theory = "Ly thuyet";
-        public const string Sign = "Bien bao";
-        public const string Simulation = "Sa hinh";
+        public const string Theory = "Lý thuyết";
+        public const string Sign = "Biển báo";
+        public const string Simulation = "Sa hình";
 
         public static readonly string[] All =
         {

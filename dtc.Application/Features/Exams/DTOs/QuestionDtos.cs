@@ -58,7 +58,22 @@ namespace dtc.Application.Features.Exams.DTOs
         public AnswerOption CorrectAnswer { get; set; }
         public string? ImageLink { get; set; }
         public string? Explanation { get; set; }
+        public int AttemptCount { get; set; }
+        public int WrongAttemptCount { get; set; }
+        public double WrongRate { get; set; }
         public DateTime CreatedAt { get; set; }
+    }
+
+    public class CommonMistakeQuestionDto
+    {
+        public int Id { get; set; }
+        public string Category { get; set; } = QuestionCategoryNames.Theory;
+        public string Content { get; set; } = string.Empty;
+        public string? ImageLink { get; set; }
+        public string? Explanation { get; set; }
+        public int AttemptCount { get; set; }
+        public int WrongAttemptCount { get; set; }
+        public double WrongRate { get; set; }
     }
 
     public class QuestionImportResponseDto

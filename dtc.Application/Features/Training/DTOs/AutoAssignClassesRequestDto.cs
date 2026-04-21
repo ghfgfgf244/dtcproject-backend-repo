@@ -11,5 +11,11 @@ namespace dtc.Application.Features.Training.DTOs
 
         [Required]
         public ClassType ClassType { get; set; }
+
+        public int? PreferredClassSize { get; set; }
+
+        public int? TolerancePercent { get; set; }
+
+        public string? PreferredShift { get; set; }
     }
 }
