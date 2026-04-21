@@ -23,21 +23,21 @@ namespace dtc.Application.Features.Exams.Services
         public async Task<ExamRegistrationResponseDto> RegisterAsync(CreateExamRegistrationRequestDto request)
         {
             var batch = await _unitOfWork.ExamBatches.GetByIdAsync(request.ExamBatchId);
-            if (batch == null) throw new Exception("Exam batch not found");
+            if (batch == null) throw new Exception("Không tìm thấy đợt thi đã chọn.");
 
             // Prevent registration if closed
             if (batch.Status != ExamBatchStatus.OpenForRegistration)
-                throw new Exception("Exam batch is not open for registration");
+                throw new Exception("Đợt thi này hiện không mở đăng ký.");
 
             var student = await _unitOfWork.Users.GetByIdAsync(request.StudentId);
-            if (student == null) throw new Exception("Student not found");
+            if (student == null) throw new Exception("Không tìm thấy học viên đã chọn.");
 
             var existingRegs = await _unitOfWork.ExamRegistrations.FindAsync(r => r.ExamBatchId == request.ExamBatchId && r.StudentId == request.StudentId);
             if (existingRegs != null && existingRegs.Any())
             {
                 var existing = existingRegs.First();
                 if (existing.Status != ExamRegistrationStatus.Cancelled && existing.Status != ExamRegistrationStatus.Rejected)
-                    throw new Exception("Student has already registered for this exam batch");
+                    throw new Exception("Học viên này đã đăng ký ở đợt thi này rồi.");
             }
 
             var reg = new ExamRegistration(
@@ -131,10 +131,10 @@ namespace dtc.Application.Features.Exams.Services
         public async Task<IEnumerable<TermExamRegistrationCandidateDto>> GetCandidatesByTermAsync(Guid termId, Guid examBatchId)
         {
             var term = await _unitOfWork.Terms.GetByIdAsync(termId);
-            if (term == null) throw new Exception("Term not found");
+            if (term == null) throw new Exception("Không tìm thấy kỳ học đã chọn.");
 
             var batch = await _unitOfWork.ExamBatches.GetByIdAsync(examBatchId);
-            if (batch == null) throw new Exception("Exam batch not found");
+            if (batch == null) throw new Exception("Không tìm thấy đợt thi đã chọn.");
 
             var registrations = (await _unitOfWork.CourseRegistrations.FindAsync(r =>
                     r.AssignedTermId == termId &&
@@ -195,15 +195,15 @@ namespace dtc.Application.Features.Exams.Services
         public async Task<bool> CreateBulkRegistrationsAsync(BulkExamRegistrationRequestDto request, Guid adminId)
         {
             var batch = await _unitOfWork.ExamBatches.GetByIdAsync(request.ExamBatchId);
-            if (batch == null) throw new Exception("Exam batch not found");
+            if (batch == null) throw new Exception("Không tìm thấy đợt thi đã chọn.");
 
             if (batch.Status != ExamBatchStatus.OpenForRegistration)
-                throw new Exception("Exam batch is not open for registration");
+                throw new Exception("Đợt thi này hiện không mở đăng ký.");
 
             var studentIds = request.StudentIds.Distinct().ToList();
             var students = await _unitOfWork.Users.FindAsync(u => studentIds.Contains(u.Id));
             if (students.Count() != studentIds.Count)
-                throw new Exception("One or more students not found");
+                throw new Exception("Có ít nhất một học viên không tồn tại trong hệ thống.");
 
             return await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {

@@ -4,11 +4,13 @@ using dtc.Application.Features.Training.DTOs;
 using dtc.Application.Features.Training.Interfaces;
 using dtc.Application.Interfaces;
 using dtc.Domain.Entities;
+using dtc.Domain.Entities.Permissions;
 using dtc.Domain.Entities.Classes;
 using dtc.Domain.Entities.Collaborators;
 using dtc.Domain.Entities.Terms;
 using dtc.Domain.Interfaces;
-using Microsoft.AspNetCore.Http;
+using dtc.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,46 +24,54 @@ namespace dtc.Application.Features.Training.Services
         private readonly INotificationService _notificationService;
         private readonly IEmailService _emailService;
         private readonly ICloudinaryService _cloudinaryService;
+        private readonly ILogger<CourseRegistrationService> _logger;
 
         public CourseRegistrationService(
             IUnitOfWork unitOfWork,
             INotificationService notificationService,
             IEmailService emailService,
-            ICloudinaryService cloudinaryService)
+            ICloudinaryService cloudinaryService,
+            ILogger<CourseRegistrationService> logger)
         {
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
             _emailService = emailService;
             _cloudinaryService = cloudinaryService;
+            _logger = logger;
         }
 
-        public async Task<CourseRegistrationResponseDto> RegisterCourseAsync(RegisterCourseRequestDto request, Guid studentId)
+        public async Task<CourseRegistrationResponseDto> RegisterCourseAsync(RegisterCourseRequestDto request, Guid? studentId)
         {
             var course = await _unitOfWork.Courses.GetByIdAsync(request.CourseId);
             if (course == null || !course.IsActive)
                 throw new Exception("Course not found or inactive");
 
-            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            var center = await _unitOfWork.Centers.GetByIdAsync(course.CenterId);
+
+            var submission = await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
+                var student = await ResolveStudentForRegistrationAsync(request, studentId);
+                var resolvedStudentId = student.Id;
+
                 var uploadedDocs = new List<dtc.Domain.Entities.Permissions.Document>();
-                if (request.Photo != null) uploadedDocs.Add(await UploadFileAsync(request.Photo, studentId, "image", "PROFILE_PHOTO"));
-                if (request.IdFront != null) uploadedDocs.Add(await UploadFileAsync(request.IdFront, studentId, "image", "ID_FRONT"));
-                if (request.IdBack != null) uploadedDocs.Add(await UploadFileAsync(request.IdBack, studentId, "image", "ID_BACK"));
+                if (request.Photo != null) uploadedDocs.Add(await UploadFileAsync(request.Photo, resolvedStudentId, "image", "PROFILE_PHOTO"));
+                if (request.IdFront != null) uploadedDocs.Add(await UploadFileAsync(request.IdFront, resolvedStudentId, "image", "ID_FRONT"));
+                if (request.IdBack != null) uploadedDocs.Add(await UploadFileAsync(request.IdBack, resolvedStudentId, "image", "ID_BACK"));
 
                 foreach (var doc in uploadedDocs)
                 {
                     await _unitOfWork.Documents.AddAsync(doc);
                 }
 
-                var registration = new CourseRegistration(request.CourseId, studentId, request.TotalFee, request.Notes, studentId);
+                var registration = new CourseRegistration(request.CourseId, resolvedStudentId, request.TotalFee, request.Notes, resolvedStudentId);
 
                 await _unitOfWork.CourseRegistrations.AddAsync(registration);
                 
                 // Assign the student to the center of the course if not already assigned
-                var existingLink = await _unitOfWork.UserCenters.FindAsync(uc => uc.UserId == studentId && uc.CenterId == course.CenterId);
+                var existingLink = await _unitOfWork.UserCenters.FindAsync(uc => uc.UserId == resolvedStudentId && uc.CenterId == course.CenterId);
                 if (!existingLink.Any())
                 {
-                    await _unitOfWork.UserCenters.AddAsync(new dtc.Domain.Entities.Permissions.UserCenter(studentId, course.CenterId));
+                    await _unitOfWork.UserCenters.AddAsync(new dtc.Domain.Entities.Permissions.UserCenter(resolvedStudentId, course.CenterId));
                 }
 
                 await _unitOfWork.SaveChangesAsync();
@@ -71,11 +81,11 @@ namespace dtc.Application.Features.Training.Services
                     try
                     {
                         var referralQuery = await _unitOfWork.ReferralCodes.FindAsync(c => c.Code == request.ReferralCode.Trim().ToUpper() && c.IsActive);
-                        var referralCode = referralQuery.FirstOrDefault();
+                            var referralCode = referralQuery.FirstOrDefault();
 
                         if (referralCode != null)
                         {
-                            var referralReg = new ReferralRegistration(referralCode.Id, studentId);
+                            var referralReg = new ReferralRegistration(referralCode.Id, resolvedStudentId);
                             await _unitOfWork.ReferralRegistrations.AddAsync(referralReg);
 
                             referralCode.IncreaseUsage(studentId);
@@ -83,7 +93,7 @@ namespace dtc.Application.Features.Training.Services
 
                             await _unitOfWork.SaveChangesAsync();
 
-                            var studentQuery = await _unitOfWork.Users.GetByIdAsync(studentId);
+                            var studentQuery = await _unitOfWork.Users.GetByIdAsync(resolvedStudentId);
                             var studentName = studentQuery?.FullName ?? "Hoc vien moi";
 
                             await _notificationService.CreateForUserAsync(
@@ -98,9 +108,68 @@ namespace dtc.Application.Features.Training.Services
                     }
                 }
 
-                await NotifyRegistrationReceivedAsync(registration, course);
-                return await MapToDto(registration);
+                return new RegistrationSubmissionResult
+                {
+                    Response = await MapToDto(registration),
+                    StudentId = student.Id,
+                    StudentName = student.FullName,
+                    StudentEmail = student.Email.Value,
+                    CourseName = course.CourseName,
+                    CenterName = center?.CenterName ?? "DTC"
+                };
             });
+
+            await NotifyRegistrationReceivedAsync(submission);
+            return submission.Response;
+        }
+
+        private async Task<User> ResolveStudentForRegistrationAsync(RegisterCourseRequestDto request, Guid? authenticatedStudentId)
+        {
+            if (authenticatedStudentId.HasValue && authenticatedStudentId.Value != Guid.Empty)
+            {
+                var signedInUser = await _unitOfWork.Users.GetByIdAsync(authenticatedStudentId.Value);
+                if (signedInUser == null)
+                {
+                    throw new InvalidOperationException("Authenticated user is not synced in the internal system.");
+                }
+
+                return signedInUser;
+            }
+
+            if (string.IsNullOrWhiteSpace(request.FullName) ||
+                string.IsNullOrWhiteSpace(request.Email) ||
+                string.IsNullOrWhiteSpace(request.Phone))
+            {
+                throw new InvalidOperationException("FullName, Email, and Phone are required when registering without an account.");
+            }
+
+            var email = dtc.Domain.ValueObjects.Email.Create(request.Email);
+            var phone = dtc.Domain.ValueObjects.PhoneNumber.Create(request.Phone);
+
+            var existingUser = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (existingUser != null)
+            {
+                if (existingUser.RoleId != UserRole.Student)
+                {
+                    throw new InvalidOperationException("This email already belongs to another internal account. Please sign in with the existing account before registering.");
+                }
+
+                existingUser.UpdateProfile(request.FullName, phone, existingUser.AvatarUrl, existingUser.Id);
+                existingUser.Activate(existingUser.Id);
+                return existingUser!;
+            }
+
+            var pendingClerkId = $"pending_local_{Guid.NewGuid():N}";
+            var newUser = new User(
+                clerkId: pendingClerkId,
+                email: email,
+                fullName: request.FullName.Trim(),
+                phone: phone,
+                roleId: UserRole.Student,
+                createdBy: null);
+
+            await _unitOfWork.Users.AddAsync(newUser);
+            return newUser;
         }
 
         public async Task CancelRegistrationAsync(Guid registrationId, string reason, Guid studentId)
@@ -173,7 +242,9 @@ namespace dtc.Application.Features.Training.Services
 
         public async Task<IEnumerable<CourseRegistrationResponseDto>> GetMyRegistrationsAsync(Guid studentId)
         {
-            var registrations = await _unitOfWork.CourseRegistrations.FindAsync(r => r.UserId == studentId);
+            var registrations = (await _unitOfWork.CourseRegistrations.FindAsync(r => r.UserId == studentId))
+                .OrderByDescending(r => r.RegistrationDate)
+                .ToList();
             var response = new List<CourseRegistrationResponseDto>();
             foreach (var reg in registrations)
             {
@@ -329,23 +400,44 @@ namespace dtc.Application.Features.Training.Services
             return term.StartDate > registrationDate ? 1 : 2;
         }
 
-        private async Task NotifyRegistrationReceivedAsync(CourseRegistration registration, dtc.Domain.Entities.Training.Course course)
+        private async Task NotifyRegistrationReceivedAsync(RegistrationSubmissionResult submission)
         {
             try
             {
-                var suggestedTerm = await FindSuggestedTermAsync(registration.CourseId, registration.RegistrationDate);
-                var message = suggestedTerm == null
-                    ? $"Ho so dang ky '{course.CourseName}' da duoc ghi nhan. Hien cac ky hoc gan nhat da day, trung tam se lien he ngay khi bo tri duoc ky hoc phu hop."
-                    : $"Ho so dang ky '{course.CourseName}' da duoc ghi nhan. Du kien ban se hoc o ky '{suggestedTerm.TermName}' bat dau tu {suggestedTerm.StartDate:dd/MM/yyyy}; neu ky nay day cho, he thong se uu tien xep sang ky tiep theo phu hop.";
+                var message = !string.IsNullOrWhiteSpace(submission.Response.PlacementMessage)
+                    ? $"Ho so dang ky '{submission.CourseName}' da duoc ghi nhan. {submission.Response.PlacementMessage}"
+                    : $"Ho so dang ky '{submission.CourseName}' da duoc ghi nhan. Trung tam se lien he som de xac nhan lich hoc phu hop.";
 
                 await _notificationService.CreateForUserAsync(
-                    registration.UserId,
+                    submission.StudentId,
                     "Da tiep nhan ho so dang ky",
                     message,
                     NotificationType.Registration);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogWarning(
+                    ex,
+                    "Failed to create registration notification for student {StudentId}, course {CourseName}.",
+                    submission.StudentId,
+                    submission.CourseName);
+            }
+
+            try
+            {
+                await _emailService.SendCourseRegistrationConfirmationAsync(
+                    submission.StudentEmail,
+                    submission.StudentName,
+                    submission.CourseName,
+                    submission.CenterName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Failed to send course registration confirmation email to {Email} for course {CourseName}.",
+                    submission.StudentEmail,
+                    submission.CourseName);
             }
         }
 
@@ -404,8 +496,13 @@ namespace dtc.Application.Features.Training.Services
 
                 await _notificationService.CreateForUserAsync(student.Id, title, content, NotificationType.Registration);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(
+                    ex,
+                    "Failed to notify registration status change for registration {RegistrationId} with status {Status}.",
+                    registrationId,
+                    newStatus);
             }
         }
 
@@ -496,10 +593,10 @@ namespace dtc.Application.Features.Training.Services
             return null;
         }
 
-        private async Task<dtc.Domain.Entities.Permissions.Document> UploadFileAsync(IFormFile file, Guid studentId, string resourceType, string? customName = null)
+        private async Task<dtc.Domain.Entities.Permissions.Document> UploadFileAsync(UploadedFileDto file, Guid studentId, string resourceType, string? customName = null)
         {
             var fileName = customName ?? file.FileName;
-            using var stream = file.OpenReadStream();
+            using var stream = new System.IO.MemoryStream(file.Content);
             var (publicId, version) = await _cloudinaryService.UploadAsync(
                 stream,
                 fileName,
@@ -512,8 +609,8 @@ namespace dtc.Application.Features.Training.Services
                 version,
                 resourceType,
                 fileName,
-                System.IO.Path.GetExtension(file.FileName),
-                (int)file.Length);
+                file.Extension,
+                file.Length);
         }
 
         private string? GetDocUrl(List<dtc.Domain.Entities.Permissions.Document> docs, string exactName, string[] keywords)
@@ -538,6 +635,16 @@ namespace dtc.Application.Features.Training.Services
         {
             public required Term Term { get; init; }
             public Class? AssignedClass { get; init; }
+        }
+
+        private sealed class RegistrationSubmissionResult
+        {
+            public required CourseRegistrationResponseDto Response { get; init; }
+            public required Guid StudentId { get; init; }
+            public required string StudentName { get; init; }
+            public required string StudentEmail { get; init; }
+            public required string CourseName { get; init; }
+            public required string CenterName { get; init; }
         }
     }
 }

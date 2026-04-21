@@ -9,5 +9,8 @@ namespace dtc.Application.Features.Dashboards.Interfaces
     {
         Task<FinanceDashboardResponseDto> GetFinanceDashboardAsync();
         Task<AdmissionDashboardResponseDto> GetAdmissionDashboardAsync();
+        Task<EnrollmentOperationalDashboardDto> GetEnrollmentDashboardAsync();
+        Task<TrainingOperationalDashboardDto> GetTrainingDashboardAsync();
+        Task<AdminOperationalDashboardDto> GetAdminDashboardAsync();
     }
 }
