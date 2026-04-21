@@ -11,6 +11,7 @@ using dtc.Domain.Entities.Terms;
 using dtc.Domain.Interfaces;
 using dtc.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -438,6 +439,18 @@ namespace dtc.Application.Features.Training.Services
                     "Failed to send course registration confirmation email to {Email} for course {CourseName}.",
                     submission.StudentEmail,
                     submission.CourseName);
+            }
+
+            try
+            {
+                await _emailService.SendCourseRegistrationConfirmationAsync(
+                    submission.StudentEmail,
+                    submission.StudentName,
+                    submission.CourseName,
+                    submission.CenterName);
+            }
+            catch
+            {
             }
         }
 

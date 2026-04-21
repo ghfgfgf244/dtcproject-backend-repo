@@ -128,6 +128,7 @@ namespace dtc.Application.Features.Dashboards.Services
                         .Select(item => item.CategoryName)
                         .LastOrDefault(name => !string.IsNullOrWhiteSpace(name)) ?? string.Empty);
 
+
             var topCourses = courseRegs
                 .GroupBy(r => r.CourseId)
                 .Select(group =>
