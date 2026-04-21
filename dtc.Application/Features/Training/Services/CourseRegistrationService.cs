@@ -10,6 +10,8 @@ using dtc.Domain.Entities.Collaborators;
 using dtc.Domain.Entities.Terms;
 using dtc.Domain.Interfaces;
 using dtc.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,17 +25,20 @@ namespace dtc.Application.Features.Training.Services
         private readonly INotificationService _notificationService;
         private readonly IEmailService _emailService;
         private readonly ICloudinaryService _cloudinaryService;
+        private readonly ILogger<CourseRegistrationService> _logger;
 
         public CourseRegistrationService(
             IUnitOfWork unitOfWork,
             INotificationService notificationService,
             IEmailService emailService,
-            ICloudinaryService cloudinaryService)
+            ICloudinaryService cloudinaryService,
+            ILogger<CourseRegistrationService> logger)
         {
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
             _emailService = emailService;
             _cloudinaryService = cloudinaryService;
+            _logger = logger;
         }
 
         public async Task<CourseRegistrationResponseDto> RegisterCourseAsync(RegisterCourseRequestDto request, Guid? studentId)
@@ -410,8 +415,30 @@ namespace dtc.Application.Features.Training.Services
                     message,
                     NotificationType.Registration);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogWarning(
+                    ex,
+                    "Failed to create registration notification for student {StudentId}, course {CourseName}.",
+                    submission.StudentId,
+                    submission.CourseName);
+            }
+
+            try
+            {
+                await _emailService.SendCourseRegistrationConfirmationAsync(
+                    submission.StudentEmail,
+                    submission.StudentName,
+                    submission.CourseName,
+                    submission.CenterName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Failed to send course registration confirmation email to {Email} for course {CourseName}.",
+                    submission.StudentEmail,
+                    submission.CourseName);
             }
 
             try
@@ -482,8 +509,13 @@ namespace dtc.Application.Features.Training.Services
 
                 await _notificationService.CreateForUserAsync(student.Id, title, content, NotificationType.Registration);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(
+                    ex,
+                    "Failed to notify registration status change for registration {RegistrationId} with status {Status}.",
+                    registrationId,
+                    newStatus);
             }
         }
 

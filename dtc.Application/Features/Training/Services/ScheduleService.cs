@@ -207,6 +207,48 @@ namespace dtc.Application.Features.Training.Services
             return await MapToDtoCompleteAsync(schedule);
         }
 
+        public async Task<IEnumerable<ClassScheduleResponseDto>> GetAllSchedulesAsync()
+        {
+            var schedules = (await _unitOfWork.ClassSchedules.GetAllAsync())
+                .Where(s => !s.IsDeleted)
+                .OrderBy(s => s.StartTime)
+                .ToList();
+
+            if (schedules.Count == 0)
+                return new List<ClassScheduleResponseDto>();
+
+            var dtos = new List<ClassScheduleResponseDto>(schedules.Count);
+            foreach (var schedule in schedules)
+            {
+                dtos.Add(await MapToDtoCompleteAsync(schedule));
+            }
+
+            return dtos;
+        }
+
+        public async Task<IEnumerable<ClassScheduleResponseDto>> GetSchedulesByTermAsync(Guid termId)
+        {
+            var classes = (await _unitOfWork.Classes.FindAsync(c => c.TermId == termId && !c.IsDeleted)).ToList();
+            if (classes.Count == 0)
+                return new List<ClassScheduleResponseDto>();
+
+            var classIds = classes.Select(c => c.Id).ToHashSet();
+            var classMap = classes.ToDictionary(c => c.Id, c => c);
+
+            var schedules = (await _unitOfWork.ClassSchedules.FindAsync(s => classIds.Contains(s.ClassId) && !s.IsDeleted))
+                .OrderBy(s => s.StartTime)
+                .ToList();
+
+            var dtos = new List<ClassScheduleResponseDto>(schedules.Count);
+            foreach (var schedule in schedules)
+            {
+                classMap.TryGetValue(schedule.ClassId, out var classEntity);
+                dtos.Add(await MapToDtoCompleteAsync(schedule, classEntity: classEntity));
+            }
+
+            return dtos;
+        }
+
         public async Task<IEnumerable<ClassScheduleResponseDto>> GetSchedulesByClassAsync(Guid classId)
         {
             var schedules = await _unitOfWork.ClassSchedules.FindAsync(s => s.ClassId == classId);

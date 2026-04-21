@@ -112,17 +112,9 @@ namespace dtc.Infrastructure
             services.AddScoped<IVectorSearchService, UpstashVectorService>();
             services.AddScoped<IEmbeddingService, EmbeddingService>();
 
-            // Register Email Service (Resend)
-            services.Configure<ResendSettings>(opts => configuration.GetSection(ResendSettings.SectionName).Bind(opts));
-            services.AddHttpClient("Resend", (sp, client) =>
-            {
-                var settings = sp.GetRequiredService<IOptions<ResendSettings>>().Value;
-                client.DefaultRequestHeaders.Authorization =
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", settings.ApiKey);
-                client.DefaultRequestHeaders.Accept.Add(
-                    new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-            });
-            services.AddScoped<IEmailService, ResendEmailService>();
+            // Register Email Service (SMTP)
+            services.Configure<SmtpSettings>(opts => configuration.GetSection(SmtpSettings.SectionName).Bind(opts));
+            services.AddScoped<IEmailService, SmtpEmailService>();
 
             // Register Cloudinary Service
             services.Configure<CloudinarySettings>(opts => configuration.GetSection(CloudinarySettings.SectionName).Bind(opts));
@@ -143,7 +135,9 @@ namespace dtc.Infrastructure
                     ValidIssuer = configuration["Clerk:Authority"],
                     ValidateAudience = false, // Clerk doesn't require audience for session tokens by default
                     ValidateLifetime = true,
-                    ClockSkew = TimeSpan.Zero,
+                    // Allow small clock drift between Clerk-issued tokens and local/backend machine time.
+                    // This prevents redirect/login loops caused by "token is not yet valid" during sign-in.
+                    ClockSkew = TimeSpan.FromMinutes(5),
                     RoleClaimType = "role"
                 };
             });

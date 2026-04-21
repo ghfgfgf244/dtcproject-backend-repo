@@ -56,6 +56,14 @@ namespace dtc.API.Controllers
             return Ok(response);
         }
 
+        [HttpGet("term/{termId}")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> GetClassesByTerm(Guid termId)
+        {
+            var response = await _classService.GetClassesByTermAsync(termId);
+            return Ok(response);
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetClassDetail(Guid id)
         {

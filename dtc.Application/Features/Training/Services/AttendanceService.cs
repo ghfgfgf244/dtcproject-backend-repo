@@ -5,6 +5,7 @@ using dtc.Application.Features.Email.Interfaces;
 using dtc.Domain.Entities;
 using dtc.Domain.Entities.Classes;
 using dtc.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,20 +18,22 @@ namespace dtc.Application.Features.Training.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
         private readonly IEmailService _emailService;
+        private readonly ILogger<AttendanceService> _logger;
 
         public AttendanceService(
             IUnitOfWork unitOfWork,
             INotificationService notificationService,
-            IEmailService emailService)
+            IEmailService emailService,
+            ILogger<AttendanceService> logger)
         {
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
             _emailService = emailService;
+            _logger = logger;
         }
 
         public async Task<bool> MarkAttendanceAsync(MarkAttendanceRequestDto request, Guid adminId)
         {
-            // Verify schedule exists
             var schedule = await _unitOfWork.ClassSchedules.GetByIdAsync(request.ClassScheduleId);
             if (schedule == null)
                 throw new Exception("Class schedule not found");
@@ -44,20 +47,17 @@ namespace dtc.Application.Features.Training.Services
             if (!isEnrolled)
                 throw new Exception("Student is not enrolled in this class");
 
-            // Check if attendance already exists
             var existingAttendances = await _unitOfWork.Attendances.FindAsync(
                 a => a.ClassScheduleId == request.ClassScheduleId && a.StudentId == request.StudentId);
             var existingAttendance = existingAttendances.FirstOrDefault();
 
             if (existingAttendance != null)
             {
-                // Update
                 existingAttendance.UpdateAttendance(request.IsPresent, adminId);
                 await _unitOfWork.Attendances.UpdateAsync(existingAttendance);
             }
             else
             {
-                // Create new
                 var newAttendance = new Attendance(
                     classScheduleId: request.ClassScheduleId,
                     studentId: request.StudentId,
@@ -69,62 +69,74 @@ namespace dtc.Application.Features.Training.Services
 
             await _unitOfWork.SaveChangesAsync();
 
-            // Side-effect: Notify student if absent
             if (!request.IsPresent)
             {
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        var student = await _unitOfWork.Users.GetByIdAsync(request.StudentId);
-                        if (student != null)
-                        {
-                            await _notificationService.CreateForUserAsync(
-                                student.Id,
-                                "Thông báo vắng mặt",
-                                "Bạn vừa được đánh dấu vắng mặt trong một buổi học.",
-                                NotificationType.Attendance);
-
-                            // Check absolute limit (20% of total sessions)
-                            var schedules = await _unitOfWork.ClassSchedules.FindAsync(s => s.ClassId == schedule.ClassId);
-                            var totalSessions = schedules.Count();
-                            
-                            if (totalSessions > 0)
-                            {
-                                var allAttendances = new List<Attendance>();
-                                foreach(var sId in schedules.Select(s => s.Id))
-                                {
-                                     var sAttendances = await _unitOfWork.Attendances.FindAsync(a => a.ClassScheduleId == sId && a.StudentId == student.Id);
-                                     allAttendances.AddRange(sAttendances);
-                                }
-                                
-                                var absentCount = allAttendances.Count(a => !a.IsPresent);
-                                var threshold = totalSessions * 0.2;
-
-                                if (absentCount >= threshold && totalSessions >= 5) // Warning if >= 20% and enough sessions to be meaningful
-                                {
-                                    await _notificationService.CreateForUserAsync(
-                                        student.Id,
-                                        "Cảnh báo nghỉ học",
-                                        $"Bạn đã nghỉ {absentCount}/{totalSessions} buổi. Vui lòng đi học đầy đủ để đảm bảo điều kiện thi.",
-                                        NotificationType.Attendance);
-                                    
-                                    // Assuming email service has a generic warning or we can use existing one
-                                    await _emailService.SendAsync(new Application.Features.Email.DTOs.SendEmailRequestDto
-                                    {
-                                        ToEmail = student.Email.Value,
-                                        Subject = "[DTC] Cảnh báo nghỉ học",
-                                        Body = $"Chào {student.FullName},<br/><br/>Bạn đã vắng mặt {absentCount} trên tổng số {totalSessions} buổi học. Nếu tiếp tục vắng mặt quá số buổi quy định, bạn sẽ không đủ điều kiện tham dự kỳ thi sắp tới.<br/><br/>Trân trọng,<br/>Đội ngũ DTC."
-                                    });
-                                }
-                            }
-                        }
-                    }
-                    catch { /* logic cảnh báo không được block luồng chính */ }
-                });
+                await HandleAbsentStudentAsync(schedule.ClassId, request.StudentId);
             }
 
             return true;
+        }
+
+        private async Task HandleAbsentStudentAsync(Guid classId, Guid studentId)
+        {
+            try
+            {
+                var student = await _unitOfWork.Users.GetByIdAsync(studentId);
+                if (student == null)
+                {
+                    return;
+                }
+
+                await _notificationService.CreateForUserAsync(
+                    student.Id,
+                    "Thông báo vắng mặt",
+                    "Bạn vừa được đánh dấu vắng mặt trong một buổi học.",
+                    NotificationType.Attendance);
+
+                var schedules = await _unitOfWork.ClassSchedules.FindAsync(s => s.ClassId == classId);
+                var totalSessions = schedules.Count();
+
+                if (totalSessions <= 0)
+                {
+                    return;
+                }
+
+                var allAttendances = new List<Attendance>();
+                foreach (var scheduleId in schedules.Select(s => s.Id))
+                {
+                    var scheduleAttendances = await _unitOfWork.Attendances.FindAsync(
+                        a => a.ClassScheduleId == scheduleId && a.StudentId == student.Id);
+                    allAttendances.AddRange(scheduleAttendances);
+                }
+
+                var absentCount = allAttendances.Count(a => !a.IsPresent);
+                var threshold = totalSessions * 0.2;
+
+                if (absentCount >= threshold && totalSessions >= 5)
+                {
+                    await _notificationService.CreateForUserAsync(
+                        student.Id,
+                        "Cảnh báo nghỉ học",
+                        $"Bạn đã nghỉ {absentCount}/{totalSessions} buổi. Vui lòng đi học đầy đủ để đảm bảo điều kiện thi.",
+                        NotificationType.Attendance);
+
+                    await _emailService.SendAsync(new Application.Features.Email.DTOs.SendEmailRequestDto
+                    {
+                        ToEmail = student.Email.Value,
+                        Subject = "[DTC] Cảnh báo nghỉ học",
+                        Body = $"Chào {student.FullName},<br/><br/>Bạn đã vắng mặt {absentCount} trên tổng số {totalSessions} buổi học. Nếu tiếp tục vắng mặt quá số buổi quy định, bạn sẽ không đủ điều kiện tham dự kỳ thi sắp tới.<br/><br/>Trân trọng,<br/>Đội ngũ DTC.",
+                        IsHtml = true
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Failed to process absence notification/email for student {StudentId} in class {ClassId}.",
+                    studentId,
+                    classId);
+            }
         }
 
         public async Task<IEnumerable<AttendanceResponseDto>> GetAttendanceByClassScheduleAsync(Guid classScheduleId)
@@ -153,19 +165,17 @@ namespace dtc.Application.Features.Training.Services
 
         public async Task<object> GetAttendanceReportByClassAsync(Guid classId)
         {
-            // 1. Get all schedules for the class
             var classSchedules = await _unitOfWork.ClassSchedules.FindAsync(s => s.ClassId == classId);
             if (classSchedules == null || !classSchedules.Any())
                 return new { Message = "No schedules found for this class" };
 
             var classScheduleIds = classSchedules.Select(s => s.Id).ToList();
 
-            // 2. Get all attendances for these schedules
             var attendances = new List<Attendance>();
-            foreach(var sId in classScheduleIds)
+            foreach (var scheduleId in classScheduleIds)
             {
-                 var sAttendances = await _unitOfWork.Attendances.FindAsync(a => a.ClassScheduleId == sId);
-                 attendances.AddRange(sAttendances);
+                var scheduleAttendances = await _unitOfWork.Attendances.FindAsync(a => a.ClassScheduleId == scheduleId);
+                attendances.AddRange(scheduleAttendances);
             }
 
             var enrollments = await _unitOfWork.ClassStudents.FindAsync(cs => cs.ClassId == classId);
@@ -177,13 +187,12 @@ namespace dtc.Application.Features.Training.Services
 
             var totalSessions = classScheduleIds.Count;
 
-            // 4. Group by student
             var report = students.Select(student =>
             {
                 var studentAttendances = attendances.Where(a => a.StudentId == student.Id).ToList();
                 var presentCount = studentAttendances.Count(a => a.IsPresent);
-                var absentCount = studentAttendances.Count(a => !a.IsPresent); // explicitly marked absent
-                var unrecordedCount = totalSessions - (presentCount + absentCount); // not yet marked
+                var absentCount = studentAttendances.Count(a => !a.IsPresent);
+                var unrecordedCount = totalSessions - (presentCount + absentCount);
 
                 return new
                 {
@@ -211,10 +220,10 @@ namespace dtc.Application.Features.Training.Services
         {
             var attendances = await _unitOfWork.Attendances.FindAsync(a => a.StudentId == studentId);
             var dtos = new List<AttendanceResponseDto>();
-            
+
             foreach (var a in attendances)
             {
-                var schedule = await _unitOfWork.ClassSchedules.GetByIdAsync(a.ClassScheduleId);
+                await _unitOfWork.ClassSchedules.GetByIdAsync(a.ClassScheduleId);
                 dtos.Add(new AttendanceResponseDto
                 {
                     Id = a.Id,
@@ -222,7 +231,6 @@ namespace dtc.Application.Features.Training.Services
                     StudentId = a.StudentId,
                     IsPresent = a.IsPresent,
                     CheckedAt = a.CheckedAt,
-                    // Optionally add schedule info here if DTO supports it
                 });
             }
 
@@ -242,7 +250,6 @@ namespace dtc.Application.Features.Training.Services
             }
             else
             {
-                // Summary across all classes student is enrolled in
                 var enrollments = await _unitOfWork.ClassStudents.FindAsync(cs => cs.StudentId == studentId);
                 var classIds = enrollments.Select(e => e.ClassId).ToList();
                 var allSchedules = await _unitOfWork.ClassSchedules.FindAsync(s => classIds.Contains(s.ClassId));
@@ -251,7 +258,7 @@ namespace dtc.Application.Features.Training.Services
 
             var totalSessions = relevantScheduleIds.Count();
             var attendances = await _unitOfWork.Attendances.FindAsync(a => a.StudentId == studentId && relevantScheduleIds.Contains(a.ClassScheduleId));
-            
+
             var presentCount = attendances.Count(a => a.IsPresent);
             var absentCount = attendances.Count(a => !a.IsPresent);
             var rate = totalSessions > 0 ? Math.Round(((double)presentCount / totalSessions) * 100, 2) : 0;
@@ -271,12 +278,12 @@ namespace dtc.Application.Features.Training.Services
         {
             var attendances = await _unitOfWork.Attendances.FindAsync(a => a.StudentId == studentId);
             var dtos = new List<AttendanceResponseDto>();
-            
+
             foreach (var a in attendances)
             {
                 var schedule = await _unitOfWork.ClassSchedules.GetByIdAsync(a.ClassScheduleId);
                 var theClass = schedule != null ? await _unitOfWork.Classes.GetByIdAsync(schedule.ClassId) : null;
-                
+
                 dtos.Add(new AttendanceResponseDto
                 {
                     Id = a.Id,
@@ -296,20 +303,16 @@ namespace dtc.Application.Features.Training.Services
         {
             var report = new StudentAttendanceReportDto();
 
-            // 1. Get all classes student is enrolled in
             var enrollments = await _unitOfWork.ClassStudents.FindAsync(cs => cs.StudentId == studentId);
             var classIds = enrollments.Select(e => e.ClassId).ToList();
             if (!classIds.Any()) return report;
 
-            // 2. Get all schedules for these classes
             var schedules = await _unitOfWork.ClassSchedules.FindAsync(s => classIds.Contains(s.ClassId));
             var scheduleIds = schedules.Select(s => s.Id).ToList();
 
-            // 3. Get all attendance records for this student
             var attendances = await _unitOfWork.Attendances.FindAsync(a => a.StudentId == studentId && scheduleIds.Contains(a.ClassScheduleId));
             var attendanceMap = attendances.ToDictionary(a => a.ClassScheduleId);
 
-            // 4. Get metadata (Instructors and Classes)
             var instructorIds = schedules.Select(s => s.InstructorId).Distinct().ToList();
             var instructors = await _unitOfWork.Users.FindAsync(u => instructorIds.Contains(u.Id));
             var instructorMap = instructors.ToDictionary(u => u.Id, u => u.FullName);
@@ -317,7 +320,6 @@ namespace dtc.Application.Features.Training.Services
             var classes = await _unitOfWork.Classes.FindAsync(c => classIds.Contains(c.Id));
             var classMap = classes.ToDictionary(c => c.Id, c => c.ClassName);
 
-            // 5. Build session list
             foreach (var s in schedules.OrderByDescending(s => s.StartTime))
             {
                 var status = "Pending";
@@ -338,12 +340,11 @@ namespace dtc.Application.Features.Training.Services
                 });
             }
 
-            // 6. Calculate summary
             report.Summary.TotalSessions = schedules.Count();
             report.Summary.PresentCount = attendances.Count(a => a.IsPresent);
             report.Summary.AbsentCount = attendances.Count(a => !a.IsPresent);
-            report.Summary.AttendanceRate = report.Summary.TotalSessions > 0 
-                ? Math.Round(((double)report.Summary.PresentCount / report.Summary.TotalSessions) * 100, 2) 
+            report.Summary.AttendanceRate = report.Summary.TotalSessions > 0
+                ? Math.Round(((double)report.Summary.PresentCount / report.Summary.TotalSessions) * 100, 2)
                 : 0;
 
             return report;

@@ -120,7 +120,14 @@ namespace dtc.Application.Features.Dashboards.Services
                 : Math.Round((decimal)approved / totalRegistrations * 100m, 1);
 
             var courseLookup = courses.ToDictionary(c => c.Id, c => c);
-            var categoryLookup = categories.ToDictionary(c => c.CategoryId, c => c.CategoryName);
+            var categoryLookup = categories
+                .GroupBy(c => c.CategoryId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group
+                        .Select(item => item.CategoryName)
+                        .LastOrDefault(name => !string.IsNullOrWhiteSpace(name)) ?? string.Empty);
+
 
             var topCourses = courseRegs
                 .GroupBy(r => r.CourseId)

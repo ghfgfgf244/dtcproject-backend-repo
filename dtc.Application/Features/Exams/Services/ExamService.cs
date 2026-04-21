@@ -6,6 +6,7 @@ using dtc.Domain.Entities;
 using dtc.Domain.Entities.Exams;
 using dtc.Domain.Entities.Location;
 using dtc.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace dtc.Application.Features.Exams.Services
 {
@@ -14,15 +15,18 @@ namespace dtc.Application.Features.Exams.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
         private readonly IEmailService _emailService;
+        private readonly ILogger<ExamService> _logger;
 
         public ExamService(
             IUnitOfWork unitOfWork,
             INotificationService notificationService,
-            IEmailService emailService)
+            IEmailService emailService,
+            ILogger<ExamService> logger)
         {
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
             _emailService = emailService;
+            _logger = logger;
         }
 
         public async Task<ExamResponseDto> CreateExamAsync(CreateExamRequestDto request, Guid adminId)
@@ -401,8 +405,13 @@ namespace dtc.Application.Features.Exams.Services
                     result.Score,
                     result.IsPassed);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(
+                    ex,
+                    "Failed to notify exam result for student {StudentId}, exam {ExamId}.",
+                    result.StudentId,
+                    exam.Id);
             }
         }
 
@@ -423,13 +432,22 @@ namespace dtc.Application.Features.Exams.Services
                             content,
                             NotificationType.Exam);
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        _logger.LogWarning(
+                            ex,
+                            "Failed to create exam notification for student {StudentId} in batch {ExamBatchId}.",
+                            registration.StudentId,
+                            examBatchId);
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(
+                    ex,
+                    "Failed to notify approved students in exam batch {ExamBatchId}.",
+                    examBatchId);
             }
         }
 

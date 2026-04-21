@@ -12,6 +12,7 @@ namespace dtc.Application.Features.Training.Interfaces
         Task<ClassResponseDto> UpdateClassAsync(Guid classId, UpdateClassRequestDto request, Guid adminId);
         
         Task<IEnumerable<ClassResponseDto>> GetAllClassesAsync();
+        Task<IEnumerable<ClassResponseDto>> GetClassesByTermAsync(Guid termId);
         Task<ClassResponseDto> GetClassDetailAsync(Guid classId);
         Task<bool> DeleteClassAsync(Guid classId, Guid adminId);
         Task<bool> AssignTeachersToClassAsync(Guid classId, AssignTeachersRequestDto request, Guid adminId);

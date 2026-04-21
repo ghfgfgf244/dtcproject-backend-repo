@@ -15,6 +15,7 @@ using Xunit;
 using dtc.Domain.Interfaces;
 using dtc.Application.Features.Notifications.Interfaces;
 using dtc.Application.Features.Email.Interfaces;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace dtc.Tests.Features.Training
 {
@@ -32,7 +33,11 @@ namespace dtc.Tests.Features.Training
             _notificationServiceMock = new Mock<INotificationService>();
             _emailServiceMock = new Mock<IEmailService>();
 
-            _service = new AttendanceService(_unitOfWorkMock.Object, _notificationServiceMock.Object, _emailServiceMock.Object);
+            _service = new AttendanceService(
+                _unitOfWorkMock.Object,
+                _notificationServiceMock.Object,
+                _emailServiceMock.Object,
+                NullLogger<AttendanceService>.Instance);
         }
 
 

@@ -84,6 +84,23 @@ namespace dtc.API.Controllers
         }
 
         // View All Schedules under a specific Class
+        [HttpGet]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> GetAllSchedules()
+        {
+            var response = await _scheduleService.GetAllSchedulesAsync();
+            return Ok(response);
+        }
+
+        [HttpGet("term/{termId}")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> GetSchedulesByTerm(Guid termId)
+        {
+            var response = await _scheduleService.GetSchedulesByTermAsync(termId);
+            return Ok(response);
+        }
+
+        // View All Schedules under a specific Class
         [HttpGet("Class/{classId}")]
         public async Task<IActionResult> GetSchedulesByClass(Guid classId)
         {

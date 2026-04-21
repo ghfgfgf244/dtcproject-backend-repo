@@ -80,6 +80,22 @@ namespace dtc.Application.Features.Training.Services
             return results;
         }
 
+        public async Task<IEnumerable<ClassResponseDto>> GetClassesByTermAsync(Guid termId)
+        {
+            var classes = (await _unitOfWork.Classes.FindAsync(c => c.TermId == termId && !c.IsDeleted))
+                .OrderBy(c => c.ClassType)
+                .ThenBy(c => c.ClassName)
+                .ToList();
+
+            var results = new List<ClassResponseDto>(classes.Count);
+            foreach (var classEntity in classes)
+            {
+                results.Add(await MapToDtoAsync(classEntity));
+            }
+
+            return results;
+        }
+
         public async Task<ClassResponseDto> GetClassDetailAsync(Guid classId)
         {
             var existingClass = await _unitOfWork.Classes.GetByIdAsync(classId);
