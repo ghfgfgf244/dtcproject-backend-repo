@@ -3,7 +3,7 @@ using dtc.Application.Features.Training.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Security.Claims;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
@@ -22,6 +22,12 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> CreateCourse([FromBody] CreateCourseRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            var managedCenterId = await GetManagedCenterIdAsync();
+            if (managedCenterId.HasValue && request.CenterId != managedCenterId.Value)
+            {
+                return Fail("You can only create courses for your assigned center.");
+            }
+
             try
             {
                 var response = await _courseService.CreateCourseAsync(request, adminId);
@@ -38,6 +44,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> UpdateCourse(Guid id, [FromBody] UpdateCourseRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessCourseAsync(id))
+            {
+                return Fail("You do not have permission to access this course.");
+            }
+
             try
             {
                 var response = await _courseService.UpdateCourseAsync(id, request, adminId);
@@ -54,6 +65,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> DeactivateCourse(Guid id)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessCourseAsync(id))
+            {
+                return Fail("You do not have permission to access this course.");
+            }
+
             try
             {
                 await _courseService.DeactivateCourseAsync(id, adminId);
@@ -70,6 +86,12 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> GetAllCourses()
         {
             var response = await _courseService.GetAllCoursesAsync();
+            var managedCenterId = await GetManagedCenterIdAsync();
+            if (managedCenterId.HasValue)
+            {
+                response = response.Where(course => course.CenterId == managedCenterId.Value);
+            }
+
             return Ok(response);
         }
 

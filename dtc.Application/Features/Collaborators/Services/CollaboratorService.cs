@@ -1,10 +1,9 @@
-using dtc.Application.Features.Collaborators.Interfaces;
 using dtc.Application.Features.Collaborators.DTOs;
-using dtc.Application.Features.Users.Interfaces;
+using dtc.Application.Features.Collaborators.Interfaces;
 using dtc.Application.Features.Users.DTOs;
+using dtc.Application.Features.Users.Interfaces;
 using dtc.Domain.Entities;
 using dtc.Domain.Entities.Collaborators;
-using dtc.Domain.Entities.Terms;
 using dtc.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -18,7 +17,8 @@ namespace dtc.Application.Features.Collaborators.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IUserService _userService;
 
-        private const decimal STANDARD_COMMISSION_RATE = 0.10m; // 10%
+        private const decimal STANDARD_COMMISSION_RATE = 0.05m;
+        private const decimal STANDARD_STUDENT_DISCOUNT_RATE = 0.05m;
 
         public CollaboratorService(IUnitOfWork unitOfWork, IUserService userService)
         {
@@ -26,17 +26,13 @@ namespace dtc.Application.Features.Collaborators.Services
             _userService = userService;
         }
 
-        // DEV-127: View collaborator's list
         public async Task<IEnumerable<UserResponseDto>> GetCollaboratorListAsync()
-        {
-            return await _userService.GetUsersByRoleAsync((int)UserRole.Collaborator);
-        }
+            => await _userService.GetUsersByRoleAsync((int)UserRole.Collaborator);
 
-        // DEV-128: View personal token
         public async Task<ReferralCodeResponseDto?> GetMyReferralCodeAsync(Guid collaboratorId)
         {
-            var codes = await _unitOfWork.ReferralCodes.FindAsync(c => c.CollaboratorId == collaboratorId);
-            var code = codes.FirstOrDefault();
+            var code = (await _unitOfWork.ReferralCodes.FindAsync(c => c.CollaboratorId == collaboratorId))
+                .FirstOrDefault();
 
             if (code == null)
             {
@@ -49,95 +45,113 @@ namespace dtc.Application.Features.Collaborators.Services
                 Code = code.Code,
                 UsedCount = code.UsedCount,
                 IsActive = code.IsActive,
-                CommissionRate = STANDARD_COMMISSION_RATE * 100 // return as percentage
+                CommissionRate = STANDARD_COMMISSION_RATE * 100
             };
         }
 
         public async Task<ReferralCodeResponseDto?> GenerateReferralCodeAsync(Guid collaboratorId, string code)
         {
-            var existing = await _unitOfWork.ReferralCodes.FindAsync(c => c.Code == code.Trim().ToUpper());
-            if (existing.Any()) throw new InvalidOperationException("Referral code already exists.");
+            var normalizedCode = NormalizeCode(code);
+            var existing = await _unitOfWork.ReferralCodes.FindAsync(c => c.Code == normalizedCode);
+            if (existing.Any())
+            {
+                throw new InvalidOperationException("Referral code already exists.");
+            }
 
-            var newCode = new ReferralCode(code, collaboratorId, collaboratorId);
+            var newCode = new ReferralCode(normalizedCode, collaboratorId, collaboratorId);
             await _unitOfWork.ReferralCodes.AddAsync(newCode);
             await _unitOfWork.SaveChangesAsync();
 
             return await GetMyReferralCodeAsync(collaboratorId);
         }
 
-        // DEV-129: View number of user using token
         public async Task<int> GetTokenUsageCountAsync(Guid collaboratorId)
         {
-            var codes = await _unitOfWork.ReferralCodes.FindAsync(c => c.CollaboratorId == collaboratorId);
-            var code = codes.FirstOrDefault();
-            if (code == null) return 0;
-
-            var registrations = await _unitOfWork.ReferralRegistrations.FindAsync(r => r.ReferralCodeId == code.Id);
-            return registrations.Count();
+            var code = (await _unitOfWork.ReferralCodes.FindAsync(c => c.CollaboratorId == collaboratorId))
+                .FirstOrDefault();
+            return code?.UsedCount ?? 0;
         }
 
-        // DEV-130: View commission rate
         public Task<decimal> GetCommissionRateAsync()
+            => Task.FromResult(STANDARD_COMMISSION_RATE * 100);
+
+        public async Task<ReferralCodeValidationResponseDto> ValidateReferralCodeAsync(string code, Guid? courseId = null)
         {
-            return Task.FromResult(STANDARD_COMMISSION_RATE * 100);
-        }
-
-        // DEV-131: Calculate commission
-        public async Task<IEnumerable<CollaboratorCommissionResponseDto>> CalculateAndGetCommissionsAsync(Guid collaboratorId)
-        {
-            var codes = await _unitOfWork.ReferralCodes.FindAsync(c => c.CollaboratorId == collaboratorId);
-            var code = codes.FirstOrDefault();
-            if (code == null) throw new KeyNotFoundException("No referral code found for this collaborator.");
-
-            var referrals = await _unitOfWork.ReferralRegistrations.FindAsync(r => r.ReferralCodeId == code.Id);
-            var studentIds = referrals.Select(r => r.StudentId).ToList();
-
-            var courseRegs = await _unitOfWork.CourseRegistrations.FindAsync(cr => studentIds.Contains(cr.UserId) && cr.Status == CourseRegistrationStatus.Approved);
-
-            decimal totalEligibleRevenue = courseRegs.Sum(cr => cr.TotalFee);
-            decimal calculatedCommission = totalEligibleRevenue * STANDARD_COMMISSION_RATE;
-
-            var existingCommissions = await _unitOfWork.CollaboratorCommissions.FindAsync(c => c.CollaboratorId == collaboratorId);
-
-            decimal existingSum = existingCommissions.Sum(c => c.Amount);
-            if (calculatedCommission > existingSum)
+            var normalizedCode = NormalizeCode(code);
+            if (string.IsNullOrWhiteSpace(normalizedCode))
             {
-                var newCommissionAmount = calculatedCommission - existingSum;
-                var newComm = new CollaboratorCommission(collaboratorId, newCommissionAmount);
-                await _unitOfWork.CollaboratorCommissions.AddAsync(newComm);
-                await _unitOfWork.SaveChangesAsync();
-                
-                existingCommissions = await _unitOfWork.CollaboratorCommissions.FindAsync(c => c.CollaboratorId == collaboratorId);
+                return new ReferralCodeValidationResponseDto
+                {
+                    IsValid = false,
+                    Message = "Referral code is required.",
+                    DiscountRate = STANDARD_STUDENT_DISCOUNT_RATE * 100,
+                    CommissionRate = STANDARD_COMMISSION_RATE * 100
+                };
             }
 
-            return existingCommissions.Select(c => new CollaboratorCommissionResponseDto
+            var referralCode = (await _unitOfWork.ReferralCodes.FindAsync(c => c.Code == normalizedCode && c.IsActive))
+                .FirstOrDefault();
+
+            if (referralCode == null)
             {
-                Id = c.Id,
-                CollaboratorId = c.CollaboratorId,
-                Amount = c.Amount,
-                Status = c.Status.ToString(),
-                CreatedAt = c.CreatedAt,
-                PaidAt = c.PaidAt
-            });
+                return new ReferralCodeValidationResponseDto
+                {
+                    IsValid = false,
+                    Code = normalizedCode,
+                    Message = "Referral code is invalid or inactive.",
+                    DiscountRate = STANDARD_STUDENT_DISCOUNT_RATE * 100,
+                    CommissionRate = STANDARD_COMMISSION_RATE * 100
+                };
+            }
+
+            var collaborator = await _unitOfWork.Users.GetByIdAsync(referralCode.CollaboratorId);
+
+            if (courseId.HasValue && courseId.Value != Guid.Empty)
+            {
+                var course = await _unitOfWork.Courses.GetByIdAsync(courseId.Value);
+                var collaboratorCenter = (await _unitOfWork.UserCenters.FindAsync(uc => uc.UserId == referralCode.CollaboratorId))
+                    .FirstOrDefault();
+
+                if (course == null || collaboratorCenter == null || collaboratorCenter.CenterId != course.CenterId)
+                {
+                    return new ReferralCodeValidationResponseDto
+                    {
+                        IsValid = false,
+                        Code = referralCode.Code,
+                        CollaboratorId = referralCode.CollaboratorId,
+                        CollaboratorName = collaborator?.FullName,
+                        DiscountRate = STANDARD_STUDENT_DISCOUNT_RATE * 100,
+                        CommissionRate = STANDARD_COMMISSION_RATE * 100,
+                        Message = "Referral code does not apply to this training center."
+                    };
+                }
+            }
+
+            return new ReferralCodeValidationResponseDto
+            {
+                IsValid = true,
+                Code = referralCode.Code,
+                CollaboratorId = referralCode.CollaboratorId,
+                CollaboratorName = collaborator?.FullName,
+                DiscountRate = STANDARD_STUDENT_DISCOUNT_RATE * 100,
+                CommissionRate = STANDARD_COMMISSION_RATE * 100,
+                Message = collaborator == null
+                    ? "Referral code is valid."
+                    : $"Referral code belongs to collaborator {collaborator.FullName}."
+            };
         }
+
+        public async Task<IEnumerable<CollaboratorCommissionResponseDto>> CalculateAndGetCommissionsAsync(Guid collaboratorId)
+            => await GetMyCommissionsAsync(collaboratorId);
 
         public async Task<IEnumerable<CollaboratorCommissionResponseDto>> GetMyCommissionsAsync(Guid collaboratorId)
         {
-            var existingCommissions = await _unitOfWork.CollaboratorCommissions.FindAsync(c => c.CollaboratorId == collaboratorId);
-            return existingCommissions.Select(c => new CollaboratorCommissionResponseDto
-            {
-                Id = c.Id,
-                CollaboratorId = c.CollaboratorId,
-                Amount = c.Amount,
-                Status = c.Status.ToString(),
-                CreatedAt = c.CreatedAt,
-                PaidAt = c.PaidAt
-            }).OrderByDescending(c => c.CreatedAt).ToList();
-        }
+            var commissions = (await _unitOfWork.CollaboratorCommissions.FindAsync(c => c.CollaboratorId == collaboratorId))
+                .OrderByDescending(c => c.CreatedAt)
+                .ToList();
 
-        // ==========================================
-        // ADMIN METHODS
-        // ==========================================
+            return await MapCommissionDtosAsync(commissions);
+        }
 
         public async Task<CollaboratorAdminStatsDto> GetAdminStatsAsync()
         {
@@ -169,9 +183,10 @@ namespace dtc.Application.Features.Collaborators.Services
                 result.Add(new CollaboratorAdminResponseDto
                 {
                     UserId = user.Id,
+                    CenterId = user.CenterId,
                     FullName = user.FullName,
                     Email = user.Email,
-                    ReferralCode = userCode?.Code ?? "Chưa có",
+                    ReferralCode = userCode?.Code ?? "Chua co",
                     UsedCount = userCode?.UsedCount ?? 0,
                     IsCodeActive = userCode?.IsActive ?? false,
                     TotalPaidCommission = userCommissions.Where(c => c.Status == CommissionStatus.Paid).Sum(c => c.Amount),
@@ -184,26 +199,39 @@ namespace dtc.Application.Features.Collaborators.Services
 
         public async Task<IEnumerable<CommissionAdminResponseDto>> GetAdminCommissionsAsync()
         {
-            var commissions = await _unitOfWork.CollaboratorCommissions.GetAllAsync();
-            var users = await _userService.GetUsersByRoleAsync((int)UserRole.Collaborator);
+            var commissions = (await _unitOfWork.CollaboratorCommissions.GetAllAsync())
+                .OrderByDescending(c => c.CreatedAt)
+                .ToList();
 
-            return commissions.Select(c => new CommissionAdminResponseDto
+            var dtoList = await MapCommissionDtosAsync(commissions);
+            var collaboratorNames = (await _userService.GetUsersByRoleAsync((int)UserRole.Collaborator))
+                .ToDictionary(u => u.Id, u => u.FullName);
+
+            return dtoList.Select(item => new CommissionAdminResponseDto
             {
-                Id = c.Id,
-                CollaboratorId = c.CollaboratorId,
-                Amount = c.Amount,
-                Status = c.Status.ToString(),
-                CreatedAt = c.CreatedAt,
-                PaidAt = c.PaidAt,
-                CollaboratorName = users.FirstOrDefault(u => u.Id == c.CollaboratorId)?.FullName ?? "Unknown"
-            }).OrderByDescending(c => c.CreatedAt).ToList();
+                Id = item.Id,
+                CollaboratorId = item.CollaboratorId,
+                ReferralRegistrationId = item.ReferralRegistrationId,
+                CollaboratorName = collaboratorNames.GetValueOrDefault(item.CollaboratorId, "Unknown"),
+                Amount = item.Amount,
+                Status = item.Status,
+                CreatedAt = item.CreatedAt,
+                PaidAt = item.PaidAt,
+                ReferralCode = item.ReferralCode,
+                StudentName = item.StudentName,
+                CourseName = item.CourseName,
+                DiscountAmount = item.DiscountAmount
+            }).ToList();
         }
 
         public async Task<bool> ToggleReferralCodeAsync(Guid collaboratorId)
         {
-            var codes = await _unitOfWork.ReferralCodes.FindAsync(c => c.CollaboratorId == collaboratorId);
-            var code = codes.FirstOrDefault();
-            if (code == null) return false;
+            var code = (await _unitOfWork.ReferralCodes.FindAsync(c => c.CollaboratorId == collaboratorId))
+                .FirstOrDefault();
+            if (code == null)
+            {
+                return false;
+            }
 
             if (code.IsActive)
             {
@@ -221,32 +249,111 @@ namespace dtc.Application.Features.Collaborators.Services
 
         public async Task<bool> PayCommissionAsync(Guid collaboratorId)
         {
-            // First, trigger a calculation to ensure any eligible unrecorded commissions are captured
-            await CalculateAndGetCommissionsAsync(collaboratorId);
+            var pendingCommissions = (await _unitOfWork.CollaboratorCommissions.FindAsync(
+                    c => c.CollaboratorId == collaboratorId && c.Status == CommissionStatus.Pending))
+                .ToList();
 
-            // Fetch pending commissions
-            var pendingCommissions = await _unitOfWork.CollaboratorCommissions.FindAsync(c => c.CollaboratorId == collaboratorId && c.Status == CommissionStatus.Pending);
-            var codes = await _unitOfWork.ReferralCodes.FindAsync(c => c.CollaboratorId == collaboratorId);
-            var code = codes.FirstOrDefault();
+            var code = (await _unitOfWork.ReferralCodes.FindAsync(c => c.CollaboratorId == collaboratorId))
+                .FirstOrDefault();
 
-            if (!pendingCommissions.Any() && code == null) return false;
-
-            // Mark existing pending as paid
-            foreach (var comm in pendingCommissions)
+            if (pendingCommissions.Count == 0 && code == null)
             {
-                comm.MarkAsPaid();
-                await _unitOfWork.CollaboratorCommissions.UpdateAsync(comm);
+                return false;
             }
 
-            // Reset the usage count for the referral code
+            foreach (var commission in pendingCommissions)
+            {
+                commission.MarkAsPaid();
+                await _unitOfWork.CollaboratorCommissions.UpdateAsync(commission);
+            }
+
             if (code != null)
             {
-                code.ResetUsage();
+                code.ResetUsage(collaboratorId);
                 await _unitOfWork.ReferralCodes.UpdateAsync(code);
             }
 
             await _unitOfWork.SaveChangesAsync();
             return true;
         }
+
+        private async Task<List<CollaboratorCommissionResponseDto>> MapCommissionDtosAsync(
+            IEnumerable<CollaboratorCommission> commissions)
+        {
+            var commissionList = commissions.ToList();
+            var referralRegistrationIds = commissionList
+                .Where(c => c.ReferralRegistrationId.HasValue)
+                .Select(c => c.ReferralRegistrationId!.Value)
+                .Distinct()
+                .ToList();
+
+            var referralRegistrations = referralRegistrationIds.Count == 0
+                ? new List<ReferralRegistration>()
+                : (await _unitOfWork.ReferralRegistrations.FindAsync(r => referralRegistrationIds.Contains(r.Id))).ToList();
+
+            var referralCodeIds = referralRegistrations.Select(r => r.ReferralCodeId).Distinct().ToList();
+            var studentIds = referralRegistrations.Select(r => r.StudentId).Distinct().ToList();
+            var courseRegistrationIds = referralRegistrations
+                .Where(r => r.CourseRegistrationId.HasValue)
+                .Select(r => r.CourseRegistrationId!.Value)
+                .Distinct()
+                .ToList();
+
+            var referralCodes = referralCodeIds.Count == 0
+                ? new List<ReferralCode>()
+                : (await _unitOfWork.ReferralCodes.FindAsync(c => referralCodeIds.Contains(c.Id))).ToList();
+
+            var students = studentIds.Count == 0
+                ? new List<dtc.Domain.Entities.Permissions.User>()
+                : (await _unitOfWork.Users.FindAsync(u => studentIds.Contains(u.Id))).ToList();
+
+            var courseRegistrations = courseRegistrationIds.Count == 0
+                ? new List<dtc.Domain.Entities.Terms.CourseRegistration>()
+                : (await _unitOfWork.CourseRegistrations.FindAsync(cr => courseRegistrationIds.Contains(cr.Id))).ToList();
+
+            var courseIds = courseRegistrations.Select(cr => cr.CourseId).Distinct().ToList();
+            var courses = courseIds.Count == 0
+                ? new List<dtc.Domain.Entities.Training.Course>()
+                : (await _unitOfWork.Courses.FindAsync(c => courseIds.Contains(c.Id))).ToList();
+
+            return commissionList.Select(commission =>
+            {
+                var referralRegistration = commission.ReferralRegistrationId.HasValue
+                    ? referralRegistrations.FirstOrDefault(r => r.Id == commission.ReferralRegistrationId.Value)
+                    : null;
+                var referralCode = referralRegistration == null
+                    ? null
+                    : referralCodes.FirstOrDefault(c => c.Id == referralRegistration.ReferralCodeId);
+                var student = referralRegistration == null
+                    ? null
+                    : students.FirstOrDefault(s => s.Id == referralRegistration.StudentId);
+                var courseRegistration = referralRegistration?.CourseRegistrationId == null
+                    ? null
+                    : courseRegistrations.FirstOrDefault(cr => cr.Id == referralRegistration.CourseRegistrationId.Value);
+                var course = courseRegistration == null
+                    ? null
+                    : courses.FirstOrDefault(c => c.Id == courseRegistration.CourseId);
+
+                return new CollaboratorCommissionResponseDto
+                {
+                    Id = commission.Id,
+                    CollaboratorId = commission.CollaboratorId,
+                    ReferralRegistrationId = commission.ReferralRegistrationId,
+                    Amount = commission.Amount,
+                    Status = commission.Status.ToString(),
+                    CreatedAt = commission.CreatedAt,
+                    PaidAt = commission.PaidAt,
+                    ReferralCode = referralCode?.Code,
+                    StudentName = student?.FullName,
+                    CourseName = course?.CourseName,
+                    DiscountAmount = courseRegistration == null
+                        ? null
+                        : Math.Round(courseRegistration.OriginalFee - courseRegistration.TotalFee, 2, MidpointRounding.AwayFromZero)
+                };
+            }).ToList();
+        }
+
+        private static string NormalizeCode(string code)
+            => string.IsNullOrWhiteSpace(code) ? string.Empty : code.Trim().ToUpperInvariant();
     }
 }

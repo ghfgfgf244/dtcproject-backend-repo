@@ -387,12 +387,17 @@ namespace dtc.Application.Features.Training.Services
             var instructor = await _unitOfWork.Users.GetByIdAsync(schedule.InstructorId);
             classEntity ??= await _unitOfWork.Classes.GetByIdAsync(schedule.ClassId);
             address ??= await _unitOfWork.Addresses.GetByIdAsync(schedule.AddressId);
+            var term = classEntity == null ? null : await _unitOfWork.Terms.GetByIdAsync(classEntity.TermId);
+            var course = term == null ? null : await _unitOfWork.Courses.GetByIdAsync(term.CourseId);
             var addressName = address?.AddressName ?? "Unknown Address";
 
             return new ClassScheduleResponseDto
             {
                 Id = schedule.Id,
                 ClassId = schedule.ClassId,
+                TermId = term?.Id,
+                CourseId = course?.Id,
+                CenterId = course?.CenterId,
                 InstructorId = schedule.InstructorId,
                 ClassName = classEntity?.ClassName ?? "Unknown Class",
                 InstructorName = instructor?.FullName ?? "Unknown Instructor",
@@ -401,7 +406,7 @@ namespace dtc.Application.Features.Training.Services
                 AddressId = schedule.AddressId,
                 AddressName = addressName,
                 Location = addressName,
-                CreatedAt = schedule.CreatedAt,
+                CreatedAt = schedule.CreatedAt
             };
         }
 

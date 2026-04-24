@@ -3,7 +3,8 @@ using dtc.Application.Features.Exams.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Security.Claims;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
@@ -25,6 +26,24 @@ namespace dtc.API.Controllers
             var adminId = await GetInternalUserIdAsync();
             try
             {
+                if (IsCenterScopedManager())
+                {
+                    var managedCenterId = await GetManagedCenterIdAsync();
+                    if (!managedCenterId.HasValue && request.ScopeType == Domain.Entities.Exams.ExamBatchScopeType.Center)
+                    {
+                        return Fail("Your account is not assigned to any center.");
+                    }
+
+                    if (request.ScopeType == Domain.Entities.Exams.ExamBatchScopeType.Center)
+                    {
+                        request.CenterId = managedCenterId.Value;
+                    }
+                    else
+                    {
+                        request.CenterId = null;
+                    }
+                }
+
                 var response = await _examBatchService.CreateExamBatchAsync(request, adminId);
                 return Created(response, "Exam batch created successfully.");
             }
@@ -38,6 +57,11 @@ namespace dtc.API.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetExamBatchDetail(Guid id)
         {
+            if (!await CanAccessExamBatchAsync(id))
+            {
+                return Fail("You do not have permission to access this exam batch.");
+            }
+
             try
             {
                 var response = await _examBatchService.GetExamBatchDetailAsync(id);
@@ -53,7 +77,35 @@ namespace dtc.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllExamBatches()
         {
-            var response = await _examBatchService.GetAllExamBatchesAsync();
+            var response = (await _examBatchService.GetAllExamBatchesAsync()).ToList();
+            if (IsCenterScopedManager())
+            {
+                var filtered = new List<ExamBatchResponseDto>();
+                foreach (var batch in response)
+                {
+                    if (await CanAccessExamBatchAsync(batch.Id))
+                    {
+                        filtered.Add(batch);
+                    }
+                }
+
+                response = filtered;
+            }
+
+            return Ok(response);
+        }
+
+        [HttpGet("paged")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> GetExamBatchesPaged([FromQuery] ExamBatchPagedQueryDto query)
+        {
+            Guid? managedCenterId = null;
+            if (IsCenterScopedManager())
+            {
+                managedCenterId = await GetManagedCenterIdAsync();
+            }
+
+            var response = await _examBatchService.GetExamBatchesPagedAsync(query, managedCenterId);
             return Ok(response);
         }
 
@@ -63,8 +115,31 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> UpdateExamBatch(Guid id, [FromBody] UpdateExamBatchRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanManageExamBatchAsync(id))
+            {
+                return Fail("You do not have permission to update this exam batch.");
+            }
+
             try
             {
+                if (IsCenterScopedManager())
+                {
+                    var managedCenterId = await GetManagedCenterIdAsync();
+                    if (!managedCenterId.HasValue && request.ScopeType == Domain.Entities.Exams.ExamBatchScopeType.Center)
+                    {
+                        return Fail("Your account is not assigned to any center.");
+                    }
+
+                    if (request.ScopeType == Domain.Entities.Exams.ExamBatchScopeType.Center)
+                    {
+                        request.CenterId = managedCenterId.Value;
+                    }
+                    else if (request.ScopeType == Domain.Entities.Exams.ExamBatchScopeType.National)
+                    {
+                        request.CenterId = null;
+                    }
+                }
+
                 var response = await _examBatchService.UpdateExamBatchAsync(id, request, adminId);
                 return Ok(response, "Exam batch updated successfully.");
             }
@@ -80,6 +155,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> UpdateExamBatchStatus(Guid id, [FromBody] UpdateExamBatchStatusRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanManageExamBatchAsync(id))
+            {
+                return Fail("You do not have permission to update this exam batch.");
+            }
+
             try
             {
                 await _examBatchService.UpdateExamBatchStatusAsync(id, request, adminId);
@@ -97,6 +177,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> DeleteExamBatch(Guid id)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanManageExamBatchAsync(id))
+            {
+                return Fail("You do not have permission to delete this exam batch.");
+            }
+
             try
             {
                 await _examBatchService.DeleteExamBatchAsync(id, adminId);

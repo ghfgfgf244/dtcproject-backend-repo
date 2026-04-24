@@ -36,7 +36,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,EnrollmentManager")]
         public async Task<IActionResult> GetAdmissionDashboard()
         {
-            var result = await _dashboardService.GetAdmissionDashboardAsync();
+            var result = await _dashboardService.GetAdmissionDashboardAsync(await GetManagedCenterIdAsync());
             return Ok(result);
         }
 
@@ -44,7 +44,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,EnrollmentManager")]
         public async Task<IActionResult> GetEnrollmentDashboard()
         {
-            var result = await _dashboardService.GetEnrollmentDashboardAsync();
+            var result = await _dashboardService.GetEnrollmentDashboardAsync(await GetManagedCenterIdAsync());
             return Ok(result);
         }
 
@@ -52,7 +52,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> GetTrainingDashboard()
         {
-            var result = await _dashboardService.GetTrainingDashboardAsync();
+            var result = await _dashboardService.GetTrainingDashboardAsync(await GetManagedCenterIdAsync());
             return Ok(result);
         }
 
@@ -68,7 +68,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,EnrollmentManager")]
         public async Task<IActionResult> GetEnrollmentAiSummary()
         {
-            var dashboard = await _dashboardService.GetEnrollmentDashboardAsync();
+            var dashboard = await _dashboardService.GetEnrollmentDashboardAsync(await GetManagedCenterIdAsync());
             var summary = await _dashboardInsightService.SummarizeAsync(new DashboardInsightRequestDto
             {
                 Role = "EnrollmentManager",
@@ -100,7 +100,7 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager")]
         public async Task<IActionResult> GetTrainingAiSummary()
         {
-            var dashboard = await _dashboardService.GetTrainingDashboardAsync();
+            var dashboard = await _dashboardService.GetTrainingDashboardAsync(await GetManagedCenterIdAsync());
             var summary = await _dashboardInsightService.SummarizeAsync(new DashboardInsightRequestDto
             {
                 Role = "TrainingManager",
