@@ -12,7 +12,7 @@ namespace dtc.Application.Features.Exams.Interfaces
         Task<bool> UpdateStatusAsync(Guid id, UpdateExamRegistrationStatusRequestDto request, Guid adminId);
         Task<bool> MarkAsPaidAsync(Guid id, Guid adminId);
         Task<bool> UpdatePaymentStatusAsync(Guid id, bool isPaid, Guid adminId);
-        Task<IEnumerable<ExamRegistrationResponseDto>> GetByExamBatchAsync(Guid examBatchId);
+        Task<ExamRegistrationBatchPagedResponseDto> GetByExamBatchAsync(Guid examBatchId, ExamRegistrationBatchQueryDto query, Guid? centerId = null);
         Task<IEnumerable<ExamRegistrationResponseDto>> GetByStudentAsync(Guid studentId);
         Task<bool> CreateBulkRegistrationsAsync(BulkExamRegistrationRequestDto request, Guid adminId);
         Task<IEnumerable<TermExamRegistrationCandidateDto>> GetCandidatesByTermAsync(Guid termId, Guid examBatchId);

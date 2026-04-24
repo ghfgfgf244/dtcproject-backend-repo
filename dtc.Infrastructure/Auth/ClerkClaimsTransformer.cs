@@ -70,6 +70,16 @@ namespace dtc.Infrastructure.Auth
                     newIdentity.AddClaim(new Claim("userid", user.Id.ToString()));
                     newIdentity.AddClaim(new Claim("clerkid", clerkId)); // keep original clerkId under custom name
 
+                    if (!newIdentity.HasClaim(claim => claim.Type == "center_id"))
+                    {
+                        var userCenter = (await _unitOfWork.UserCenters.FindAsync(uc => uc.UserId == user.Id))
+                            .FirstOrDefault();
+                        if (userCenter != null)
+                        {
+                            newIdentity.AddClaim(new Claim("center_id", userCenter.CenterId.ToString()));
+                        }
+                    }
+
                     _logger.LogInformation("DTC Auth: SUCCESS! Injected Local ID '{UserId}' and Role '{Role}' for user '{FullName}'", user.Id, roleName, user.FullName);
                 }
                 else

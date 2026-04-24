@@ -10,6 +10,7 @@ namespace dtc.Domain.Entities.Collaborators
     {
         public Guid Id { get; private set; }
         public Guid CollaboratorId { get; private set; }
+        public Guid? ReferralRegistrationId { get; private set; }
         public decimal Amount { get; private set; }
         public CommissionStatus Status { get; private set; }
         public DateTime CreatedAt { get; private set; }
@@ -17,7 +18,7 @@ namespace dtc.Domain.Entities.Collaborators
 
         protected CollaboratorCommission() { }
 
-        public CollaboratorCommission(Guid collaboratorId, decimal amount)
+        public CollaboratorCommission(Guid collaboratorId, decimal amount, Guid? referralRegistrationId = null)
         {
             if (collaboratorId == Guid.Empty)
                 throw new ArgumentException("CollaboratorId is required");
@@ -27,6 +28,7 @@ namespace dtc.Domain.Entities.Collaborators
 
             Id = Guid.NewGuid();
             CollaboratorId = collaboratorId;
+            ReferralRegistrationId = referralRegistrationId;
             Amount = amount;
 
             Status = CommissionStatus.Pending;

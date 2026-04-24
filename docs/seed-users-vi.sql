@@ -108,7 +108,8 @@ JOIN dbo.Centers c
 WHERE c.IsDeleted = 0;
 
 /* =========================================================
-   PHASE 2 - Tạo khóa học cho đầy đủ 15 hạng bằng
+   PHASE 2 - Chuẩn hóa lại dữ liệu đào tạo cho 6 hạng bằng trọng tâm
+   A1, A, B1, B, C1, C
    ========================================================= */
 
 DECLARE @CourseTemplates TABLE
@@ -126,54 +127,164 @@ DECLARE @CourseTemplates TABLE
 INSERT INTO @CourseTemplates
 (RowNo, LicenseType, DurationInWeeks, MaxStudents, Price, DisplayName, Description, HasSimulation)
 VALUES
-(1,  N'A1',  8, 36,  4500000, N'Khóa học GPLX hạng A1',  N'Đào tạo xe mô tô hai bánh đến 125cm3 và xe ba bánh cho người khuyết tật.', 0),
-(2,  N'A',   8, 32,  5200000, N'Khóa học GPLX hạng A',   N'Đào tạo mô tô phân khối lớn và bao gồm phạm vi hạng A1.', 0),
-(3,  N'B1', 10, 28,  6500000, N'Khóa học GPLX hạng B1',  N'Đào tạo xe mô tô ba bánh và các xe thuộc phạm vi hạng A1.', 0),
-(4,  N'B',  14, 30, 12800000, N'Khóa học GPLX hạng B',   N'Đào tạo ô tô con, xe tải nhẹ, có thể học hướng số sàn hoặc số tự động.', 1),
-(5,  N'C1', 16, 26, 15600000, N'Khóa học GPLX hạng C1',  N'Đào tạo xe tải và xe chuyên dùng từ trên 3,5 tấn đến 7,5 tấn.', 1),
-(6,  N'C',  18, 24, 17200000, N'Khóa học GPLX hạng C',   N'Đào tạo xe tải nặng và xe chuyên dùng trên 7,5 tấn.', 1),
-(7,  N'D1', 18, 22, 18800000, N'Khóa học GPLX hạng D1',  N'Đào tạo xe chở người trên 8 đến 16 chỗ.', 1),
-(8,  N'D2', 20, 20, 20500000, N'Khóa học GPLX hạng D2',  N'Đào tạo xe chở người trên 16 đến 29 chỗ, bao gồm xe buýt.', 1),
-(9,  N'D',  22, 18, 22500000, N'Khóa học GPLX hạng D',   N'Đào tạo xe khách trên 29 chỗ và xe giường nằm.', 1),
-(10, N'BE', 12, 20, 14500000, N'Khóa học GPLX hạng BE',  N'Đào tạo xe hạng B kéo rơ moóc trên 750kg.', 1),
-(11, N'C1E',14, 18, 16500000, N'Khóa học GPLX hạng C1E', N'Đào tạo xe hạng C1 kéo rơ moóc trên 750kg.', 1),
-(12, N'CE', 16, 18, 18200000, N'Khóa học GPLX hạng CE',  N'Đào tạo xe hạng C kéo rơ moóc trên 750kg và đầu kéo.', 1),
-(13, N'D1E',16, 16, 19800000, N'Khóa học GPLX hạng D1E', N'Đào tạo xe hạng D1 kéo rơ moóc trên 750kg.', 1),
-(14, N'D2E',18, 16, 21200000, N'Khóa học GPLX hạng D2E', N'Đào tạo xe hạng D2 kéo rơ moóc trên 750kg.', 1),
-(15, N'DE', 20, 16, 23500000, N'Khóa học GPLX hạng DE',  N'Đào tạo xe hạng D kéo rơ moóc trên 750kg và xe khách nối toa.', 1);
+(1, N'A1',  2, 40,   850000, N'Khóa học GPLX hạng A1', N'Đào tạo xe máy dưới 175cc, tập trung phần lý thuyết và thực hành cơ bản để thi nhanh trong thời gian ngắn.', 0),
+(2, N'A',   3, 32,  1900000, N'Khóa học GPLX hạng A',  N'Đào tạo mô tô phân khối lớn trên 175cc, phù hợp người học nâng hạng từ xe máy phổ thông lên mô tô công suất lớn.', 0),
+(3, N'B1', 16, 28, 17500000, N'Khóa học GPLX hạng B1', N'Đào tạo ô tô số tự động không kinh doanh vận tải, gồm lý thuyết, sa hình và thực hành đường trường.', 1),
+(4, N'B',  16, 28, 18000000, N'Khóa học GPLX hạng B',  N'Đào tạo ô tô số sàn, có thể phục vụ nhu cầu hành nghề lái xe và kinh doanh vận tải theo quy định hiện hành.', 1),
+(5, N'C1', 22, 24, 20500000, N'Khóa học GPLX hạng C1', N'Đào tạo xe tải và xe chuyên dùng từ trên 3,5 tấn đến 7,5 tấn, chú trọng kỹ năng điều khiển an toàn và xử lý tình huống.', 1),
+(6, N'C',  24, 22, 21500000, N'Khóa học GPLX hạng C',  N'Đào tạo xe tải nặng và xe chuyên dùng trên 7,5 tấn với lộ trình học dài hơn, phù hợp học viên định hướng lái xe chuyên nghiệp.', 1);
 
-INSERT INTO dbo.Courses
+DECLARE @SeedCourseIds TABLE
 (
-    Id, CenterId, CourseName, LicenseType, DurationInWeeks, MaxStudents, ThumbnailUrl,
-    Description, Price, IsActive, CreatedAt, CreatedBy, UpdatedAt, UpdatedBy, IsDeleted
-)
-SELECT
-    NEWID(),
-    c.CenterId,
-    CONCAT(t.DisplayName, N' - ', c.CenterName),
-    t.LicenseType,
-    t.DurationInWeeks,
-    t.MaxStudents,
-    NULL,
-    CONCAT(t.Description, N' Trung tâm đào tạo: ', c.CenterName, N'.'),
-    t.Price,
-    1,
-    @Now,
-    @CreatedBy,
-    @Now,
-    @CreatedBy,
-    0
-FROM @Centers c
-CROSS JOIN @CourseTemplates t
-WHERE NOT EXISTS
-(
-    SELECT 1
-    FROM dbo.Courses x
-    WHERE x.CenterId = c.CenterId
-      AND x.LicenseType = t.LicenseType
-      AND x.CourseName = CONCAT(t.DisplayName, N' - ', c.CenterName)
-      AND x.IsDeleted = 0
+    CourseId UNIQUEIDENTIFIER PRIMARY KEY
 );
+
+INSERT INTO @SeedCourseIds (CourseId)
+SELECT c.Id
+FROM dbo.Courses c
+JOIN @Centers center_scope
+    ON center_scope.CenterId = c.CenterId
+WHERE c.IsDeleted = 0;
+
+/* Dọn dữ liệu seed cũ để đảm bảo học phí, thời lượng, term, class và exam được tạo lại đồng bộ */
+DELETE er
+FROM dbo.ExamResults er
+JOIN dbo.Exams e
+    ON e.Id = er.ExamId
+WHERE e.CourseId IN (SELECT CourseId FROM @SeedCourseIds);
+
+DELETE a
+FROM dbo.Attendances a
+JOIN dbo.ClassSchedules cs
+    ON cs.Id = a.ClassScheduleId
+JOIN dbo.Classes c
+    ON c.Id = cs.ClassId
+JOIN dbo.Terms t
+    ON t.Id = c.TermId
+WHERE t.CourseId IN (SELECT CourseId FROM @SeedCourseIds);
+
+DELETE cs_map
+FROM dbo.ClassStudents cs_map
+JOIN dbo.Classes c
+    ON c.Id = cs_map.ClassId
+JOIN dbo.Terms t
+    ON t.Id = c.TermId
+WHERE t.CourseId IN (SELECT CourseId FROM @SeedCourseIds);
+
+DELETE cs
+FROM dbo.ClassSchedules cs
+JOIN dbo.Classes c
+    ON c.Id = cs.ClassId
+JOIN dbo.Terms t
+    ON t.Id = c.TermId
+WHERE t.CourseId IN (SELECT CourseId FROM @SeedCourseIds);
+
+DELETE c
+FROM dbo.Classes c
+JOIN dbo.Terms t
+    ON t.Id = c.TermId
+WHERE t.CourseId IN (SELECT CourseId FROM @SeedCourseIds);
+
+DELETE erg
+FROM dbo.ExamRegistrations erg
+JOIN dbo.Users u
+    ON u.Id = erg.StudentId
+WHERE u.ClerkId LIKE N'seed_student_%';
+
+DELETE e
+FROM dbo.Exams e
+WHERE e.CourseId IN (SELECT CourseId FROM @SeedCourseIds);
+
+DELETE t
+FROM dbo.Terms t
+WHERE t.CourseId IN (SELECT CourseId FROM @SeedCourseIds);
+
+DELETE rr
+FROM dbo.ReferralRegistrations rr
+JOIN dbo.Users u
+    ON u.Id = rr.StudentId
+WHERE u.ClerkId LIKE N'seed_student_%';
+
+DELETE cc
+FROM dbo.CollaboratorCommissions cc
+JOIN dbo.Users u
+    ON u.Id = cc.CollaboratorId
+WHERE u.ClerkId LIKE N'seed_collaborator_%';
+
+UPDATE rc
+SET rc.UsedCount = 0,
+    rc.UpdatedAt = @Now,
+    rc.UpdatedBy = @CreatedBy
+FROM dbo.ReferralCodes rc
+JOIN dbo.Users u
+    ON u.Id = rc.CollaboratorId
+WHERE u.ClerkId LIKE N'seed_collaborator_%';
+
+DELETE uc
+FROM dbo.UserCenters uc
+JOIN dbo.Users u
+    ON u.Id = uc.UserId
+WHERE u.ClerkId LIKE N'seed_student_%'
+  AND uc.CenterId IN (SELECT CenterId FROM @Centers);
+
+DELETE cr
+FROM dbo.CourseRegistrations cr
+JOIN dbo.Users u
+    ON u.Id = cr.UserId
+WHERE u.ClerkId LIKE N'seed_student_%'
+  AND cr.CourseId IN (SELECT CourseId FROM @SeedCourseIds);
+
+UPDATE c
+SET c.IsDeleted = 1,
+    c.IsActive = 0,
+    c.UpdatedAt = @Now,
+    c.UpdatedBy = @CreatedBy
+FROM dbo.Courses c
+JOIN @Centers center_scope
+    ON center_scope.CenterId = c.CenterId
+WHERE c.IsDeleted = 0
+  AND c.LicenseType NOT IN (SELECT LicenseType FROM @CourseTemplates);
+
+MERGE dbo.Courses AS target
+USING
+(
+    SELECT
+        c.CenterId,
+        CONCAT(t.DisplayName, N' - ', c.CenterName) AS CourseName,
+        t.LicenseType,
+        t.DurationInWeeks,
+        t.MaxStudents,
+        NULL AS ThumbnailUrl,
+        CONCAT(t.Description, N' Trung tâm đào tạo: ', c.CenterName, N'.') AS Description,
+        t.Price
+    FROM @Centers c
+    CROSS JOIN @CourseTemplates t
+) AS source
+ON target.CenterId = source.CenterId
+AND target.LicenseType = source.LicenseType
+AND target.CourseName = source.CourseName
+WHEN MATCHED THEN
+    UPDATE SET
+        target.DurationInWeeks = source.DurationInWeeks,
+        target.MaxStudents = source.MaxStudents,
+        target.ThumbnailUrl = source.ThumbnailUrl,
+        target.Description = source.Description,
+        target.Price = source.Price,
+        target.IsActive = 1,
+        target.IsDeleted = 0,
+        target.UpdatedAt = @Now,
+        target.UpdatedBy = @CreatedBy
+WHEN NOT MATCHED THEN
+    INSERT
+    (
+        Id, CenterId, CourseName, LicenseType, DurationInWeeks, MaxStudents, ThumbnailUrl,
+        Description, Price, IsActive, CreatedAt, CreatedBy, UpdatedAt, UpdatedBy, IsDeleted
+    )
+    VALUES
+    (
+        NEWID(), source.CenterId, source.CourseName, source.LicenseType, source.DurationInWeeks, source.MaxStudents, source.ThumbnailUrl,
+        source.Description, source.Price, 1, @Now, @CreatedBy, @Now, @CreatedBy, 0
+    );
 
 DECLARE @Courses TABLE
 (
@@ -1195,6 +1306,8 @@ WHERE NOT EXISTS
 DECLARE @ExamBatchSeed TABLE
 (
     BatchNo INT PRIMARY KEY,
+    ScopeType NVARCHAR(50) NOT NULL,
+    CenterId UNIQUEIDENTIFIER NULL,
     BatchName NVARCHAR(255) NOT NULL,
     RegistrationStartDate DATETIME2(7) NOT NULL,
     RegistrationEndDate DATETIME2(7) NOT NULL,
@@ -1204,47 +1317,56 @@ DECLARE @ExamBatchSeed TABLE
 );
 
 INSERT INTO @ExamBatchSeed
-(BatchNo, BatchName, RegistrationStartDate, RegistrationEndDate, ExamStartDate, MaxCandidates, Status)
+(BatchNo, ScopeType, CenterId, BatchName, RegistrationStartDate, RegistrationEndDate, ExamStartDate, MaxCandidates, Status)
 VALUES
-(1,  N'Đợt thi sát hạch tháng 01/2026', '2025-12-01', '2025-12-20', '2026-01-10', 240, N'Completed'),
-(2,  N'Đợt thi sát hạch tháng 02/2026', '2026-01-01', '2026-01-20', '2026-02-10', 240, N'Completed'),
-(3,  N'Đợt thi sát hạch tháng 03/2026', '2026-02-01', '2026-02-20', '2026-03-10', 240, N'Completed'),
-(4,  N'Đợt thi sát hạch tháng 04/2026', '2026-03-01', '2026-03-20', '2026-04-10', 240, N'Completed'),
-(5,  N'Đợt thi sát hạch tháng 05/2026', '2026-04-01', '2026-04-20', '2026-05-10', 240, N'Completed'),
-(6,  N'Đợt thi sát hạch tháng 06/2026', '2026-05-01', '2026-05-20', '2026-06-10', 240, N'Completed'),
-(7,  N'Đợt thi sát hạch tháng 07/2026', '2026-06-01', '2026-06-20', '2026-07-10', 240, N'Completed'),
-(8,  N'Đợt thi sát hạch tháng 08/2026', '2026-07-01', '2026-07-20', '2026-08-10', 240, N'Completed'),
-(9,  N'Đợt thi sát hạch tháng 09/2026', '2026-08-01', '2026-08-20', '2026-09-10', 240, N'Completed'),
-(10, N'Đợt thi sát hạch tháng 10/2026', '2026-09-01', '2026-09-20', '2026-10-10', 240, N'Completed');
+(1,  N'National', NULL, N'Kỳ thi sát hạch quốc gia tháng 01/2026', '2025-12-01', '2025-12-20', '2026-01-10', 240, N'Completed'),
+(2,  N'National', NULL, N'Kỳ thi sát hạch quốc gia tháng 02/2026', '2026-01-01', '2026-01-20', '2026-02-10', 240, N'Completed'),
+(3,  N'National', NULL, N'Kỳ thi sát hạch quốc gia tháng 03/2026', '2026-02-01', '2026-02-20', '2026-03-10', 240, N'Completed'),
+(4,  N'National', NULL, N'Kỳ thi sát hạch quốc gia tháng 04/2026', '2026-03-01', '2026-03-20', '2026-04-10', 240, N'Completed'),
+(5,  N'National', NULL, N'Kỳ thi sát hạch quốc gia tháng 05/2026', '2026-04-01', '2026-04-20', '2026-05-10', 240, N'Completed'),
+(6,  N'National', NULL, N'Kỳ thi sát hạch quốc gia tháng 06/2026', '2026-05-01', '2026-05-20', '2026-06-10', 240, N'ClosedForRegistration'),
+(7,  N'National', NULL, N'Kỳ thi sát hạch quốc gia tháng 07/2026', '2026-06-01', '2026-06-20', '2026-07-10', 240, N'OpenForRegistration'),
+(8,  N'National', NULL, N'Kỳ thi sát hạch quốc gia tháng 08/2026', '2026-07-01', '2026-07-20', '2026-08-10', 240, N'Pending'),
+(9,  N'National', NULL, N'Kỳ thi sát hạch quốc gia tháng 09/2026', '2026-08-01', '2026-08-20', '2026-09-10', 240, N'Pending'),
+(10, N'National', NULL, N'Kỳ thi sát hạch quốc gia tháng 10/2026', '2026-09-01', '2026-09-20', '2026-10-10', 240, N'Pending');
 
-INSERT INTO dbo.ExamBatches
-(
-    Id, BatchName, RegistrationStartDate, RegistrationEndDate, ExamStartDate,
-    CurrentCandidates, MaxCandidates, Status,
-    CreatedAt, CreatedBy, UpdatedAt, UpdatedBy, IsDeleted
-)
-SELECT
-    NEWID(),
-    s.BatchName,
-    s.RegistrationStartDate,
-    s.RegistrationEndDate,
-    s.ExamStartDate,
-    0,
-    s.MaxCandidates,
-    s.Status,
-    @Now,
-    @CreatedBy,
-    @Now,
-    @CreatedBy,
-    0
-FROM @ExamBatchSeed s
-WHERE NOT EXISTS
-(
-    SELECT 1
-    FROM dbo.ExamBatches eb
-    WHERE eb.BatchName = s.BatchName
-      AND eb.IsDeleted = 0
-);
+UPDATE eb
+SET eb.IsDeleted = 1,
+    eb.UpdatedAt = @Now,
+    eb.UpdatedBy = @CreatedBy
+FROM dbo.ExamBatches eb
+WHERE eb.BatchName LIKE N'Đợt thi sát hạch tháng %/2026'
+  AND eb.IsDeleted = 0;
+
+MERGE dbo.ExamBatches AS target
+USING @ExamBatchSeed AS source
+ON target.BatchName = source.BatchName
+WHEN MATCHED THEN
+    UPDATE SET
+        target.ScopeType = source.ScopeType,
+        target.CenterId = source.CenterId,
+        target.RegistrationStartDate = source.RegistrationStartDate,
+        target.RegistrationEndDate = source.RegistrationEndDate,
+        target.ExamStartDate = source.ExamStartDate,
+        target.CurrentCandidates = 0,
+        target.MaxCandidates = source.MaxCandidates,
+        target.Status = source.Status,
+        target.UpdatedAt = @Now,
+        target.UpdatedBy = @CreatedBy,
+        target.IsDeleted = 0
+WHEN NOT MATCHED THEN
+    INSERT
+    (
+        Id, ScopeType, CenterId, BatchName, RegistrationStartDate, RegistrationEndDate, ExamStartDate,
+        CurrentCandidates, MaxCandidates, Status,
+        CreatedAt, CreatedBy, UpdatedAt, UpdatedBy, IsDeleted
+    )
+    VALUES
+    (
+        NEWID(), source.ScopeType, source.CenterId, source.BatchName, source.RegistrationStartDate, source.RegistrationEndDate, source.ExamStartDate,
+        0, source.MaxCandidates, source.Status,
+        @Now, @CreatedBy, @Now, @CreatedBy, 0
+    );
 
 DECLARE @ExamBatches TABLE
 (
@@ -1279,18 +1401,20 @@ DECLARE @ExamCourseBatchMap TABLE
     AddressId INT NOT NULL,
     LicenseType NVARCHAR(20) NOT NULL,
     CourseName NVARCHAR(255) NOT NULL,
+    CenterName NVARCHAR(255) NOT NULL,
     HasSimulation BIT NOT NULL
 );
 
 INSERT INTO @ExamCourseBatchMap
-(CourseId, ExamBatchId, ExamDate, AddressId, LicenseType, CourseName, HasSimulation)
+(CourseId, ExamBatchId, ExamDate, AddressId, LicenseType, CourseName, CenterName, HasSimulation)
 SELECT
     c.CourseId,
     eb.ExamBatchId,
-    eb.ExamStartDate,
+    DATEADD(DAY, (c.RowNo - 1) % 6, eb.ExamStartDate),
     c.ExamAddressId,
     c.LicenseType,
     c.CourseName,
+    c.CenterName,
     c.HasSimulation
 FROM @Courses c
 JOIN @ExamBatches eb
@@ -1307,12 +1431,12 @@ SELECT
     m.ExamBatchId,
     m.CourseId,
     m.AddressId,
-    CONCAT(N'Lý thuyết - ', m.CourseName),
+    CONCAT(N'Thi lý thuyết GPLX hạng ', m.LicenseType, N' - ', m.CenterName),
     DATEADD(HOUR, 8, m.ExamDate),
     N'Theory',
-    30,
-    35,
-    32,
+    CASE WHEN m.LicenseType IN (N'A1', N'A') THEN 20 ELSE 30 END,
+    CASE WHEN m.LicenseType IN (N'A1', N'A') THEN 25 ELSE 35 END,
+    CASE WHEN m.LicenseType IN (N'A1', N'A') THEN 21 ELSE 32 END,
     N'Finished',
     @Now,
     @CreatedBy,
@@ -1341,10 +1465,10 @@ SELECT
     m.ExamBatchId,
     m.CourseId,
     m.AddressId,
-    CONCAT(N'Thực hành - ', m.CourseName),
+    CONCAT(N'Thi thực hành GPLX hạng ', m.LicenseType, N' - ', m.CenterName),
     DATEADD(HOUR, 13, m.ExamDate),
     N'Practice',
-    25,
+    CASE WHEN m.LicenseType IN (N'A1', N'A') THEN 15 ELSE 30 END,
     100,
     80,
     N'Finished',
@@ -1375,7 +1499,7 @@ SELECT
     m.ExamBatchId,
     m.CourseId,
     m.AddressId,
-    CONCAT(N'Mô phỏng - ', m.CourseName),
+    CONCAT(N'Thi mô phỏng GPLX hạng ', m.LicenseType, N' - ', m.CenterName),
     DATEADD(HOUR, 10, m.ExamDate),
     N'Simulation',
     20,
@@ -1458,16 +1582,8 @@ SELECT
     e.Id,
     ast.UserId,
     1,
-    CASE
-        WHEN e.ExamType = N'Theory' THEN CASE WHEN ABS(CHECKSUM(ast.UserId, e.Id)) % 5 = 0 THEN 28 ELSE 34 END
-        WHEN e.ExamType = N'Practice' THEN CASE WHEN ABS(CHECKSUM(ast.UserId, e.Id)) % 5 = 0 THEN 72 ELSE 92 END
-        ELSE CASE WHEN ABS(CHECKSUM(ast.UserId, e.Id)) % 5 = 0 THEN 30 ELSE 42 END
-    END,
-    CASE
-        WHEN e.ExamType = N'Theory' THEN CASE WHEN ABS(CHECKSUM(ast.UserId, e.Id)) % 5 = 0 THEN 0 ELSE 1 END
-        WHEN e.ExamType = N'Practice' THEN CASE WHEN ABS(CHECKSUM(ast.UserId, e.Id)) % 5 = 0 THEN 0 ELSE 1 END
-        ELSE CASE WHEN ABS(CHECKSUM(ast.UserId, e.Id)) % 5 = 0 THEN 0 ELSE 1 END
-    END
+    score_seed.Score,
+    CASE WHEN score_seed.Score >= e.PassScore THEN 1 ELSE 0 END
 FROM @ApprovedStudentTerms ast
 JOIN @ExamCourseBatchMap map
     ON map.CourseId = ast.CourseId
@@ -1475,6 +1591,35 @@ JOIN dbo.Exams e
     ON e.ExamBatchId = map.ExamBatchId
    AND e.CourseId = ast.CourseId
    AND e.IsDeleted = 0
+CROSS APPLY
+(
+    SELECT ABS(CHECKSUM(ast.UserId, e.Id)) % 100 AS SeedValue
+) seed
+CROSS APPLY
+(
+    SELECT CAST(
+        CASE
+            WHEN e.ExamType = N'Theory' THEN
+                CASE
+                    WHEN seed.SeedValue < 12 THEN e.PassScore - 1 - (seed.SeedValue % 4)
+                    WHEN seed.SeedValue < 45 THEN e.PassScore + (seed.SeedValue % (e.TotalScore - e.PassScore + 1))
+                    ELSE e.TotalScore - (seed.SeedValue % 3)
+                END
+            WHEN e.ExamType = N'Practice' THEN
+                CASE
+                    WHEN seed.SeedValue < 15 THEN 70 + (seed.SeedValue % 10)
+                    WHEN seed.SeedValue < 55 THEN 80 + (seed.SeedValue % 12)
+                    ELSE 92 + (seed.SeedValue % 8)
+                END
+            ELSE
+                CASE
+                    WHEN seed.SeedValue < 18 THEN 25 + (seed.SeedValue % 10)
+                    WHEN seed.SeedValue < 60 THEN 35 + (seed.SeedValue % 8)
+                    ELSE 43 + (seed.SeedValue % 7)
+                END
+        END AS FLOAT
+    ) AS Score
+) score_seed
 WHERE NOT EXISTS
 (
     SELECT 1

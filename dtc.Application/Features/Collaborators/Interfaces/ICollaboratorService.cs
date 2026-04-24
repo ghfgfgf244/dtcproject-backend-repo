@@ -15,6 +15,7 @@ namespace dtc.Application.Features.Collaborators.Interfaces
         Task<ReferralCodeResponseDto?> GenerateReferralCodeAsync(Guid collaboratorId, string code);
         Task<int> GetTokenUsageCountAsync(Guid collaboratorId);
         Task<decimal> GetCommissionRateAsync();
+        Task<ReferralCodeValidationResponseDto> ValidateReferralCodeAsync(string code, Guid? courseId = null);
         Task<IEnumerable<CollaboratorCommissionResponseDto>> CalculateAndGetCommissionsAsync(Guid collaboratorId);
         Task<IEnumerable<CollaboratorCommissionResponseDto>> GetMyCommissionsAsync(Guid collaboratorId);
 

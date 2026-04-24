@@ -13,12 +13,19 @@ namespace dtc.Domain.Entities.Terms
         public Guid? AssignedTermId { get; private set; }
         public DateTime RegistrationDate { get; private set; }
         public CourseRegistrationStatus Status { get; private set; }
+        public decimal OriginalFee { get; private set; }
         public decimal TotalFee { get; private set; }
         public string? Notes { get; private set; }
 
         protected CourseRegistration() { }
 
-        public CourseRegistration(Guid courseId, Guid userId, decimal totalFee, string? notes = null, Guid? createdBy = null)
+        public CourseRegistration(
+            Guid courseId,
+            Guid userId,
+            decimal totalFee,
+            string? notes = null,
+            Guid? createdBy = null,
+            decimal? originalFee = null)
         {
             if (courseId == Guid.Empty)
                 throw new ArgumentException("CourseId is required");
@@ -32,6 +39,7 @@ namespace dtc.Domain.Entities.Terms
             Id = Guid.NewGuid();
             CourseId = courseId;
             UserId = userId;
+            OriginalFee = originalFee ?? totalFee;
             TotalFee = totalFee;
             RegistrationDate = DateTime.UtcNow;
             Status = CourseRegistrationStatus.Pending;

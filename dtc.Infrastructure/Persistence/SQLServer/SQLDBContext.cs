@@ -317,6 +317,7 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                 e.HasKey(x => x.Id);
 
                 e.Property(x => x.RegistrationDate);
+                e.Property(x => x.OriginalFee).HasPrecision(18,2);
                 e.Property(x => x.TotalFee).HasPrecision(18,2);
                 e.Property(x => x.Notes).HasMaxLength(1000);
                 
@@ -484,6 +485,14 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                 e.ToTable("ExamBatches");
                 e.HasKey(x => x.Id);
 
+                e.Property(x => x.ScopeType)
+                    .HasConversion<string>()
+                    .HasMaxLength(50)
+                    .IsRequired();
+
+                e.Property(x => x.CenterId)
+                    .IsRequired(false);
+
                 e.Property(x => x.BatchName).HasMaxLength(255).IsRequired();
                 e.Property(x => x.RegistrationStartDate);
                 e.Property(x => x.RegistrationEndDate);
@@ -492,6 +501,11 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                 e.Property(x => x.Status)
                     .HasConversion<string>()
                     .HasMaxLength(50);
+
+                e.HasOne(x => x.Center)
+                    .WithMany()
+                    .HasForeignKey(x => x.CenterId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
 
@@ -626,6 +640,7 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                 entity.ToTable("ReferralRegistrations");
                 entity.HasKey(x => x.Id);
                 entity.Property(x => x.RegisteredAt);
+                entity.Property(x => x.CourseRegistrationId).IsRequired(false);
 
                 entity.HasOne<ReferralCode>()
                     .WithMany()
@@ -636,6 +651,11 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                     .WithMany()
                     .HasForeignKey(x => x.StudentId)
                     .OnDelete(DeleteBehavior.Restrict); 
+
+                entity.HasOne<dtc.Domain.Entities.Terms.CourseRegistration>()
+                    .WithMany()
+                    .HasForeignKey(x => x.CourseRegistrationId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
         }
@@ -654,10 +674,16 @@ namespace dtc.Infrastructure.Pesistence.SQLServer
                     .HasMaxLength(50);
 
                 e.Property(x => x.PaidAt);
+                e.Property(x => x.ReferralRegistrationId).IsRequired(false);
 
                 e.HasOne<User>()
                     .WithMany()
                     .HasForeignKey(x => x.CollaboratorId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne<ReferralRegistration>()
+                    .WithMany()
+                    .HasForeignKey(x => x.ReferralRegistrationId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
         }

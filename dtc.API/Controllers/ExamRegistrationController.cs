@@ -3,6 +3,7 @@ using dtc.Application.Features.Exams.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -19,7 +20,7 @@ namespace dtc.API.Controllers
 
         // DEV-103: User register exam batch
         [HttpPost]
-        [Authorize(Roles = "Student,Admin,TrainingManager")]
+        [Authorize(Roles = "Student,Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> Register([FromBody] CreateExamRegistrationRequestDto request)
         {
             var userId = await GetInternalUserIdAsync();
@@ -27,6 +28,12 @@ namespace dtc.API.Controllers
 
             if (isStudent && request.StudentId != userId)
                 return Fail("Students can only register themselves.");
+
+            if (!isStudent && !await CanAccessUserAsync(request.StudentId))
+                return Fail("You do not have permission to register this student.");
+
+            if (!isStudent && !await CanAccessExamBatchAsync(request.ExamBatchId))
+                return Fail("You do not have permission to use this exam batch.");
 
             try
             {
@@ -45,6 +52,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> UpdateRegistrationStatus(Guid id, [FromBody] UpdateExamRegistrationStatusRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessExamRegistrationAsync(id))
+            {
+                return Fail("You do not have permission to access this exam registration.");
+            }
+
             try
             {
                 await _examRegistrationService.UpdateStatusAsync(id, request, adminId);
@@ -61,6 +73,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> MarkAsPaid(Guid id)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessExamRegistrationAsync(id))
+            {
+                return Fail("You do not have permission to access this exam registration.");
+            }
+
             try
             {
                 await _examRegistrationService.MarkAsPaidAsync(id, adminId);
@@ -77,6 +94,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> UpdatePaymentStatus(Guid id, [FromBody] UpdateExamRegistrationPaymentRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessExamRegistrationAsync(id))
+            {
+                return Fail("You do not have permission to access this exam registration.");
+            }
+
             try
             {
                 await _examRegistrationService.UpdatePaymentStatusAsync(id, request.IsPaid, adminId);
@@ -90,9 +112,10 @@ namespace dtc.API.Controllers
 
         [HttpGet("Batch/{examBatchId}")]
         [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
-        public async Task<IActionResult> GetByExamBatch(Guid examBatchId)
+        public async Task<IActionResult> GetByExamBatch(Guid examBatchId, [FromQuery] ExamRegistrationBatchQueryDto query)
         {
-            var response = await _examRegistrationService.GetByExamBatchAsync(examBatchId);
+            var managedCenterId = await GetManagedCenterIdAsync();
+            var response = await _examRegistrationService.GetByExamBatchAsync(examBatchId, query, managedCenterId);
             return Ok(response);
         }
 
@@ -100,6 +123,11 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> GetCandidatesByTerm(Guid termId, [FromQuery] Guid examBatchId)
         {
+            if (!await CanAccessTermAsync(termId) || !await CanAccessExamBatchAsync(examBatchId))
+            {
+                return Fail("You do not have permission to access this term or exam batch.");
+            }
+
             try
             {
                 var response = await _examRegistrationService.GetCandidatesByTermAsync(termId, examBatchId);
@@ -121,6 +149,9 @@ namespace dtc.API.Controllers
             if (userRole == "Student" && studentId != userId)
                 return Fail("Students can only view their own registrations.");
 
+            if (userRole != "Student" && !await CanAccessUserAsync(studentId))
+                return Fail("You do not have permission to access this student's registrations.");
+
             var response = await _examRegistrationService.GetByStudentAsync(studentId);
             return Ok(response);
         }
@@ -130,6 +161,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> CreateBulkRegistrations([FromBody] BulkExamRegistrationRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessExamBatchAsync(request.ExamBatchId))
+            {
+                return Fail("You do not have permission to use this exam batch.");
+            }
+
             try
             {
                 await _examRegistrationService.CreateBulkRegistrationsAsync(request, adminId);

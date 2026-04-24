@@ -3,7 +3,6 @@ using dtc.Application.Features.Training.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
@@ -23,6 +22,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> MarkAttendance([FromBody] MarkAttendanceRequestDto request)
         {
             var instructorId = await GetInternalUserIdAsync();
+            if (!await CanAccessScheduleAsync(request.ClassScheduleId))
+            {
+                return Fail("You do not have permission to access this class schedule.");
+            }
+
             try
             {
                 await _attendanceService.MarkAttendanceAsync(request, instructorId);
@@ -39,6 +43,11 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager,Instructor")]
         public async Task<IActionResult> GetAttendanceBySchedule(Guid classScheduleId)
         {
+            if (!await CanAccessScheduleAsync(classScheduleId))
+            {
+                return Fail("You do not have permission to access this class schedule.");
+            }
+
             var response = await _attendanceService.GetAttendanceByClassScheduleAsync(classScheduleId);
             return Ok(response);
         }
@@ -46,6 +55,11 @@ namespace dtc.API.Controllers
         [HttpGet("Report/Class/{classId}")]
         public async Task<IActionResult> GetAttendanceReport(Guid classId)
         {
+            if (!await CanAccessClassAsync(classId))
+            {
+                return Fail("You do not have permission to access this class.");
+            }
+
             var response = await _attendanceService.GetAttendanceReportByClassAsync(classId);
             return Ok(response);
         }
@@ -54,6 +68,11 @@ namespace dtc.API.Controllers
         [HttpGet("Student/{studentId}")]
         public async Task<IActionResult> GetAttendanceByStudent(Guid studentId)
         {
+            if (IsCenterScopedManager() && !await CanAccessUserAsync(studentId))
+            {
+                return Fail("You do not have permission to access this student.");
+            }
+
             var response = await _attendanceService.GetAttendanceByStudentAsync(studentId);
             return Ok(response);
         }
@@ -62,6 +81,16 @@ namespace dtc.API.Controllers
         [HttpGet("Student/{studentId}/Summary")]
         public async Task<IActionResult> GetStudentAttendanceSummary(Guid studentId, [FromQuery] Guid? classId = null)
         {
+            if (IsCenterScopedManager() && !await CanAccessUserAsync(studentId))
+            {
+                return Fail("You do not have permission to access this student.");
+            }
+
+            if (classId.HasValue && !await CanAccessClassAsync(classId.Value))
+            {
+                return Fail("You do not have permission to access this class.");
+            }
+
             var response = await _attendanceService.GetStudentAttendanceSummaryAsync(studentId, classId);
             return Ok(response);
         }
