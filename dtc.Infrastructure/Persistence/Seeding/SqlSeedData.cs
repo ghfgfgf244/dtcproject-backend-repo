@@ -1,5 +1,6 @@
 using System;
 using dtc.Domain.Entities;
+using dtc.Domain.Entities.Exams;
 using EmailVO = dtc.Domain.ValueObjects.Email;
 using PhoneNumberVO = dtc.Domain.ValueObjects.PhoneNumber;
 
@@ -190,6 +191,7 @@ namespace dtc.Infrastructure.Persistence.Seeding
                 AssignedTermId = (Guid?)SeedIds.TermA,
                 RegistrationDate = new DateTime(2026, 2, 10, 0, 0, 0, DateTimeKind.Utc),
                 Status = CourseRegistrationStatus.Approved,
+                OriginalFee = 12500000m,
                 TotalFee = 12500000m,
                 Notes = "Da xac nhan hoc phi dot 1.",
                 CreatedAt = BaseCreatedAt,
@@ -206,6 +208,7 @@ namespace dtc.Infrastructure.Persistence.Seeding
                 AssignedTermId = (Guid?)null,
                 RegistrationDate = new DateTime(2026, 2, 12, 0, 0, 0, DateTimeKind.Utc),
                 Status = CourseRegistrationStatus.Pending,
+                OriginalFee = 15800000m,
                 TotalFee = 15800000m,
                 Notes = "Cho xep lop.",
                 CreatedAt = BaseCreatedAt.AddMinutes(30),
@@ -387,6 +390,8 @@ namespace dtc.Infrastructure.Persistence.Seeding
             new
             {
                 Id = SeedIds.ExamBatchA,
+                ScopeType = ExamBatchScopeType.Center,
+                CenterId = (Guid?)SeedIds.CenterA,
                 BatchName = "Ky thi sat hach thang 05",
                 RegistrationStartDate = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc),
                 RegistrationEndDate = new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc),
@@ -403,6 +408,8 @@ namespace dtc.Infrastructure.Persistence.Seeding
             new
             {
                 Id = SeedIds.ExamBatchB,
+                ScopeType = ExamBatchScopeType.National,
+                CenterId = (Guid?)null,
                 BatchName = "Ky thi sat hach thang 06",
                 RegistrationStartDate = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc),
                 RegistrationEndDate = new DateTime(2026, 5, 22, 0, 0, 0, DateTimeKind.Utc),

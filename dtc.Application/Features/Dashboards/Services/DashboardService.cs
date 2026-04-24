@@ -62,10 +62,27 @@ namespace dtc.Application.Features.Dashboards.Services
             };
         }
 
-        public async Task<AdmissionDashboardResponseDto> GetAdmissionDashboardAsync()
+        public async Task<AdmissionDashboardResponseDto> GetAdmissionDashboardAsync(Guid? centerId = null)
         {
-            var courseRegs = (await _unitOfWork.CourseRegistrations.GetAllAsync()).ToList();
-            var users = (await _unitOfWork.Users.FindAsync(u => u.RoleId == UserRole.Student)).ToList();
+            var userCenters = (await _unitOfWork.UserCenters.GetAllAsync()).ToList();
+            var courses = (await _unitOfWork.Courses.GetAllAsync()).ToList();
+            if (centerId.HasValue)
+            {
+                courses = courses.Where(course => course.CenterId == centerId.Value).ToList();
+            }
+
+            var courseIds = courses.Select(course => course.Id).ToHashSet();
+            var courseRegs = (await _unitOfWork.CourseRegistrations.GetAllAsync())
+                .Where(registration => !centerId.HasValue || courseIds.Contains(registration.CourseId))
+                .ToList();
+
+            var studentUserIds = userCenters
+                .Where(link => !centerId.HasValue || link.CenterId == centerId.Value)
+                .Select(link => link.UserId)
+                .ToHashSet();
+            var users = (await _unitOfWork.Users.FindAsync(u => u.RoleId == UserRole.Student))
+                .Where(user => !centerId.HasValue || studentUserIds.Contains(user.Id))
+                .ToList();
 
             var pending = courseRegs.Count(r => r.Status == CourseRegistrationStatus.Pending);
             var approved = courseRegs.Count(r => r.Status == CourseRegistrationStatus.Approved);
@@ -92,19 +109,40 @@ namespace dtc.Application.Features.Dashboards.Services
             };
         }
 
-        public async Task<EnrollmentOperationalDashboardDto> GetEnrollmentDashboardAsync()
+        public async Task<EnrollmentOperationalDashboardDto> GetEnrollmentDashboardAsync(Guid? centerId = null)
         {
             var users = (await _unitOfWork.Users.GetAllAsync()).ToList();
-            var courses = (await _unitOfWork.Courses.GetAllAsync()).ToList();
-            var courseRegs = (await _unitOfWork.CourseRegistrations.GetAllAsync()).ToList();
+            var userCenters = (await _unitOfWork.UserCenters.GetAllAsync()).ToList();
+            var managedUserIds = userCenters
+                .Where(link => !centerId.HasValue || link.CenterId == centerId.Value)
+                .Select(link => link.UserId)
+                .ToHashSet();
+
+            var courses = (await _unitOfWork.Courses.GetAllAsync())
+                .Where(course => !centerId.HasValue || course.CenterId == centerId.Value)
+                .ToList();
+            var courseIds = courses.Select(course => course.Id).ToHashSet();
+
+            var courseRegs = (await _unitOfWork.CourseRegistrations.GetAllAsync())
+                .Where(registration => !centerId.HasValue || courseIds.Contains(registration.CourseId))
+                .ToList();
             var referralCodes = (await _unitOfWork.ReferralCodes.GetAllAsync()).ToList();
             var referralRegs = (await _unitOfWork.ReferralRegistrations.GetAllAsync()).ToList();
             var commissions = (await _unitOfWork.CollaboratorCommissions.GetAllAsync()).ToList();
             var blogs = (await _unitOfWork.Blogs.GetAllAsync()).ToList();
             var categories = (await _unitOfWork.Categories.GetAllAsync()).ToList();
 
-            var students = users.Where(u => u.RoleId == UserRole.Student && u.IsActive).ToList();
-            var collaborators = users.Where(u => u.RoleId == UserRole.Collaborator && u.IsActive).ToList();
+            var students = users.Where(u => u.RoleId == UserRole.Student && u.IsActive && (!centerId.HasValue || managedUserIds.Contains(u.Id))).ToList();
+            var collaborators = users.Where(u => u.RoleId == UserRole.Collaborator && u.IsActive && (!centerId.HasValue || managedUserIds.Contains(u.Id))).ToList();
+            var collaboratorIds = collaborators.Select(user => user.Id).ToHashSet();
+
+            if (centerId.HasValue)
+            {
+                referralCodes = referralCodes.Where(code => collaboratorIds.Contains(code.CollaboratorId)).ToList();
+                var referralCodeIds = referralCodes.Select(code => code.Id).ToHashSet();
+                referralRegs = referralRegs.Where(reg => referralCodeIds.Contains(reg.ReferralCodeId)).ToList();
+                commissions = commissions.Where(c => collaboratorIds.Contains(c.CollaboratorId)).ToList();
+            }
 
             var pending = courseRegs.Count(r => r.Status == CourseRegistrationStatus.Pending);
             var approved = courseRegs.Count(r => r.Status == CourseRegistrationStatus.Approved);
@@ -218,13 +256,42 @@ namespace dtc.Application.Features.Dashboards.Services
             };
         }
 
-        public async Task<TrainingOperationalDashboardDto> GetTrainingDashboardAsync()
+        public async Task<TrainingOperationalDashboardDto> GetTrainingDashboardAsync(Guid? centerId = null)
         {
-            var classes = (await _unitOfWork.Classes.GetAllAsync()).ToList();
-            var schedules = (await _unitOfWork.ClassSchedules.GetAllAsync()).ToList();
-            var attendances = (await _unitOfWork.Attendances.GetAllAsync()).ToList();
-            var instructors = (await _unitOfWork.Users.FindAsync(u => u.RoleId == UserRole.Instructor && u.IsActive)).ToList();
-            var examBatches = (await _unitOfWork.ExamBatches.GetAllAsync()).ToList();
+            var courses = (await _unitOfWork.Courses.GetAllAsync())
+                .Where(course => !centerId.HasValue || course.CenterId == centerId.Value)
+                .ToList();
+            var courseIds = courses.Select(course => course.Id).ToHashSet();
+            var terms = (await _unitOfWork.Terms.GetAllAsync())
+                .Where(term => !centerId.HasValue || courseIds.Contains(term.CourseId))
+                .ToList();
+            var termIds = terms.Select(term => term.Id).ToHashSet();
+            var classes = (await _unitOfWork.Classes.GetAllAsync())
+                .Where(@class => !centerId.HasValue || termIds.Contains(@class.TermId))
+                .ToList();
+            var classIds = classes.Select(@class => @class.Id).ToHashSet();
+            var schedules = (await _unitOfWork.ClassSchedules.GetAllAsync())
+                .Where(schedule => !centerId.HasValue || classIds.Contains(schedule.ClassId))
+                .ToList();
+            var scheduleIds = schedules.Select(schedule => schedule.Id).ToHashSet();
+            var attendances = (await _unitOfWork.Attendances.GetAllAsync())
+                .Where(attendance => !centerId.HasValue || scheduleIds.Contains(attendance.ClassScheduleId))
+                .ToList();
+            var userCenters = (await _unitOfWork.UserCenters.GetAllAsync()).ToList();
+            var instructorIds = userCenters
+                .Where(link => !centerId.HasValue || link.CenterId == centerId.Value)
+                .Select(link => link.UserId)
+                .ToHashSet();
+            var instructors = (await _unitOfWork.Users.FindAsync(u => u.RoleId == UserRole.Instructor && u.IsActive))
+                .Where(user => !centerId.HasValue || instructorIds.Contains(user.Id))
+                .ToList();
+            var exams = (await _unitOfWork.Exams.GetAllAsync())
+                .Where(exam => !centerId.HasValue || courseIds.Contains(exam.CourseId))
+                .ToList();
+            var examBatchIds = exams.Select(exam => exam.ExamBatchId).Distinct().ToHashSet();
+            var examBatches = (await _unitOfWork.ExamBatches.GetAllAsync())
+                .Where(batch => !centerId.HasValue || examBatchIds.Contains(batch.Id))
+                .ToList();
 
             var activeClasses = classes.Where(c => c.Status != ClassStatus.Cancelled).ToList();
             var theoryClasses = activeClasses.Count(c => c.ClassType == ClassType.Theory);

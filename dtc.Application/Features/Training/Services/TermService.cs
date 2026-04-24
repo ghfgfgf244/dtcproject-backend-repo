@@ -51,12 +51,22 @@ namespace dtc.Application.Features.Training.Services
         public async Task<IEnumerable<TermResponseDto>> GetAllTermsAsync()
         {
             var terms = (await _unitOfWork.Terms.GetAllAsync()).ToList();
-            var courses = (await _unitOfWork.Courses.GetAllAsync()).ToDictionary(c => c.Id, c => c.CourseName);
+            var courses = (await _unitOfWork.Courses.GetAllAsync()).ToDictionary(c => c.Id, c => c);
+            var centerIds = courses.Values.Select(c => c.CenterId).Distinct().ToList();
+            var centers = (await _unitOfWork.Centers.FindAsync(c => centerIds.Contains(c.Id)))
+                .ToDictionary(c => c.Id, c => c.CenterName);
 
             return terms.Select(term => {
                 var dto = MapToDtoInternal(term);
-                if (courses.TryGetValue(term.CourseId, out var courseName))
-                    dto.CourseName = courseName;
+                if (courses.TryGetValue(term.CourseId, out var course))
+                {
+                    dto.CourseName = course.CourseName;
+                    dto.CenterId = course.CenterId;
+                    if (centers.TryGetValue(course.CenterId, out var centerName))
+                    {
+                        dto.CenterName = centerName;
+                    }
+                }
                 return dto;
             });
         }
@@ -94,7 +104,13 @@ namespace dtc.Application.Features.Training.Services
             var dto = MapToDtoInternal(term);
             var course = await _unitOfWork.Courses.GetByIdAsync(term.CourseId);
             if (course != null)
+            {
                 dto.CourseName = course.CourseName;
+                dto.CenterId = course.CenterId;
+
+                var center = await _unitOfWork.Centers.GetByIdAsync(course.CenterId);
+                dto.CenterName = center?.CenterName;
+            }
             
             return dto;
         }
@@ -105,6 +121,7 @@ namespace dtc.Application.Features.Training.Services
             {
                 Id = term.Id,
                 CourseId = term.CourseId,
+                CenterId = Guid.Empty,
                 TermName = term.TermName,
                 StartDate = term.StartDate,
                 EndDate = term.EndDate,

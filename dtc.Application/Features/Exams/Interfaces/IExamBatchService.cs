@@ -13,6 +13,7 @@ namespace dtc.Application.Features.Exams.Interfaces
         Task<bool> DeleteExamBatchAsync(Guid id, Guid adminId);
         Task<ExamBatchResponseDto> GetExamBatchDetailAsync(Guid id);
         Task<IEnumerable<ExamBatchResponseDto>> GetAllExamBatchesAsync();
+        Task<ExamBatchPagedResponseDto> GetExamBatchesPagedAsync(ExamBatchPagedQueryDto query, Guid? managedCenterId = null);
         Task<bool> UpdateExamBatchStatusAsync(Guid id, UpdateExamBatchStatusRequestDto request, Guid adminId);
     }
 }

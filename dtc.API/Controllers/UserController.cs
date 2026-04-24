@@ -4,7 +4,7 @@ using dtc.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Security.Claims;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
@@ -111,6 +111,12 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> GetStudents()
         {
             var students = await _userService.GetUsersByRoleAsync((int)dtc.Domain.Entities.UserRole.Student);
+            var managedCenterId = await GetManagedCenterIdAsync();
+            if (managedCenterId.HasValue)
+            {
+                students = students.Where(user => user.CenterId == managedCenterId.Value);
+            }
+
             return Ok(students);
         }
 
@@ -119,6 +125,12 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> GetInstructors()
         {
             var instructors = await _userService.GetUsersByRoleAsync((int)dtc.Domain.Entities.UserRole.Instructor);
+            var managedCenterId = await GetManagedCenterIdAsync();
+            if (managedCenterId.HasValue)
+            {
+                instructors = instructors.Where(user => user.CenterId == managedCenterId.Value);
+            }
+
             return Ok(instructors);
         }
 
@@ -145,6 +157,10 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> UpdateInstructor(Guid id, [FromBody] UpdateManagedUserRequestDto request)
         {
             var requesterId = await GetInternalUserIdAsync();
+            if (!await CanAccessUserAsync(id))
+            {
+                return Fail("You do not have permission to access this instructor.");
+            }
 
             try
             {
@@ -162,6 +178,10 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> ToggleInstructorStatus(Guid id)
         {
             var requesterId = await GetInternalUserIdAsync();
+            if (!await CanAccessUserAsync(id))
+            {
+                return Fail("You do not have permission to access this instructor.");
+            }
 
             try
             {
@@ -179,6 +199,10 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> DeleteInstructor(Guid id)
         {
             var requesterId = await GetInternalUserIdAsync();
+            if (!await CanAccessUserAsync(id))
+            {
+                return Fail("You do not have permission to access this instructor.");
+            }
 
             try
             {

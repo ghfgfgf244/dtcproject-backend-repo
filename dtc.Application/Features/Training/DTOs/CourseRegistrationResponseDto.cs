@@ -10,6 +10,8 @@ namespace dtc.Application.Features.Training.DTOs
         public DateTime RegistrationDate { get; set; }
         public string Status { get; set; } = string.Empty;
         public decimal TotalFee { get; set; }
+        public decimal OriginalFee { get; set; }
+        public decimal DiscountAmount { get; set; }
         public string? Notes { get; set; }
         public DateTime CreatedAt { get; set; }
 
@@ -19,6 +21,8 @@ namespace dtc.Application.Features.Training.DTOs
         public string Phone { get; set; } = string.Empty;
 
         // Course Info
+        public Guid? CenterId { get; set; }
+        public string? CenterName { get; set; }
         public string? CourseName { get; set; }
         public string? LicenseTypeLabel { get; set; }
         public Guid? AssignedTermId { get; set; }
@@ -29,6 +33,8 @@ namespace dtc.Application.Features.Training.DTOs
         public string? SuggestedTermName { get; set; }
         public DateTime? SuggestedTermStartDate { get; set; }
         public string? PlacementMessage { get; set; }
+        public string? AppliedReferralCode { get; set; }
+        public string? AppliedReferralCollaboratorName { get; set; }
 
         // Image URLs from Document table
         public string? PhotoUrl { get; set; }

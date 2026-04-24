@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Security.Claims;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
@@ -105,6 +105,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> UpdateRegistrationStatus(Guid id, [FromBody] UpdateRegistrationStatusDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessRegistrationAsync(id))
+            {
+                return Fail("You do not have permission to access this registration.");
+            }
+
             try
             {
                 await _registrationService.UpdateRegistrationStatusAsync(id, request, adminId);
@@ -130,6 +135,12 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> GetAllRegistrations()
         {
             var response = await _registrationService.GetAllRegistrationsAsync();
+            var managedCenterId = await GetManagedCenterIdAsync();
+            if (managedCenterId.HasValue)
+            {
+                response = response.Where(item => item.CenterId == managedCenterId.Value);
+            }
+
             return Ok(response);
         }
 
@@ -137,6 +148,11 @@ namespace dtc.API.Controllers
         [Authorize]
         public async Task<IActionResult> GetRegistrationDetail(Guid id)
         {
+            if (!await CanAccessRegistrationAsync(id))
+            {
+                return Fail("You do not have permission to access this registration.");
+            }
+
             try
             {
                 var response = await _registrationService.GetRegistrationDetailAsync(id);
@@ -152,6 +168,22 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> GetRegistrationStats()
         {
+            var managedCenterId = await GetManagedCenterIdAsync();
+            if (managedCenterId.HasValue)
+            {
+                var registrations = (await _registrationService.GetAllRegistrationsAsync())
+                    .Where(item => item.CenterId == managedCenterId.Value)
+                    .ToList();
+
+                return Ok(new
+                {
+                    NewRegistrationsThisMonth = registrations.Count(r =>
+                        r.RegistrationDate >= new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1)),
+                    PendingRegistrations = registrations.Count(r =>
+                        string.Equals(r.Status, nameof(dtc.Domain.Entities.CourseRegistrationStatus.Pending), StringComparison.OrdinalIgnoreCase))
+                });
+            }
+
             var response = await _registrationService.GetRegistrationStatsAsync();
             return Ok(response);
         }

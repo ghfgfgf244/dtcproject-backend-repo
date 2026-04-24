@@ -117,15 +117,50 @@ namespace dtc.Application.Features.Exams.Services
             return true;
         }
 
-        public async Task<IEnumerable<ExamRegistrationResponseDto>> GetByExamBatchAsync(Guid examBatchId)
+        public async Task<ExamRegistrationBatchPagedResponseDto> GetByExamBatchAsync(Guid examBatchId, ExamRegistrationBatchQueryDto query, Guid? centerId = null)
         {
-            var regs = await _unitOfWork.ExamRegistrations.FindAsync(r => r.ExamBatchId == examBatchId);
+            var pageNumber = Math.Max(1, query.PageNumber);
+            var pageSize = Math.Max(1, query.PageSize);
+
+            var regs = (await _unitOfWork.ExamRegistrations.FindAsync(r => r.ExamBatchId == examBatchId)).ToList();
+
+            if (query.Status.HasValue)
+            {
+                regs = regs.Where(r => r.Status == query.Status.Value).ToList();
+            }
+
+            var examsInBatch = (await _unitOfWork.Exams.FindAsync(e => e.ExamBatchId == examBatchId && !e.IsDeleted)).ToList();
+            var courseIdsInBatch = examsInBatch.Select(e => e.CourseId).Distinct().ToHashSet();
+
             var dtos = new List<ExamRegistrationResponseDto>();
             foreach (var r in regs)
             {
-                dtos.Add(await MapToDtoAsync(r));
+                dtos.Add(await MapToDtoAsync(r, courseIdsInBatch));
             }
-            return dtos;
+
+            var orderedDtos = dtos
+                .Where(item => !centerId.HasValue || item.CenterId == centerId.Value)
+                .OrderByDescending(item => item.RegistrationDate)
+                .ThenBy(item => item.StudentName)
+                .ToList();
+
+            var totalItems = orderedDtos.Count;
+            var totalPages = totalItems == 0 ? 0 : (int)Math.Ceiling((double)totalItems / pageSize);
+            var pagedItems = orderedDtos
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return new ExamRegistrationBatchPagedResponseDto
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalItems = totalItems,
+                TotalPages = totalPages,
+                PendingCount = orderedDtos.Count(item => item.Status == ExamRegistrationStatus.Pending),
+                EligibleCount = orderedDtos.Count(item => item.IsEligibleForApproval),
+                Items = pagedItems
+            };
         }
 
         public async Task<IEnumerable<TermExamRegistrationCandidateDto>> GetCandidatesByTermAsync(Guid termId, Guid examBatchId)
@@ -235,23 +270,31 @@ namespace dtc.Application.Features.Exams.Services
             });
         }
 
-        private async Task<ExamRegistrationResponseDto> MapToDtoAsync(ExamRegistration reg)
+        private async Task<ExamRegistrationResponseDto> MapToDtoAsync(
+            ExamRegistration reg,
+            IReadOnlySet<Guid>? preferredCourseIds = null)
         {
             var batch = await _unitOfWork.ExamBatches.GetByIdAsync(reg.ExamBatchId);
             var student = await _unitOfWork.Users.GetByIdAsync(reg.StudentId);
-            var courseRegistration = (await _unitOfWork.CourseRegistrations.FindAsync(r =>
+            var approvedCourseRegistrations = (await _unitOfWork.CourseRegistrations.FindAsync(r =>
                     r.UserId == reg.StudentId &&
                     r.Status == CourseRegistrationStatus.Approved))
                 .OrderByDescending(r => r.RegistrationDate)
-                .FirstOrDefault();
+                .ToList();
+
+            var courseRegistration = preferredCourseIds is { Count: > 0 }
+                ? approvedCourseRegistrations.FirstOrDefault(r => preferredCourseIds.Contains(r.CourseId))
+                : approvedCourseRegistrations.FirstOrDefault();
 
             var term = courseRegistration?.AssignedTermId.HasValue == true
                 ? await _unitOfWork.Terms.GetByIdAsync(courseRegistration.AssignedTermId.Value)
                 : null;
 
-            var course = term != null
-                ? await _unitOfWork.Courses.GetByIdAsync(term.CourseId)
-                : null;
+            var course = courseRegistration != null
+                ? await _unitOfWork.Courses.GetByIdAsync(courseRegistration.CourseId)
+                : term != null
+                    ? await _unitOfWork.Courses.GetByIdAsync(term.CourseId)
+                    : null;
 
             var metrics = term != null
                 ? await CalculateAttendanceMetricsAsync(term.Id, reg.StudentId)
@@ -262,6 +305,7 @@ namespace dtc.Application.Features.Exams.Services
                 Id = reg.Id,
                 ExamBatchId = reg.ExamBatchId,
                 StudentId = reg.StudentId,
+                CenterId = course?.CenterId,
                 StudentName = student?.FullName ?? "Unknown",
                 Email = student?.Email.Value ?? string.Empty,
                 Phone = student?.Phone?.Value ?? string.Empty,

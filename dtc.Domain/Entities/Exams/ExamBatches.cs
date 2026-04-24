@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using dtc.Domain.Entities.Location;
 
 namespace dtc.Domain.Entities.Exams
 {
     public class ExamBatch : BaseEntity
     {
+        public ExamBatchScopeType ScopeType { get; private set; }
+        public Guid? CenterId { get; private set; }
         public string BatchName { get; private set; } = default!;
         public DateTime RegistrationStartDate { get; private set; }
         public DateTime RegistrationEndDate { get; private set; }
@@ -16,9 +19,13 @@ namespace dtc.Domain.Entities.Exams
         public int MaxCandidates { get; private set; }
         public ExamBatchStatus Status { get; private set; }
 
+        public virtual Center? Center { get; private set; }
+
         protected ExamBatch() { }
 
         public ExamBatch(
+            ExamBatchScopeType scopeType,
+            Guid? centerId,
             string batchName,
             DateTime registrationStartDate,
             DateTime registrationEndDate,
@@ -26,6 +33,7 @@ namespace dtc.Domain.Entities.Exams
             int maxCandidates,
             Guid? createdBy = null)
         {
+            SetScope(scopeType, centerId);
             SetBatchName(batchName);
             SetMaxCandidates(maxCandidates);
             CurrentCandidates = 0;
@@ -41,6 +49,8 @@ namespace dtc.Domain.Entities.Exams
         // =========================
 
         public bool UpdateInfo(
+            ExamBatchScopeType? scopeType,
+            Guid? centerId,
             string? batchName,
             DateTime? regStart,
             DateTime? regEnd,
@@ -49,6 +59,11 @@ namespace dtc.Domain.Entities.Exams
             Guid? updatedBy = null)
         {
             bool changed = false;
+
+            if (scopeType.HasValue)
+            {
+                changed |= SetScope(scopeType.Value, centerId);
+            }
 
             if (!string.IsNullOrWhiteSpace(batchName) && BatchName != batchName.Trim())
             {
@@ -121,6 +136,25 @@ namespace dtc.Domain.Entities.Exams
                 throw new ArgumentException("BatchName is required");
 
             BatchName = name.Trim();
+        }
+
+        private bool SetScope(ExamBatchScopeType scopeType, Guid? centerId)
+        {
+            if (!Enum.IsDefined(typeof(ExamBatchScopeType), scopeType))
+                throw new ArgumentException("Invalid exam batch scope type");
+
+            if (scopeType == ExamBatchScopeType.Center && (!centerId.HasValue || centerId == Guid.Empty))
+                throw new ArgumentException("Center exam batch must have a center");
+
+            if (scopeType == ExamBatchScopeType.National)
+                centerId = null;
+
+            if (ScopeType == scopeType && CenterId == centerId)
+                return false;
+
+            ScopeType = scopeType;
+            CenterId = centerId;
+            return true;
         }
 
         private void SetDates(DateTime regStart, DateTime regEnd, DateTime examStart)

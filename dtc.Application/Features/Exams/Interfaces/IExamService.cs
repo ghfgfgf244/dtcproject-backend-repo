@@ -1,5 +1,6 @@
 using dtc.Application.Features.Exams.Interfaces;
 using dtc.Application.Features.Exams.DTOs;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -20,5 +21,9 @@ namespace dtc.Application.Features.Exams.Interfaces
         Task<bool> EnterBulkExamResultsAsync(BulkExamResultRequestDto request, Guid adminId);
         Task<object> GetMyExamResultsAsync(Guid studentId);
         Task<IEnumerable<ExamResponseDto>> GetMyExamsAsync(Guid studentId);
+        Task<ExamScoreboardResponseDto> GetExamScoreboardAsync(ExamScoreboardQueryDto query);
+        Task<ExamScoreboardItemDto> UpsertStudentExamScoresAsync(UpsertStudentExamScoresRequestDto request, Guid adminId);
+        Task<ExamScoreImportResponseDto> ImportExamScoresAsync(ExamScoreImportRequestDto request, IFormFile file, Guid adminId);
+        Task<byte[]> GenerateScoreImportTemplateAsync(Guid courseId, Guid termId, Guid examBatchId);
     }
 }
