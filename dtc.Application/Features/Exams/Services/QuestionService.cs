@@ -100,6 +100,57 @@ namespace dtc.Application.Features.Exams.Services
                 .ToList();
         }
 
+        public async Task<IEnumerable<CommonMistakeQuestionDto>> GetCommonMistakesAsync(
+            string? category = null,
+            ExamLevel? level = null,
+            int limit = 10)
+        {
+            var questions = (await _unitOfWork.Questions.GetAllAsync()).ToList();
+
+            if (!string.IsNullOrWhiteSpace(category))
+            {
+                var normalizedCategory = QuestionCategoryNames.Normalize(category);
+                questions = questions
+                    .Where(q => string.Equals(q.Category, normalizedCategory, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
+            if (level.HasValue)
+            {
+                var sampleExams = await _unitOfWork.SampleExams.FindAsync(exam => exam.Level == level.Value);
+                var sampleExamIds = sampleExams.Select(exam => exam.Id).ToHashSet();
+
+                if (sampleExamIds.Count == 0)
+                    return Enumerable.Empty<CommonMistakeQuestionDto>();
+
+                var sampleExamQuestions = await _unitOfWork.SampleExamQuestions.FindAsync(link => sampleExamIds.Contains(link.SampleExamId));
+                var questionIds = sampleExamQuestions.Select(link => link.QuestionId).ToHashSet();
+
+                questions = questions
+                    .Where(question => questionIds.Contains(question.Id))
+                    .ToList();
+            }
+
+            return questions
+                .Where(question => question.AttemptCount > 0)
+                .OrderByDescending(question => question.WrongRate)
+                .ThenByDescending(question => question.WrongAttemptCount)
+                .ThenByDescending(question => question.AttemptCount)
+                .Take(Math.Max(1, limit))
+                .Select(question => new CommonMistakeQuestionDto
+                {
+                    Id = question.Id,
+                    Category = question.Category,
+                    Content = question.Content,
+                    ImageLink = question.ImageLink,
+                    Explanation = question.Explanation,
+                    AttemptCount = question.AttemptCount,
+                    WrongAttemptCount = question.WrongAttemptCount,
+                    WrongRate = question.WrongRate
+                })
+                .ToList();
+        }
+
         public async Task<QuestionImportResponseDto> ImportQuestionsAsync(IFormFile file)
         {
             if (file == null || file.Length == 0)
@@ -266,6 +317,9 @@ namespace dtc.Application.Features.Exams.Services
                 CorrectAnswer = question.CorrectAnswer,
                 ImageLink = question.ImageLink,
                 Explanation = question.Explanation,
+                AttemptCount = question.AttemptCount,
+                WrongAttemptCount = question.WrongAttemptCount,
+                WrongRate = question.WrongRate,
                 CreatedAt = question.CreatedAt
             };
         }

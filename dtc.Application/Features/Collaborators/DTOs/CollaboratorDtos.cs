@@ -20,15 +20,21 @@ namespace dtc.Application.Features.Collaborators.DTOs
     {
         public Guid Id { get; set; }
         public Guid CollaboratorId { get; set; }
+        public Guid? ReferralRegistrationId { get; set; }
         public decimal Amount { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime? PaidAt { get; set; }
+        public string? ReferralCode { get; set; }
+        public string? StudentName { get; set; }
+        public string? CourseName { get; set; }
+        public decimal? DiscountAmount { get; set; }
     }
 
     public class CollaboratorAdminResponseDto
     {
         public Guid UserId { get; set; }
+        public Guid? CenterId { get; set; }
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string ReferralCode { get; set; } = string.Empty;
@@ -42,11 +48,16 @@ namespace dtc.Application.Features.Collaborators.DTOs
     {
         public Guid Id { get; set; }
         public Guid CollaboratorId { get; set; }
+        public Guid? ReferralRegistrationId { get; set; }
         public string CollaboratorName { get; set; } = string.Empty;
         public decimal Amount { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime? PaidAt { get; set; }
+        public string? ReferralCode { get; set; }
+        public string? StudentName { get; set; }
+        public string? CourseName { get; set; }
+        public decimal? DiscountAmount { get; set; }
     }
 
     public class CollaboratorAdminStatsDto
@@ -55,5 +66,16 @@ namespace dtc.Application.Features.Collaborators.DTOs
         public decimal TotalCommissions { get; set; }
         public decimal PaidCommissions { get; set; }
         public decimal UnpaidCommissions { get; set; }
+    }
+
+    public class ReferralCodeValidationResponseDto
+    {
+        public bool IsValid { get; set; }
+        public string? Code { get; set; }
+        public Guid? CollaboratorId { get; set; }
+        public string? CollaboratorName { get; set; }
+        public decimal DiscountRate { get; set; }
+        public decimal CommissionRate { get; set; }
+        public string? Message { get; set; }
     }
 }

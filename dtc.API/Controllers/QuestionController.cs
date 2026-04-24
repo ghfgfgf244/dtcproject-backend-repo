@@ -1,5 +1,6 @@
 using dtc.Application.Features.Exams.DTOs;
 using dtc.Application.Features.Exams.Interfaces;
+using dtc.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -75,6 +76,17 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> GetAllQuestions([FromQuery] string? category = null)
         {
             var response = await _questionService.GetAllQuestionsAsync(category);
+            return Ok(response);
+        }
+
+        [HttpGet("common-mistakes")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetCommonMistakes(
+            [FromQuery] string? category = null,
+            [FromQuery] ExamLevel? level = null,
+            [FromQuery] int limit = 10)
+        {
+            var response = await _questionService.GetCommonMistakesAsync(category, level, limit);
             return Ok(response);
         }
 

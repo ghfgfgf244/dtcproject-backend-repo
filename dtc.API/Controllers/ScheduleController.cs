@@ -1,9 +1,10 @@
 using dtc.Application.Features.Training.DTOs;
 using dtc.Application.Features.Training.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Security.Claims;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
@@ -23,6 +24,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> CreateSchedule([FromBody] CreateClassScheduleRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessClassAsync(request.ClassId))
+            {
+                return Fail("You do not have permission to create a schedule for this class.");
+            }
+
             try
             {
                 var response = await _scheduleService.CreateScheduleAsync(request, adminId);
@@ -40,6 +46,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> UpdateSchedule(Guid id, [FromBody] UpdateClassScheduleRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessScheduleAsync(id))
+            {
+                return Fail("You do not have permission to access this schedule.");
+            }
+
             try
             {
                 var response = await _scheduleService.UpdateScheduleAsync(id, request, adminId);
@@ -57,6 +68,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> DeleteSchedule(Guid id)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessScheduleAsync(id))
+            {
+                return Fail("You do not have permission to access this schedule.");
+            }
+
             try
             {
                 await _scheduleService.DeleteScheduleAsync(id, adminId);
@@ -72,6 +88,11 @@ namespace dtc.API.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetScheduleDetail(Guid id)
         {
+            if (!await CanAccessScheduleAsync(id))
+            {
+                return Fail("You do not have permission to access this schedule.");
+            }
+
             try
             {
                 var response = await _scheduleService.GetScheduleDetailAsync(id);
@@ -84,9 +105,42 @@ namespace dtc.API.Controllers
         }
 
         // View All Schedules under a specific Class
+        [HttpGet]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> GetAllSchedules()
+        {
+            var response = await _scheduleService.GetAllSchedulesAsync();
+            var managedCenterId = await GetManagedCenterIdAsync();
+            if (managedCenterId.HasValue)
+            {
+                response = response.Where(item => item.CenterId == managedCenterId.Value);
+            }
+
+            return Ok(response);
+        }
+
+        [HttpGet("term/{termId}")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> GetSchedulesByTerm(Guid termId)
+        {
+            if (!await CanAccessTermAsync(termId))
+            {
+                return Fail("You do not have permission to access this term.");
+            }
+
+            var response = await _scheduleService.GetSchedulesByTermAsync(termId);
+            return Ok(response);
+        }
+
+        // View All Schedules under a specific Class
         [HttpGet("Class/{classId}")]
         public async Task<IActionResult> GetSchedulesByClass(Guid classId)
         {
+            if (!await CanAccessClassAsync(classId))
+            {
+                return Fail("You do not have permission to access this class.");
+            }
+
             var response = await _scheduleService.GetSchedulesByClassAsync(classId);
             return Ok(response);
         }
@@ -96,6 +150,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> CreateBulkSchedules([FromBody] BulkCreateClassScheduleRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessClassAsync(request.ClassId))
+            {
+                return Fail("You do not have permission to create schedules for this class.");
+            }
+
             try
             {
                 var response = await _scheduleService.CreateBulkSchedulesAsync(request, adminId);
@@ -109,11 +168,11 @@ namespace dtc.API.Controllers
 
         [HttpPost("import-preview")]
         [Authorize(Roles = "Admin,TrainingManager")]
-        public async Task<IActionResult> ImportSchedulePreview([FromForm] IFormFile file)
+        public async Task<IActionResult> ImportSchedulePreview([FromForm] IFormFile file, [FromForm] Guid? defaultInstructorId = null)
         {
             try
             {
-                var response = await _scheduleService.ImportSchedulePreviewAsync(file);
+                var response = await _scheduleService.ImportSchedulePreviewAsync(file, defaultInstructorId);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -128,10 +187,35 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> AssignLocation(Guid id, [FromBody] AssignLocationRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessScheduleAsync(id))
+            {
+                return Fail("You do not have permission to access this schedule.");
+            }
+
             try
             {
                 await _scheduleService.AssignLocationAsync(id, request, adminId);
                 return NoContent("Location assigned/updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpPost("conflict-explain")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> ExplainConflict([FromBody] ScheduleConflictExplainRequestDto request)
+        {
+            if (!await CanAccessClassAsync(request.ClassId))
+            {
+                return Fail("You do not have permission to access this class.");
+            }
+
+            try
+            {
+                var response = await _scheduleService.ExplainConflictAsync(request);
+                return Ok(response);
             }
             catch (Exception ex)
             {

@@ -7,6 +7,8 @@ namespace dtc.Application.Features.Email.DTOs
         public string Subject { get; set; } = default!;
         public string Body { get; set; } = default!;
         public bool IsHtml { get; set; } = true;
+        public string? ReplyToEmail { get; set; }
+        public string? ReplyToName { get; set; }
     }
 
     public class SendBulkEmailRequestDto

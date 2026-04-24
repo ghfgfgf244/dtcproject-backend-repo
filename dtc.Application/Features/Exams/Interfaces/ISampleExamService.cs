@@ -12,10 +12,12 @@ namespace dtc.Application.Features.Exams.Interfaces
         Task<SampleExamResponseDto> UpdateSampleExamQuestionsAsync(Guid id, UpdateSampleExamQuestionsRequestDto request);
         Task<bool> DeleteSampleExamAsync(Guid id);
         Task<SampleExamDetailResponseDto> GetSampleExamDetailAsync(Guid id);
+        Task<PublicSampleExamDetailResponseDto> GetPublicSampleExamDetailAsync(Guid id);
         Task<IEnumerable<SampleExamResponseDto>> GetAllSampleExamsAsync();
         Task<SampleExamResponseDto> CreateSampleExamWithQuestionsAsync(CreateSampleExamWithQuestionsRequestDto request);
         
         Task<SampleTestResultResponseDto> DoSampleTestAsync(Guid sampleExamId, Guid studentId, SubmitSampleTestRequestDto request);
+        Task<SampleTestResultResponseDto> DoPublicSampleTestAsync(Guid sampleExamId, SubmitSampleTestRequestDto request);
         Task<IEnumerable<SampleTestResultResponseDto>> GetSampleTestResultsForStudentAsync(Guid studentId);
     }
 }

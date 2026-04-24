@@ -1,0 +1,350 @@
+// DTC - Driving Training Centers
+// ERD Schema for dbdiagram.io
+// Note: All tables except join tables inherit base fields:
+//   CreatedAt, CreatedBy, UpdatedAt, UpdatedBy, IsDeleted, RowVersion
+
+// ============================================================
+// USERS & PERMISSIONS
+// ============================================================
+
+Table Users {
+  Id        uuid [pk]
+  ClerkId   varchar [unique]
+  Email     varchar [unique]
+  FullName  varchar
+  Phone     varchar
+  AvatarUrl text
+  IsActive  boolean
+  RoleId    int [ref: > Roles.Id]
+}
+
+Table Roles {
+  Id       int [pk]
+  RoleName int [note: "1=Admin 2=TrainingManager 3=Instructor 4=EnrollmentManager 5=Collaborator 6=Student"]
+}
+
+Table Documents {
+  Id               uuid [pk]
+  UserId           uuid [ref: > Users.Id]
+  ProviderPublicId varchar
+  ResourceType     varchar
+  FileName         varchar
+  Extension        varchar
+  Size             int
+  IsVerified       boolean
+}
+
+// ============================================================
+// CENTERS & LOCATIONS
+// ============================================================
+
+Table Centers {
+  Id                 uuid [pk]
+  CenterName         varchar
+  Address            text
+  Phone              varchar
+  Email              varchar
+  IsActive           boolean
+  NumberOfClasses    int
+  MaxStudentPerClass int
+}
+
+Table UserCenters {
+  UserId   uuid [ref: > Users.Id]
+  CenterId uuid [ref: > Centers.Id]
+
+  indexes {
+    (UserId, CenterId) [pk]
+  }
+}
+
+Table Addresses {
+  Id          int [pk]
+  AddressName varchar
+}
+
+// ============================================================
+// COURSES & TRAINING
+// ============================================================
+
+Table Courses {
+  Id              uuid [pk]
+  CenterId        uuid [ref: > Centers.Id]
+  CourseName      varchar
+  LicenseType     int [note: "ExamLevel enum"]
+  DurationInWeeks int
+  MaxStudents     int
+  Price           decimal
+  IsActive        boolean
+}
+
+Table ResourceLearnings {
+  Id           uuid [pk]
+  CourseId     uuid [ref: > Courses.Id]
+  ResourceType int  [note: "1=Video 2=Pdf 3=Link 4=Slide 5=Image"]
+  Title        varchar
+  ResourceUrl  text
+  IsActive     boolean
+}
+
+Table LearningRoadmaps {
+  Id          uuid [pk]
+  CourseId    uuid [ref: > Courses.Id]
+  Title       varchar
+  Description text
+  OrderNo     int
+}
+
+// ============================================================
+// TERMS & REGISTRATIONS
+// ============================================================
+
+Table Terms {
+  Id              uuid [pk]
+  CourseId        uuid [ref: > Courses.Id]
+  TermName        varchar
+  StartDate       timestamp
+  EndDate         timestamp
+  CurrentStudents int
+  MaxStudents     int
+  IsActive        boolean
+}
+
+Table CourseRegistrations {
+  Id               uuid [pk]
+  CourseId         uuid [ref: > Courses.Id]
+  UserId           uuid [ref: > Users.Id]
+  AssignedTermId   uuid [ref: > Terms.Id]
+  RegistrationDate timestamp
+  Status           int  [note: "1=Pending 2=Approved 3=Rejected 4=Cancelled"]
+  TotalFee         decimal
+}
+
+// ============================================================
+// CLASSES
+// ============================================================
+
+Table Classes {
+  Id              uuid [pk]
+  TermId          uuid [ref: > Terms.Id]
+  InstructorId    uuid [ref: > Users.Id]
+  ClassName       varchar
+  CurrentStudents int
+  MaxStudents     int
+  ClassType       int  [note: "1=Theory 2=Practice"]
+  Status          int  [note: "1=Pending 2=InProgress 3=Completed 4=Cancelled"]
+}
+
+Table ClassStudents {
+  ClassId   uuid [ref: > Classes.Id]
+  StudentId uuid [ref: > Users.Id]
+
+  indexes {
+    (ClassId, StudentId) [pk]
+  }
+}
+
+Table ClassSchedules {
+  Id           uuid [pk]
+  ClassId      uuid [ref: > Classes.Id]
+  InstructorId uuid [ref: > Users.Id]
+  StartTime    timestamp
+  EndTime      timestamp
+  AddressId    int  [ref: > Addresses.Id]
+}
+
+Table Attendances {
+  Id              uuid [pk]
+  ClassScheduleId uuid [ref: > ClassSchedules.Id]
+  StudentId       uuid [ref: > Users.Id]
+  IsPresent       boolean
+  CheckedAt       timestamp
+}
+
+Table StudentEvaluations {
+  Id               uuid [pk]
+  StudentId        uuid [ref: > Users.Id]
+  InstructorId     uuid [ref: > Users.Id]
+  ClassId          uuid [ref: > Classes.Id]
+  PunctualityScore int
+  SkillLevel       int
+  Note             text
+  EvaluationDate   timestamp
+}
+
+Table StudentDrivingDistances {
+  Id                   uuid [pk]
+  StudentId            uuid [unique, ref: > Users.Id]
+  MorningDistanceKm    float
+  EveningDistanceKm    float
+  MaxMorningDistanceKm float
+  MaxEveningDistanceKm float
+}
+
+Table InstructorLeaveRequests {
+  Id           uuid [pk]
+  InstructorId uuid [ref: > Users.Id]
+  LeaveDate    timestamp
+  Reason       text
+  Status       int [note: "Pending / Approved / Rejected / Cancelled"]
+}
+
+// ============================================================
+// EXAMS
+// ============================================================
+
+Table ExamBatches {
+  Id                    uuid [pk]
+  BatchName             varchar
+  RegistrationStartDate timestamp
+  RegistrationEndDate   timestamp
+  ExamStartDate         timestamp
+  CurrentCandidates     int
+  MaxCandidates         int
+  Status                int [note: "1=Pending..6=Cancelled"]
+}
+
+Table Exams {
+  Id              uuid [pk]
+  ExamBatchId     uuid [ref: > ExamBatches.Id]
+  CourseId        uuid [ref: > Courses.Id]
+  AddressId       int  [ref: > Addresses.Id]
+  ExamName        varchar
+  ExamDate        timestamp
+  ExamType        int  [note: "1=Theory 2=Simulation 3=Practice"]
+  DurationMinutes int
+  TotalScore      int
+  PassScore       int
+  Status          int  [note: "1=Draft 2=Scheduled 3=Finished 4=Cancelled"]
+}
+
+Table ExamRegistrations {
+  Id               uuid [pk]
+  ExamBatchId      uuid [ref: > ExamBatches.Id]
+  StudentId        uuid [ref: > Users.Id]
+  RegistrationDate timestamp
+  IsPaid           boolean
+  Status           int [note: "1=Pending 2=Approved 3=Rejected 4=Cancelled"]
+}
+
+Table ExamResults {
+  Id        uuid [pk]
+  ExamId    uuid [ref: > Exams.Id]
+  StudentId uuid [ref: > Users.Id]
+  AttemptNo int
+  Score     float
+  IsPassed  boolean
+}
+
+// ============================================================
+// MOCK EXAMS (SAMPLE EXAMS)
+// ============================================================
+
+Table Questions {
+  Id            int [pk]
+  Category      varchar [note: "Ly thuyet / Bien bao / Sa hinh"]
+  Content       text
+  AnswerA       text
+  AnswerB       text
+  AnswerC       text
+  AnswerD       text
+  CorrectAnswer varchar [note: "A / B / C / D"]
+  ImageLink     text
+}
+
+Table SampleExams {
+  Id              uuid [pk]
+  CourseId        uuid [ref: > Courses.Id]
+  ExamNo          int
+  Level           int  [note: "ExamLevel enum"]
+  DurationMinutes int
+  PassingScore    int
+  TotalQuestions  int
+  IsActive        boolean
+}
+
+Table SampleExamQuestions {
+  Id            uuid [pk]
+  SampleExamId  uuid [ref: > SampleExams.Id]
+  QuestionId    int  [ref: > Questions.Id]
+  QuestionOrder int
+}
+
+Table SampleExamResults {
+  Id              uuid [pk]
+  SampleExamId    uuid [ref: > SampleExams.Id]
+  StudentId       uuid [ref: > Users.Id]
+  TotalScore      float
+  DurationSeconds int
+  IsPassed        boolean
+  UserAnswersJson text
+}
+
+// ============================================================
+// COLLABORATORS
+// ============================================================
+
+Table ReferralCodes {
+  Id             uuid [pk]
+  Code           varchar [unique]
+  CollaboratorId uuid [ref: > Users.Id]
+  UsedCount      int
+  IsActive       boolean
+}
+
+Table ReferralRegistrations {
+  Id             uuid [pk]
+  ReferralCodeId uuid [ref: > ReferralCodes.Id]
+  StudentId      uuid [ref: > Users.Id]
+  RegisteredAt   timestamp
+}
+
+Table CollaboratorCommissions {
+  Id             uuid [pk]
+  CollaboratorId uuid [ref: > Users.Id]
+  Amount         decimal
+  Status         int [note: "1=Pending 2=Paid 3=Cancelled"]
+  PaidAt         timestamp
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+Table Notifications {
+  Id      uuid [pk]
+  Title   varchar
+  Content text
+  Type    int  [note: "1=System 2=Exam 3=Class 4=Welcome 5=RoleChanged..."]
+  CenterId uuid [ref: > Centers.Id]
+}
+
+Table UserNotifications {
+  Id             uuid [pk]
+  NotificationId uuid [ref: > Notifications.Id]
+  UserId         uuid [ref: > Users.Id]
+  IsRead         boolean
+  ReadAt         timestamp
+}
+
+// ============================================================
+// BLOGS / CMS
+// ============================================================
+
+Table Categories {
+  Id               uuid [pk]
+  CategoryId       int  [unique]
+  CategoryName     varchar
+  ParentCategoryId int  [ref: > Categories.CategoryId]
+  Status           boolean
+}
+
+Table Blogs {
+  Id         uuid [pk]
+  Title      varchar
+  Avatar     text
+  CategoryId int  [ref: > Categories.CategoryId]
+  Summary    text
+  Content    text
+  Status     boolean [note: "false=Draft true=Published"]
+}

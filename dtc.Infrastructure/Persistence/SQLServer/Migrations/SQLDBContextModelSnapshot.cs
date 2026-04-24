@@ -470,6 +470,9 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("ReferralRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -478,6 +481,8 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CollaboratorId");
+
+                    b.HasIndex("ReferralRegistrationId");
 
                     b.ToTable("CollaboratorCommissions", (string)null);
 
@@ -584,6 +589,9 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("CourseRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("ReferralCodeId")
                         .HasColumnType("uniqueidentifier");
 
@@ -594,6 +602,8 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CourseRegistrationId");
 
                     b.HasIndex("ReferralCodeId");
 
@@ -739,6 +749,9 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<Guid?>("CenterId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -769,6 +782,11 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<string>("ScopeType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -782,6 +800,8 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CenterId");
+
                     b.ToTable("ExamBatches", (string)null);
 
                     b.HasData(
@@ -789,6 +809,7 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         {
                             Id = new Guid("88888888-8888-8888-8888-888888888881"),
                             BatchName = "Ky thi sat hach thang 05",
+                            CenterId = new Guid("33333333-3333-3333-3333-333333333331"),
                             CreatedAt = new DateTime(2026, 1, 10, 8, 0, 0, 0, DateTimeKind.Utc),
                             CreatedBy = new Guid("11111111-1111-1111-1111-111111111111"),
                             CurrentCandidates = 1,
@@ -797,6 +818,7 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                             MaxCandidates = 100,
                             RegistrationEndDate = new DateTime(2026, 4, 20, 0, 0, 0, 0, DateTimeKind.Utc),
                             RegistrationStartDate = new DateTime(2026, 4, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ScopeType = "Center",
                             Status = "OpenForRegistration",
                             UpdatedAt = new DateTime(2026, 1, 12, 8, 0, 0, 0, DateTimeKind.Utc),
                             UpdatedBy = new Guid("11111111-1111-1111-1111-111111111111")
@@ -805,6 +827,7 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         {
                             Id = new Guid("88888888-8888-8888-8888-888888888882"),
                             BatchName = "Ky thi sat hach thang 06",
+                            CenterId = (Guid?)null,
                             CreatedAt = new DateTime(2026, 1, 10, 9, 0, 0, 0, DateTimeKind.Utc),
                             CreatedBy = new Guid("11111111-1111-1111-1111-111111111111"),
                             CurrentCandidates = 1,
@@ -813,6 +836,7 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                             MaxCandidates = 80,
                             RegistrationEndDate = new DateTime(2026, 5, 22, 0, 0, 0, 0, DateTimeKind.Utc),
                             RegistrationStartDate = new DateTime(2026, 5, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            ScopeType = "National",
                             Status = "Pending"
                         });
                 });
@@ -1412,6 +1436,10 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<decimal>("OriginalFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<DateTime>("RegistrationDate")
                         .HasColumnType("datetime2");
 
@@ -1459,6 +1487,7 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                             CreatedBy = new Guid("11111111-1111-1111-1111-111111111111"),
                             IsDeleted = false,
                             Notes = "Da xac nhan hoc phi dot 1.",
+                            OriginalFee = 12500000m,
                             RegistrationDate = new DateTime(2026, 2, 10, 0, 0, 0, 0, DateTimeKind.Utc),
                             Status = "Approved",
                             TotalFee = 12500000m,
@@ -1474,6 +1503,7 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                             CreatedBy = new Guid("11111111-1111-1111-1111-111111111111"),
                             IsDeleted = false,
                             Notes = "Cho xep lop.",
+                            OriginalFee = 15800000m,
                             RegistrationDate = new DateTime(2026, 2, 12, 0, 0, 0, 0, DateTimeKind.Utc),
                             Status = "Pending",
                             TotalFee = 15800000m,
@@ -1849,6 +1879,11 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         .HasForeignKey("CollaboratorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("dtc.Domain.Entities.Collaborators.ReferralRegistration", null)
+                        .WithMany()
+                        .HasForeignKey("ReferralRegistrationId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("dtc.Domain.Entities.Collaborators.ReferralCode", b =>
@@ -1862,6 +1897,11 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
 
             modelBuilder.Entity("dtc.Domain.Entities.Collaborators.ReferralRegistration", b =>
                 {
+                    b.HasOne("dtc.Domain.Entities.Terms.CourseRegistration", null)
+                        .WithMany()
+                        .HasForeignKey("CourseRegistrationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("dtc.Domain.Entities.Collaborators.ReferralCode", null)
                         .WithMany()
                         .HasForeignKey("ReferralCodeId")
@@ -1888,6 +1928,16 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         .HasForeignKey("ExamBatchId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("dtc.Domain.Entities.Exams.ExamBatch", b =>
+                {
+                    b.HasOne("dtc.Domain.Entities.Location.Center", "Center")
+                        .WithMany()
+                        .HasForeignKey("CenterId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Center");
                 });
 
             modelBuilder.Entity("dtc.Domain.Entities.Exams.ExamRegistration", b =>

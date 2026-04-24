@@ -4,11 +4,14 @@ using dtc.Application.Features.Training.DTOs;
 using dtc.Application.Features.Training.Interfaces;
 using dtc.Application.Interfaces;
 using dtc.Domain.Entities;
+using dtc.Domain.Entities.Permissions;
 using dtc.Domain.Entities.Classes;
 using dtc.Domain.Entities.Collaborators;
 using dtc.Domain.Entities.Terms;
 using dtc.Domain.Interfaces;
-using Microsoft.AspNetCore.Http;
+using dtc.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,89 +21,163 @@ namespace dtc.Application.Features.Training.Services
 {
     public class CourseRegistrationService : ICourseRegistrationService
     {
+        private const decimal ReferralDiscountRate = 0.05m;
+        private const decimal CollaboratorCommissionRate = 0.05m;
+
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
         private readonly IEmailService _emailService;
         private readonly ICloudinaryService _cloudinaryService;
+        private readonly ILogger<CourseRegistrationService> _logger;
 
         public CourseRegistrationService(
             IUnitOfWork unitOfWork,
             INotificationService notificationService,
             IEmailService emailService,
-            ICloudinaryService cloudinaryService)
+            ICloudinaryService cloudinaryService,
+            ILogger<CourseRegistrationService> logger)
         {
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
             _emailService = emailService;
             _cloudinaryService = cloudinaryService;
+            _logger = logger;
         }
 
-        public async Task<CourseRegistrationResponseDto> RegisterCourseAsync(RegisterCourseRequestDto request, Guid studentId)
+        public async Task<CourseRegistrationResponseDto> RegisterCourseAsync(RegisterCourseRequestDto request, Guid? studentId)
         {
             var course = await _unitOfWork.Courses.GetByIdAsync(request.CourseId);
             if (course == null || !course.IsActive)
                 throw new Exception("Course not found or inactive");
 
-            return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            var center = await _unitOfWork.Centers.GetByIdAsync(course.CenterId);
+            var referralCode = await ResolveReferralCodeAsync(request.ReferralCode, course.CenterId);
+
+            var submission = await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
+                var student = await ResolveStudentForRegistrationAsync(request, studentId);
+                var resolvedStudentId = student.Id;
+                var originalFee = course.Price;
+                var discountAmount = referralCode == null
+                    ? 0m
+                    : Math.Round(originalFee * ReferralDiscountRate, 2, MidpointRounding.AwayFromZero);
+                var finalFee = Math.Max(0, Math.Round(originalFee - discountAmount, 2, MidpointRounding.AwayFromZero));
+
                 var uploadedDocs = new List<dtc.Domain.Entities.Permissions.Document>();
-                if (request.Photo != null) uploadedDocs.Add(await UploadFileAsync(request.Photo, studentId, "image", "PROFILE_PHOTO"));
-                if (request.IdFront != null) uploadedDocs.Add(await UploadFileAsync(request.IdFront, studentId, "image", "ID_FRONT"));
-                if (request.IdBack != null) uploadedDocs.Add(await UploadFileAsync(request.IdBack, studentId, "image", "ID_BACK"));
+                if (request.Photo != null) uploadedDocs.Add(await UploadFileAsync(request.Photo, resolvedStudentId, "image", "PROFILE_PHOTO"));
+                if (request.IdFront != null) uploadedDocs.Add(await UploadFileAsync(request.IdFront, resolvedStudentId, "image", "ID_FRONT"));
+                if (request.IdBack != null) uploadedDocs.Add(await UploadFileAsync(request.IdBack, resolvedStudentId, "image", "ID_BACK"));
 
                 foreach (var doc in uploadedDocs)
                 {
                     await _unitOfWork.Documents.AddAsync(doc);
                 }
 
-                var registration = new CourseRegistration(request.CourseId, studentId, request.TotalFee, request.Notes, studentId);
+                var registration = new CourseRegistration(
+                    request.CourseId,
+                    resolvedStudentId,
+                    finalFee,
+                    request.Notes,
+                    resolvedStudentId,
+                    originalFee);
 
                 await _unitOfWork.CourseRegistrations.AddAsync(registration);
                 
                 // Assign the student to the center of the course if not already assigned
-                var existingLink = await _unitOfWork.UserCenters.FindAsync(uc => uc.UserId == studentId && uc.CenterId == course.CenterId);
+                var existingLink = await _unitOfWork.UserCenters.FindAsync(uc => uc.UserId == resolvedStudentId && uc.CenterId == course.CenterId);
                 if (!existingLink.Any())
                 {
-                    await _unitOfWork.UserCenters.AddAsync(new dtc.Domain.Entities.Permissions.UserCenter(studentId, course.CenterId));
+                    await _unitOfWork.UserCenters.AddAsync(new dtc.Domain.Entities.Permissions.UserCenter(resolvedStudentId, course.CenterId));
                 }
 
                 await _unitOfWork.SaveChangesAsync();
 
-                if (!string.IsNullOrWhiteSpace(request.ReferralCode))
+                if (referralCode != null)
                 {
-                    try
-                    {
-                        var referralQuery = await _unitOfWork.ReferralCodes.FindAsync(c => c.Code == request.ReferralCode.Trim().ToUpper() && c.IsActive);
-                        var referralCode = referralQuery.FirstOrDefault();
+                    var referralRegistration = new ReferralRegistration(referralCode.Id, resolvedStudentId, registration.Id);
+                    await _unitOfWork.ReferralRegistrations.AddAsync(referralRegistration);
 
-                        if (referralCode != null)
-                        {
-                            var referralReg = new ReferralRegistration(referralCode.Id, studentId);
-                            await _unitOfWork.ReferralRegistrations.AddAsync(referralReg);
+                    var commissionAmount = Math.Round(originalFee * CollaboratorCommissionRate, 2, MidpointRounding.AwayFromZero);
+                    var collaboratorCommission = new CollaboratorCommission(
+                        referralCode.CollaboratorId,
+                        commissionAmount,
+                        referralRegistration.Id);
+                    await _unitOfWork.CollaboratorCommissions.AddAsync(collaboratorCommission);
 
-                            referralCode.IncreaseUsage(studentId);
-                            await _unitOfWork.ReferralCodes.UpdateAsync(referralCode);
+                    referralCode.IncreaseUsage(resolvedStudentId);
+                    await _unitOfWork.ReferralCodes.UpdateAsync(referralCode);
 
-                            await _unitOfWork.SaveChangesAsync();
+                    var studentName = student.FullName ?? "Học viên mới";
 
-                            var studentQuery = await _unitOfWork.Users.GetByIdAsync(studentId);
-                            var studentName = studentQuery?.FullName ?? "Hoc vien moi";
-
-                            await _notificationService.CreateForUserAsync(
-                                referralCode.CollaboratorId,
-                                "Ma gioi thieu duoc su dung",
-                                $"{studentName} da su dung ma '{referralCode.Code}' cua ban de dang ky '{course.CourseName}'.",
-                                NotificationType.Referral);
-                        }
-                    }
-                    catch
-                    {
-                    }
+                    await _notificationService.CreateForUserAsync(
+                        referralCode.CollaboratorId,
+                        "Mã giới thiệu được sử dụng",
+                        $"{studentName} đã sử dụng mã '{referralCode.Code}' để đăng ký '{course.CourseName}'. Hoa hồng tạm tính: {commissionAmount:N0} VND.",
+                        NotificationType.Referral);
                 }
 
-                await NotifyRegistrationReceivedAsync(registration, course);
-                return await MapToDto(registration);
+                return new RegistrationSubmissionResult
+                {
+                    Response = await MapToDto(registration),
+                    StudentId = student.Id,
+                    StudentName = student.FullName ?? "Học viên",
+                    StudentEmail = student.Email.Value,
+                    CourseName = course.CourseName,
+                    CenterName = center?.CenterName ?? "DTC"
+                };
             });
+
+            await NotifyRegistrationReceivedAsync(submission);
+            return submission.Response;
+        }
+
+        private async Task<User> ResolveStudentForRegistrationAsync(RegisterCourseRequestDto request, Guid? authenticatedStudentId)
+        {
+            if (authenticatedStudentId.HasValue && authenticatedStudentId.Value != Guid.Empty)
+            {
+                var signedInUser = await _unitOfWork.Users.GetByIdAsync(authenticatedStudentId.Value);
+                if (signedInUser == null)
+                {
+                    throw new InvalidOperationException("Authenticated user is not synced in the internal system.");
+                }
+
+                return signedInUser;
+            }
+
+            if (string.IsNullOrWhiteSpace(request.FullName) ||
+                string.IsNullOrWhiteSpace(request.Email) ||
+                string.IsNullOrWhiteSpace(request.Phone))
+            {
+                throw new InvalidOperationException("FullName, Email, and Phone are required when registering without an account.");
+            }
+
+            var email = dtc.Domain.ValueObjects.Email.Create(request.Email);
+            var phone = dtc.Domain.ValueObjects.PhoneNumber.Create(request.Phone);
+
+            var existingUser = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (existingUser != null)
+            {
+                if (existingUser.RoleId != UserRole.Student)
+                {
+                    throw new InvalidOperationException("This email already belongs to another internal account. Please sign in with the existing account before registering.");
+                }
+
+                existingUser.UpdateProfile(request.FullName, phone, existingUser.AvatarUrl, existingUser.Id);
+                existingUser.Activate(existingUser.Id);
+                return existingUser!;
+            }
+
+            var pendingClerkId = $"pending_local_{Guid.NewGuid():N}";
+            var newUser = new User(
+                clerkId: pendingClerkId,
+                email: email,
+                fullName: request.FullName.Trim(),
+                phone: phone,
+                roleId: UserRole.Student,
+                createdBy: null);
+
+            await _unitOfWork.Users.AddAsync(newUser);
+            return newUser;
         }
 
         public async Task CancelRegistrationAsync(Guid registrationId, string reason, Guid studentId)
@@ -173,7 +250,9 @@ namespace dtc.Application.Features.Training.Services
 
         public async Task<IEnumerable<CourseRegistrationResponseDto>> GetMyRegistrationsAsync(Guid studentId)
         {
-            var registrations = await _unitOfWork.CourseRegistrations.FindAsync(r => r.UserId == studentId);
+            var registrations = (await _unitOfWork.CourseRegistrations.FindAsync(r => r.UserId == studentId))
+                .OrderByDescending(r => r.RegistrationDate)
+                .ToList();
             var response = new List<CourseRegistrationResponseDto>();
             foreach (var reg in registrations)
             {
@@ -222,7 +301,7 @@ namespace dtc.Application.Features.Training.Services
             var term = await FindAvailableTermAsync(registration.CourseId, registration.RegistrationDate);
             if (term == null)
             {
-                throw new InvalidOperationException("Khong tim thay ky hoc phu hop con cho trong cho khoa hoc nay. Vui long tao them ky hoc hoac tang si so truoc khi duyet.");
+                throw new InvalidOperationException("Không tìm thấy kỳ học phù hợp còn chỗ trống cho khóa học này. Vui lòng tạo thêm kỳ học hoặc tăng sĩ số trước khi duyệt.");
             }
 
             term.EnrollStudent(adminId);
@@ -329,24 +408,83 @@ namespace dtc.Application.Features.Training.Services
             return term.StartDate > registrationDate ? 1 : 2;
         }
 
-        private async Task NotifyRegistrationReceivedAsync(CourseRegistration registration, dtc.Domain.Entities.Training.Course course)
+        private async Task NotifyRegistrationReceivedAsync(RegistrationSubmissionResult submission)
         {
             try
             {
-                var suggestedTerm = await FindSuggestedTermAsync(registration.CourseId, registration.RegistrationDate);
-                var message = suggestedTerm == null
-                    ? $"Ho so dang ky '{course.CourseName}' da duoc ghi nhan. Hien cac ky hoc gan nhat da day, trung tam se lien he ngay khi bo tri duoc ky hoc phu hop."
-                    : $"Ho so dang ky '{course.CourseName}' da duoc ghi nhan. Du kien ban se hoc o ky '{suggestedTerm.TermName}' bat dau tu {suggestedTerm.StartDate:dd/MM/yyyy}; neu ky nay day cho, he thong se uu tien xep sang ky tiep theo phu hop.";
+                var message = !string.IsNullOrWhiteSpace(submission.Response.PlacementMessage)
+                    ? $"Hồ sơ đăng ký '{submission.CourseName}' đã được ghi nhận. {submission.Response.PlacementMessage}"
+                    : $"Hồ sơ đăng ký '{submission.CourseName}' đã được ghi nhận. Trung tâm sẽ liên hệ sớm để xác nhận lịch học phù hợp.";
 
                 await _notificationService.CreateForUserAsync(
-                    registration.UserId,
-                    "Da tiep nhan ho so dang ky",
+                    submission.StudentId,
+                    "Đã tiếp nhận hồ sơ đăng ký",
                     message,
                     NotificationType.Registration);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Failed to create registration notification for student {StudentId}, course {CourseName}.",
+                    submission.StudentId,
+                    submission.CourseName);
+            }
+
+            try
+            {
+                await _emailService.SendCourseRegistrationConfirmationAsync(
+                    submission.StudentEmail,
+                    submission.StudentName,
+                    submission.CourseName,
+                    submission.CenterName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Failed to send course registration confirmation email to {Email} for course {CourseName}.",
+                    submission.StudentEmail,
+                    submission.CourseName);
+            }
+
+            try
+            {
+                await _emailService.SendCourseRegistrationConfirmationAsync(
+                    submission.StudentEmail,
+                    submission.StudentName,
+                    submission.CourseName,
+                    submission.CenterName);
             }
             catch
             {
             }
+        }
+
+        private async Task<ReferralCode?> ResolveReferralCodeAsync(string? rawReferralCode, Guid courseCenterId)
+        {
+            if (string.IsNullOrWhiteSpace(rawReferralCode))
+            {
+                return null;
+            }
+
+            var normalizedCode = rawReferralCode.Trim().ToUpperInvariant();
+            var referralCode = (await _unitOfWork.ReferralCodes.FindAsync(c => c.Code == normalizedCode && c.IsActive))
+                .FirstOrDefault();
+
+            if (referralCode == null)
+            {
+                throw new InvalidOperationException("Referral code is invalid or inactive.");
+            }
+
+            var collaboratorCenter = (await _unitOfWork.UserCenters.FindAsync(uc => uc.UserId == referralCode.CollaboratorId))
+                .FirstOrDefault();
+            if (collaboratorCenter == null || collaboratorCenter.CenterId != courseCenterId)
+            {
+                throw new InvalidOperationException("Referral code does not apply to this training center.");
+            }
+
+            return referralCode;
         }
 
         private async Task NotifyRegistrationStatusChangedAsync(
@@ -371,18 +509,18 @@ namespace dtc.Application.Features.Training.Services
                 {
                     if (placement?.AssignedClass != null)
                     {
-                        content = $"Ban da duoc chap nhan vao khoa hoc '{course.CourseName}', xep vao ky '{placement.Term.TermName}' va lop '{placement.AssignedClass.ClassName}'.";
+                        content = $"Bạn đã được chấp nhận vào khóa học '{course.CourseName}', xếp vào kỳ '{placement.Term.TermName}' và lớp '{placement.AssignedClass.ClassName}'.";
                     }
                     else if (placement != null)
                     {
-                        content = $"Ban da duoc chap nhan vao khoa hoc '{course.CourseName}' va xep vao ky '{placement.Term.TermName}'. Trung tam se bo tri lop phu hop trong ky nay cho ban som nhat.";
+                        content = $"Bạn đã được chấp nhận vào khóa học '{course.CourseName}' và xếp vào kỳ '{placement.Term.TermName}'. Trung tâm sẽ bố trí lớp phù hợp trong kỳ này cho bạn sớm nhất.";
                     }
                     else
                     {
-                        content = $"Ban da duoc chap nhan vao khoa hoc '{course.CourseName}'.";
+                        content = $"Bạn đã được chấp nhận vào khóa học '{course.CourseName}'.";
                     }
 
-                    title = "Dang ky khoa hoc thanh cong";
+                    title = "Đăng ký khóa học thành công";
 
                     var center = await _unitOfWork.Centers.GetByIdAsync(course.CenterId);
                     await _emailService.SendCourseRegistrationConfirmationAsync(
@@ -393,19 +531,24 @@ namespace dtc.Application.Features.Training.Services
                 }
                 else if (newStatus == CourseRegistrationStatus.Rejected)
                 {
-                    title = "Tu choi ho so dang ky";
-                    content = $"Ho so dang ky khoa hoc '{course.CourseName}' cua ban da bi tu choi. Ly do: {reason}";
+                    title = "Từ chối hồ sơ đăng ký";
+                    content = $"Hồ sơ đăng ký khóa học '{course.CourseName}' của bạn đã bị từ chối. Lý do: {reason}";
                 }
                 else
                 {
-                    title = "Huy ho so dang ky";
-                    content = $"Ho so dang ky khoa hoc '{course.CourseName}' da bi huy. Ly do: {reason}";
+                    title = "Hủy hồ sơ đăng ký";
+                    content = $"Hồ sơ đăng ký khóa học '{course.CourseName}' đã bị hủy. Lý do: {reason}";
                 }
 
                 await _notificationService.CreateForUserAsync(student.Id, title, content, NotificationType.Registration);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(
+                    ex,
+                    "Failed to notify registration status change for registration {RegistrationId} with status {Status}.",
+                    registrationId,
+                    newStatus);
             }
         }
 
@@ -449,11 +592,17 @@ namespace dtc.Application.Features.Training.Services
                 RegistrationDate = registration.RegistrationDate,
                 Status = registration.Status.ToString(),
                 TotalFee = registration.TotalFee,
+                OriginalFee = registration.OriginalFee,
+                DiscountAmount = Math.Max(0, registration.OriginalFee - registration.TotalFee),
                 Notes = registration.Notes,
                 CreatedAt = registration.CreatedAt,
                 StudentName = user?.FullName ?? "N/A",
                 Email = user?.Email.Value ?? "N/A",
                 Phone = user?.Phone?.Value ?? "N/A",
+                CenterId = course?.CenterId,
+                CenterName = course != null
+                    ? (await _unitOfWork.Centers.GetByIdAsync(course.CenterId))?.CenterName
+                    : null,
                 CourseName = course?.CourseName ?? "N/A",
                 LicenseTypeLabel = course?.LicenseType.ToString() ?? "N/A",
                 AssignedTermId = registration.AssignedTermId,
@@ -464,10 +613,44 @@ namespace dtc.Application.Features.Training.Services
                 SuggestedTermName = suggestedTerm?.TermName,
                 SuggestedTermStartDate = suggestedTerm?.StartDate,
                 PlacementMessage = BuildPlacementMessage(registration, assignedTerm, assignedClass, suggestedTerm),
+                AppliedReferralCode = await GetAppliedReferralCodeAsync(registration.Id),
+                AppliedReferralCollaboratorName = await GetAppliedReferralCollaboratorNameAsync(registration.Id),
                 PhotoUrl = GetDocUrl(docList, "PROFILE_PHOTO", new[] { "photo", "avatar", "profile" }),
                 IdFrontUrl = GetDocUrl(docList, "ID_FRONT", new[] { "front", "truoc" }),
                 IdBackUrl = GetDocUrl(docList, "ID_BACK", new[] { "back", "sau" })
             };
+        }
+
+        private async Task<string?> GetAppliedReferralCodeAsync(Guid registrationId)
+        {
+            var referralRegistration = (await _unitOfWork.ReferralRegistrations.FindAsync(r => r.CourseRegistrationId == registrationId))
+                .FirstOrDefault();
+            if (referralRegistration == null)
+            {
+                return null;
+            }
+
+            var referralCode = await _unitOfWork.ReferralCodes.GetByIdAsync(referralRegistration.ReferralCodeId);
+            return referralCode?.Code;
+        }
+
+        private async Task<string?> GetAppliedReferralCollaboratorNameAsync(Guid registrationId)
+        {
+            var referralRegistration = (await _unitOfWork.ReferralRegistrations.FindAsync(r => r.CourseRegistrationId == registrationId))
+                .FirstOrDefault();
+            if (referralRegistration == null)
+            {
+                return null;
+            }
+
+            var referralCode = await _unitOfWork.ReferralCodes.GetByIdAsync(referralRegistration.ReferralCodeId);
+            if (referralCode == null)
+            {
+                return null;
+            }
+
+            var collaborator = await _unitOfWork.Users.GetByIdAsync(referralCode.CollaboratorId);
+            return collaborator?.FullName;
         }
 
         private static string? BuildPlacementMessage(
@@ -479,27 +662,27 @@ namespace dtc.Application.Features.Training.Services
             if (registration.Status == CourseRegistrationStatus.Approved && assignedTerm != null)
             {
                 return assignedClass != null
-                    ? $"Da xep vao ky '{assignedTerm.TermName}' va lop '{assignedClass.ClassName}'."
-                    : $"Da xep vao ky '{assignedTerm.TermName}', chua co lop phu hop de bo tri ngay.";
+                    ? $"Đã xếp vào kỳ '{assignedTerm.TermName}' và lớp '{assignedClass.ClassName}'."
+                    : $"Đã xếp vào kỳ '{assignedTerm.TermName}', chưa có lớp phù hợp để bố trí ngay.";
             }
 
             if (registration.Status == CourseRegistrationStatus.Pending && suggestedTerm != null)
             {
-                return $"Du kien xep vao ky '{suggestedTerm.TermName}' bat dau {suggestedTerm.StartDate:dd/MM/yyyy} neu con cho.";
+                return $"Dự kiến xếp vào kỳ '{suggestedTerm.TermName}' bắt đầu {suggestedTerm.StartDate:dd/MM/yyyy} nếu còn chỗ.";
             }
 
             if (registration.Status == CourseRegistrationStatus.Pending)
             {
-                return "Chua tim thay ky hoc con cho trong o cac dot hien co.";
+                return "Chưa tìm thấy kỳ học còn chỗ trống ở các đợt hiện có.";
             }
 
             return null;
         }
 
-        private async Task<dtc.Domain.Entities.Permissions.Document> UploadFileAsync(IFormFile file, Guid studentId, string resourceType, string? customName = null)
+        private async Task<dtc.Domain.Entities.Permissions.Document> UploadFileAsync(UploadedFileDto file, Guid studentId, string resourceType, string? customName = null)
         {
             var fileName = customName ?? file.FileName;
-            using var stream = file.OpenReadStream();
+            using var stream = new System.IO.MemoryStream(file.Content);
             var (publicId, version) = await _cloudinaryService.UploadAsync(
                 stream,
                 fileName,
@@ -512,8 +695,8 @@ namespace dtc.Application.Features.Training.Services
                 version,
                 resourceType,
                 fileName,
-                System.IO.Path.GetExtension(file.FileName),
-                (int)file.Length);
+                file.Extension,
+                file.Length);
         }
 
         private string? GetDocUrl(List<dtc.Domain.Entities.Permissions.Document> docs, string exactName, string[] keywords)
@@ -538,6 +721,16 @@ namespace dtc.Application.Features.Training.Services
         {
             public required Term Term { get; init; }
             public Class? AssignedClass { get; init; }
+        }
+
+        private sealed class RegistrationSubmissionResult
+        {
+            public required CourseRegistrationResponseDto Response { get; init; }
+            public required Guid StudentId { get; init; }
+            public required string StudentName { get; init; }
+            public required string StudentEmail { get; init; }
+            public required string CourseName { get; init; }
+            public required string CenterName { get; init; }
         }
     }
 }

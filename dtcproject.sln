@@ -3,15 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35208.52
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dtc.Domain", "dtc.Domain\dtc.Domain.csproj", "{A7A366BA-BA5A-40F6-9CAD-C2FB6340361E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dtc.Domain", "dtc.Domain\dtc.Domain.csproj", "{A7A366BA-BA5A-40F6-9CAD-C2FB6340361E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dtc.Application", "dtc.Application\dtc.Application.csproj", "{C9E09274-D3AC-4DCD-997F-AC1E96B90BA2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dtc.Application", "dtc.Application\dtc.Application.csproj", "{C9E09274-D3AC-4DCD-997F-AC1E96B90BA2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dtc.Infrastructure", "dtc.Infrastructure\dtc.Infrastructure.csproj", "{11C4527D-EC9E-4E49-8172-FB4CDD0B8638}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dtc.Infrastructure", "dtc.Infrastructure\dtc.Infrastructure.csproj", "{11C4527D-EC9E-4E49-8172-FB4CDD0B8638}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dtc.API", "dtc.API\dtc.API.csproj", "{E9C56FC4-CB91-42DB-BB15-9A539342CEFD}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dtc.Tests", "dtc.Tests\dtc.Tests.csproj", "{B00F6B84-54E7-45B8-9DFA-195B3E5F3AEB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dtc.API", "dtc.API\dtc.API.csproj", "{E9C56FC4-CB91-42DB-BB15-9A539342CEFD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -35,10 +33,6 @@ Global
 		{E9C56FC4-CB91-42DB-BB15-9A539342CEFD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E9C56FC4-CB91-42DB-BB15-9A539342CEFD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E9C56FC4-CB91-42DB-BB15-9A539342CEFD}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B00F6B84-54E7-45B8-9DFA-195B3E5F3AEB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B00F6B84-54E7-45B8-9DFA-195B3E5F3AEB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B00F6B84-54E7-45B8-9DFA-195B3E5F3AEB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B00F6B84-54E7-45B8-9DFA-195B3E5F3AEB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

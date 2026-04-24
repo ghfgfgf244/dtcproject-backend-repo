@@ -3,7 +3,7 @@ using dtc.Application.Features.Training.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Security.Claims;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
@@ -22,6 +22,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> CreateClass([FromBody] CreateClassRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessTermAsync(request.TermId))
+            {
+                return Fail("You do not have permission to create a class for this term.");
+            }
+
             try
             {
                 var response = await _classService.CreateClassAsync(request, adminId);
@@ -38,6 +43,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> UpdateClass(Guid id, [FromBody] UpdateClassRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessClassAsync(id))
+            {
+                return Fail("You do not have permission to access this class.");
+            }
+
             try
             {
                 var response = await _classService.UpdateClassAsync(id, request, adminId);
@@ -53,12 +63,36 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> GetAllClasses()
         {
             var response = await _classService.GetAllClassesAsync();
+            var managedCenterId = await GetManagedCenterIdAsync();
+            if (managedCenterId.HasValue)
+            {
+                response = response.Where(item => item.CenterId == managedCenterId.Value);
+            }
+
+            return Ok(response);
+        }
+
+        [HttpGet("term/{termId}")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> GetClassesByTerm(Guid termId)
+        {
+            if (!await CanAccessTermAsync(termId))
+            {
+                return Fail("You do not have permission to access this term.");
+            }
+
+            var response = await _classService.GetClassesByTermAsync(termId);
             return Ok(response);
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetClassDetail(Guid id)
         {
+            if (!await CanAccessClassAsync(id))
+            {
+                return Fail("You do not have permission to access this class.");
+            }
+
             try
             {
                 var response = await _classService.GetClassDetailAsync(id);
@@ -75,6 +109,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> DeleteClass(Guid id)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessClassAsync(id))
+            {
+                return Fail("You do not have permission to access this class.");
+            }
+
             try
             {
                 await _classService.DeleteClassAsync(id, adminId);
@@ -91,6 +130,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> AssignTeachersToClass(Guid id, [FromBody] AssignTeachersRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessClassAsync(id))
+            {
+                return Fail("You do not have permission to access this class.");
+            }
+
             try
             {
                 await _classService.AssignTeachersToClassAsync(id, request, adminId);
@@ -107,6 +151,11 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> AssignStudentsToClass(Guid id, [FromBody] AssignStudentsRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessClassAsync(id))
+            {
+                return Fail("You do not have permission to access this class.");
+            }
+
             try
             {
                 await _classService.AssignStudentsToClassAsync(id, request, adminId);
@@ -131,6 +180,11 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Instructor,Admin,TrainingManager")]
         public async Task<IActionResult> GetClassStudents(Guid id)
         {
+            if (!await CanAccessClassAsync(id))
+            {
+                return Fail("You do not have permission to access this class.");
+            }
+
             var response = await _classService.GetClassStudentsAsync(id);
             return Ok(response);
         }
@@ -139,6 +193,11 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> GetAvailableStudents(Guid id)
         {
+            if (!await CanAccessClassAsync(id))
+            {
+                return Fail("You do not have permission to access this class.");
+            }
+
             var response = await _classService.GetAvailableStudentsAsync(id);
             return Ok(response);
         }
@@ -148,10 +207,36 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> RemoveStudentFromClass(Guid id, Guid studentId)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessClassAsync(id))
+            {
+                return Fail("You do not have permission to access this class.");
+            }
+
             try
             {
                 await _classService.RemoveStudentFromClassAsync(id, studentId, adminId);
                 return NoContent("Student removed successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpPost("{id}/students/{studentId}/transfer")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        public async Task<IActionResult> TransferStudent(Guid id, Guid studentId, [FromBody] TransferStudentRequestDto request)
+        {
+            var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessClassAsync(id) || !await CanAccessClassAsync(request.TargetClassId))
+            {
+                return Fail("You do not have permission to transfer students between these classes.");
+            }
+
+            try
+            {
+                await _classService.TransferStudentAsync(id, studentId, request, adminId);
+                return NoContent("Student transferred successfully.");
             }
             catch (Exception ex)
             {
@@ -164,10 +249,35 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> AutoAssignClasses([FromBody] AutoAssignClassesRequestDto request)
         {
             var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessTermAsync(request.TermId))
+            {
+                return Fail("You do not have permission to auto-assign classes for this term.");
+            }
+
             try
             {
                 var response = await _classService.AutoAssignClassesAsync(request, adminId);
                 return Ok(response, response.Message);
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpPost("auto-assign/explain")]
+        [Authorize(Roles = "Admin,TrainingManager")]
+        public async Task<IActionResult> PreviewAutoAssignClasses([FromBody] AutoAssignClassesRequestDto request)
+        {
+            if (!await CanAccessTermAsync(request.TermId))
+            {
+                return Fail("You do not have permission to preview auto-assignment for this term.");
+            }
+
+            try
+            {
+                var response = await _classService.PreviewAutoAssignClassesAsync(request);
+                return Ok(response);
             }
             catch (Exception ex)
             {

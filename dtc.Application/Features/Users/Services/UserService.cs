@@ -203,6 +203,18 @@ namespace dtc.Application.Features.Users.Services
             }
 
             await _unitOfWork.Users.AddAsync(newUser);
+
+            if (requesterRole != UserRole.Admin)
+            {
+                var requesterCenterId = await GetPrimaryCenterIdAsync(requesterId);
+                if (!requesterCenterId.HasValue)
+                {
+                    throw new InvalidOperationException("The current manager is not assigned to any center.");
+                }
+
+                await _unitOfWork.UserCenters.AddAsync(new UserCenter(newUser.Id, requesterCenterId.Value));
+            }
+
             await _unitOfWork.SaveChangesAsync();
 
             try
@@ -239,6 +251,7 @@ namespace dtc.Application.Features.Users.Services
             }
 
             EnsureRequesterCanManageExistingUser(requesterRole, targetUser.RoleId);
+            await EnsureSameCenterAccessAsync(requesterId, requesterRole, targetUserId);
 
             dtc.Domain.ValueObjects.PhoneNumber? phoneObj = null;
             if (!string.IsNullOrWhiteSpace(request.Phone))
@@ -278,6 +291,7 @@ namespace dtc.Application.Features.Users.Services
             }
 
             EnsureRequesterCanManageExistingUser(requesterRole, targetUser.RoleId);
+            await EnsureSameCenterAccessAsync(requesterId, requesterRole, targetUserId);
 
             if (targetUser.IsActive)
             {
@@ -300,6 +314,7 @@ namespace dtc.Application.Features.Users.Services
             }
 
             EnsureRequesterCanManageExistingUser(requesterRole, targetUser.RoleId);
+            await EnsureSameCenterAccessAsync(requesterId, requesterRole, targetUserId);
             targetUser.SoftDelete(requesterId);
             await _unitOfWork.SaveChangesAsync();
         }
@@ -464,6 +479,35 @@ namespace dtc.Application.Features.Users.Services
             }
 
             throw new InvalidOperationException("You do not have permission to manage this user role.");
+        }
+
+        private async Task<Guid?> GetPrimaryCenterIdAsync(Guid userId)
+        {
+            var userCenter = (await _unitOfWork.UserCenters.FindAsync(uc => uc.UserId == userId))
+                .FirstOrDefault();
+            return userCenter?.CenterId;
+        }
+
+        private async Task EnsureSameCenterAccessAsync(Guid requesterId, UserRole requesterRole, Guid targetUserId)
+        {
+            if (requesterRole == UserRole.Admin)
+            {
+                return;
+            }
+
+            var requesterCenterId = await GetPrimaryCenterIdAsync(requesterId);
+            if (!requesterCenterId.HasValue)
+            {
+                throw new InvalidOperationException("The current manager is not assigned to any center.");
+            }
+
+            var hasAccess = await _unitOfWork.UserCenters.AnyAsync(uc =>
+                uc.UserId == targetUserId && uc.CenterId == requesterCenterId.Value);
+
+            if (!hasAccess)
+            {
+                throw new InvalidOperationException("You do not have permission to manage a user outside your center.");
+            }
         }
     }
 }

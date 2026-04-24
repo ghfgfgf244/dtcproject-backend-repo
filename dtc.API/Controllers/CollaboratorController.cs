@@ -3,7 +3,7 @@ using dtc.Application.Features.Collaborators.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Security.Claims;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace dtc.API.Controllers
@@ -24,6 +24,12 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> GetCollaboratorList()
         {
             var list = await _collaboratorService.GetCollaboratorListAsync();
+            var managedCenterId = await GetManagedCenterIdAsync();
+            if (managedCenterId.HasValue)
+            {
+                list = list.Where(item => item.CenterId == managedCenterId.Value);
+            }
+
             return Ok(list);
         }
 
@@ -52,6 +58,14 @@ namespace dtc.API.Controllers
             {
                 return Fail(ex.Message);
             }
+        }
+
+        [HttpGet("token/validate")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ValidateReferralCode([FromQuery] string code, [FromQuery] Guid? courseId)
+        {
+            var result = await _collaboratorService.ValidateReferralCodeAsync(code, courseId);
+            return Ok(result);
         }
 
         // DEV-129: View number of user using token
@@ -107,6 +121,29 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> GetAdminStats()
         {
+            var managedCenterId = await GetManagedCenterIdAsync();
+            if (managedCenterId.HasValue)
+            {
+                var collaborators = (await _collaboratorService.GetAdminCollaboratorsAsync())
+                    .Where(item => item.CenterId == managedCenterId.Value)
+                    .ToList();
+                var commissions = (await _collaboratorService.GetAdminCommissionsAsync())
+                    .Where(item => collaborators.Any(collab => collab.UserId == item.CollaboratorId))
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalCollaborators = collaborators.Count,
+                    TotalCommissions = commissions.Sum(item => item.Amount),
+                    PaidCommissions = commissions
+                        .Where(item => string.Equals(item.Status, "Paid", StringComparison.OrdinalIgnoreCase))
+                        .Sum(item => item.Amount),
+                    UnpaidCommissions = commissions
+                        .Where(item => string.Equals(item.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+                        .Sum(item => item.Amount)
+                });
+            }
+
             var stats = await _collaboratorService.GetAdminStatsAsync();
             return Ok(stats);
         }
@@ -116,6 +153,12 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> GetAdminCollaborators()
         {
             var list = await _collaboratorService.GetAdminCollaboratorsAsync();
+            var managedCenterId = await GetManagedCenterIdAsync();
+            if (managedCenterId.HasValue)
+            {
+                list = list.Where(item => item.CenterId == managedCenterId.Value);
+            }
+
             return Ok(list);
         }
 
@@ -124,6 +167,16 @@ namespace dtc.API.Controllers
         public async Task<IActionResult> GetAdminCommissions()
         {
             var list = await _collaboratorService.GetAdminCommissionsAsync();
+            var managedCenterId = await GetManagedCenterIdAsync();
+            if (managedCenterId.HasValue)
+            {
+                var collaborators = (await _collaboratorService.GetAdminCollaboratorsAsync())
+                    .Where(item => item.CenterId == managedCenterId.Value)
+                    .Select(item => item.UserId)
+                    .ToHashSet();
+                list = list.Where(item => collaborators.Contains(item.CollaboratorId));
+            }
+
             return Ok(list);
         }
 
@@ -131,6 +184,11 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> ToggleReferralCode(Guid collaboratorId)
         {
+            if (!await CanAccessUserAsync(collaboratorId))
+            {
+                return Fail("You do not have permission to access this collaborator.");
+            }
+
             var result = await _collaboratorService.ToggleReferralCodeAsync(collaboratorId);
             if (!result) return NotFound("Referral code not found for this collaborator.");
             return Ok("Referral code toggled successfully.");
@@ -140,6 +198,11 @@ namespace dtc.API.Controllers
         [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> PayCommissions(Guid collaboratorId)
         {
+            if (!await CanAccessUserAsync(collaboratorId))
+            {
+                return Fail("You do not have permission to access this collaborator.");
+            }
+
             var result = await _collaboratorService.PayCommissionAsync(collaboratorId);
             if (!result) return NotFound("No pending commissions or referral code found.");
             return Ok("Commissions paid and referral usage reset successfully.");
