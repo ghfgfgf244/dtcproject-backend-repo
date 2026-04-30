@@ -1,9 +1,12 @@
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Net;
 using System.Text;
+using dtc.API.Utilities;
 using dtc.Application.Features.Email.DTOs;
 using dtc.Application.Features.Email.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace dtc.API.Controllers
 {
@@ -12,15 +15,21 @@ namespace dtc.API.Controllers
         private readonly IEmailService _emailService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<ContactController> _logger;
+        private readonly IDistributedCache _cache;
+
+        private const int ContactRateLimit = 5;
+        private static readonly TimeSpan ContactRateWindow = TimeSpan.FromMinutes(30);
 
         public ContactController(
             IEmailService emailService,
             IConfiguration configuration,
-            ILogger<ContactController> logger)
+            ILogger<ContactController> logger,
+            IDistributedCache cache)
         {
             _emailService = emailService;
             _configuration = configuration;
             _logger = logger;
+            _cache = cache;
         }
 
         public class ContactRequest
@@ -49,6 +58,12 @@ namespace dtc.API.Controllers
         [HttpPost]
         public async Task<IActionResult> SendContact([FromBody] ContactRequest request)
         {
+            var rateLimitKey = $"contact:{GetRequestFingerprint()}";
+            if (await DistributedRequestRateLimiter.IsLimitedAsync(_cache, rateLimitKey, ContactRateLimit, ContactRateWindow))
+            {
+                return StatusCode(429, dtc.Application.Common.ApiResponse<object?>.Fail("Bạn gửi liên hệ quá nhanh. Vui lòng thử lại sau ít phút."));
+            }
+
             if (!ModelState.IsValid)
             {
                 var errors = ModelState.Values
@@ -120,6 +135,17 @@ namespace dtc.API.Controllers
             builder.AppendLine("</div>");
             builder.AppendLine("</div>");
             return builder.ToString();
+        }
+
+        private string GetRequestFingerprint()
+        {
+            var forwardedFor = Request.Headers["X-Forwarded-For"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(forwardedFor))
+            {
+                return forwardedFor.Split(',')[0].Trim();
+            }
+
+            return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         }
     }
 }

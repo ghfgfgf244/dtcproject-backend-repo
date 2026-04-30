@@ -44,7 +44,18 @@ namespace dtc.API.Controllers
                 Guid? studentId = null;
                 if (User?.Identity?.IsAuthenticated == true)
                 {
-                    studentId = await GetInternalUserIdAsync();
+                    try
+                    {
+                        studentId = await GetInternalUserIdAsync();
+                    }
+                    catch (UnauthorizedAccessException ex)
+                    {
+                        // Allow the registration flow to gracefully fall back to request identity data
+                        // when the authenticated Clerk user has not been fully synchronized locally yet.
+                        HttpContext.RequestServices
+                            .GetRequiredService<Microsoft.Extensions.Logging.ILogger<CourseRegistrationController>>()
+                            .LogWarning(ex, "Could not resolve internal user for authenticated course registration. Falling back to request identity data.");
+                    }
                 }
 
                 var response = await _registrationService.RegisterCourseAsync(new RegisterCourseRequestDto

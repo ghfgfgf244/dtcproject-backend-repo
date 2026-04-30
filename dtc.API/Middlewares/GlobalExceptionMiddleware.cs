@@ -42,31 +42,31 @@ namespace dtc.API.Middlewares
             {
                 _logger.LogWarning(ex, "Unauthorized access detected.");
                 await WriteResponseAsync(context, HttpStatusCode.Unauthorized,
-                    "Unauthorized.", ex.Message);
+                    "Unauthorized.");
             }
             catch (KeyNotFoundException ex)
             {
                 _logger.LogWarning(ex, "Requested resource was not found.");
                 await WriteResponseAsync(context, HttpStatusCode.NotFound,
-                    "The requested resource was not found.", ex.Message);
+                    "The requested resource was not found.");
             }
             catch (ArgumentException ex)
             {
                 _logger.LogWarning(ex, "Invalid request payload.");
                 await WriteResponseAsync(context, HttpStatusCode.BadRequest,
-                    "The request is invalid.", ex.Message);
+                    "The request is invalid.");
             }
             catch (InvalidOperationException ex)
             {
                 _logger.LogWarning(ex, "Business rule conflict detected.");
                 await WriteResponseAsync(context, HttpStatusCode.Conflict,
-                    "The requested operation conflicts with the current resource state.", ex.Message);
+                    "The requested operation conflicts with the current resource state.");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An unhandled exception occurred during the request.");
                 await WriteResponseAsync(context, HttpStatusCode.InternalServerError,
-                    "Internal Server Error occurred. Please contact the administrator.", ex.Message);
+                    "Internal Server Error occurred. Please contact the administrator.");
             }
         }
 

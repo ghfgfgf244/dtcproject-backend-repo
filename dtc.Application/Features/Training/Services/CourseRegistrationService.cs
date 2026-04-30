@@ -139,34 +139,52 @@ namespace dtc.Application.Features.Training.Services
                 var signedInUser = await _unitOfWork.Users.GetByIdAsync(authenticatedStudentId.Value);
                 if (signedInUser == null)
                 {
-                    throw new InvalidOperationException("Authenticated user is not synced in the internal system.");
+                    _logger.LogWarning(
+                        "Authenticated course registration fallback activated because local user {UserId} was not found.",
+                        authenticatedStudentId.Value);
                 }
-
-                return signedInUser;
+                else
+                {
+                    return signedInUser;
+                }
             }
 
-            if (string.IsNullOrWhiteSpace(request.FullName) ||
-                string.IsNullOrWhiteSpace(request.Email) ||
-                string.IsNullOrWhiteSpace(request.Phone))
+            if (string.IsNullOrWhiteSpace(request.Email))
             {
-                throw new InvalidOperationException("FullName, Email, and Phone are required when registering without an account.");
+                throw new InvalidOperationException("Email là bắt buộc để đăng ký khóa học.");
             }
 
             var email = dtc.Domain.ValueObjects.Email.Create(request.Email);
-            var phone = dtc.Domain.ValueObjects.PhoneNumber.Create(request.Phone);
-
             var existingUser = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Email == email);
             if (existingUser != null)
             {
                 if (existingUser.RoleId != UserRole.Student)
                 {
-                    throw new InvalidOperationException("This email already belongs to another internal account. Please sign in with the existing account before registering.");
+                    throw new InvalidOperationException("Email này đang thuộc về một tài khoản nội bộ khác. Vui lòng đăng nhập đúng tài khoản trước khi đăng ký.");
                 }
 
-                existingUser.UpdateProfile(request.FullName, phone, existingUser.AvatarUrl, existingUser.Id);
+                if (!string.IsNullOrWhiteSpace(request.FullName) || !string.IsNullOrWhiteSpace(request.Phone))
+                {
+                    var resolvedFullName = !string.IsNullOrWhiteSpace(request.FullName)
+                        ? request.FullName.Trim()
+                        : existingUser.FullName;
+                    var resolvedPhone = !string.IsNullOrWhiteSpace(request.Phone)
+                        ? dtc.Domain.ValueObjects.PhoneNumber.Create(request.Phone)
+                        : existingUser.Phone ?? dtc.Domain.ValueObjects.PhoneNumber.Create("0000000000");
+
+                    existingUser.UpdateProfile(resolvedFullName, resolvedPhone, existingUser.AvatarUrl, existingUser.Id);
+                }
+
                 existingUser.Activate(existingUser.Id);
                 return existingUser!;
             }
+
+            if (string.IsNullOrWhiteSpace(request.FullName) || string.IsNullOrWhiteSpace(request.Phone))
+            {
+                throw new InvalidOperationException("Họ tên, email và số điện thoại là bắt buộc khi đăng ký tài khoản mới.");
+            }
+
+            var phone = dtc.Domain.ValueObjects.PhoneNumber.Create(request.Phone);
 
             var pendingClerkId = $"pending_local_{Guid.NewGuid():N}";
             var newUser = new User(
