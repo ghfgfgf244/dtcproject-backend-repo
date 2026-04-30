@@ -14,7 +14,10 @@ namespace dtc.Application.Features.Training.Interfaces
         
         Task<IEnumerable<CourseRegistrationResponseDto>> GetMyRegistrationsAsync(Guid studentId);
         Task<IEnumerable<CourseRegistrationResponseDto>> GetAllRegistrationsAsync();
+        Task<CourseRegistrationPagedResponseDto> GetRegistrationsPagedAsync(CourseRegistrationPagedQueryDto query, Guid? managedCenterId = null);
         Task<CourseRegistrationResponseDto> GetRegistrationDetailAsync(Guid registrationId);
+        Task<IReadOnlyCollection<CourseRegistrationTermOptionDto>> GetRegistrationTermOptionsAsync(Guid registrationId);
+        Task<CourseRegistrationResponseDto> ReassignRegistrationTermAsync(Guid registrationId, Guid termId, Guid adminId);
         Task<object> GetRegistrationStatsAsync();
     }
 }

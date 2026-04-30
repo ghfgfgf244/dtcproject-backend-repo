@@ -1,8 +1,11 @@
 using dtc.Application.Features.Training.DTOs;
 using dtc.Application.Features.Training.Interfaces;
+using dtc.Domain.Entities;
+using dtc.Domain.Interfaces.Permissions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -101,9 +104,14 @@ namespace dtc.API.Controllers
         }
 
         [HttpPut("{id}/status")]
-        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        [Authorize]
         public async Task<IActionResult> UpdateRegistrationStatus(Guid id, [FromBody] UpdateRegistrationStatusDto request)
         {
+            if (!await CanManageCourseRegistrationsAsync())
+            {
+                return Forbid();
+            }
+
             var adminId = await GetInternalUserIdAsync();
             if (!await CanAccessRegistrationAsync(id))
             {
@@ -131,9 +139,14 @@ namespace dtc.API.Controllers
         }
 
         [HttpGet("all")]
-        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        [Authorize]
         public async Task<IActionResult> GetAllRegistrations()
         {
+            if (!await CanManageCourseRegistrationsAsync())
+            {
+                return Forbid();
+            }
+
             var response = await _registrationService.GetAllRegistrationsAsync();
             var managedCenterId = await GetManagedCenterIdAsync();
             if (managedCenterId.HasValue)
@@ -141,6 +154,20 @@ namespace dtc.API.Controllers
                 response = response.Where(item => item.CenterId == managedCenterId.Value);
             }
 
+            return Ok(response);
+        }
+
+        [HttpGet("all/paged")]
+        [Authorize]
+        public async Task<IActionResult> GetRegistrationsPaged([FromQuery] CourseRegistrationPagedQueryDto query)
+        {
+            if (!await CanManageCourseRegistrationsAsync())
+            {
+                return Forbid();
+            }
+
+            var managedCenterId = await GetManagedCenterIdAsync();
+            var response = await _registrationService.GetRegistrationsPagedAsync(query, managedCenterId);
             return Ok(response);
         }
 
@@ -164,10 +191,64 @@ namespace dtc.API.Controllers
             }
         }
 
+        [HttpGet("{id}/term-options")]
+        [Authorize]
+        public async Task<IActionResult> GetRegistrationTermOptions(Guid id)
+        {
+            if (!await CanManageCourseRegistrationsAsync())
+            {
+                return Forbid();
+            }
+
+            if (!await CanAccessRegistrationAsync(id))
+            {
+                return Fail("You do not have permission to access this registration.");
+            }
+
+            var response = await _registrationService.GetRegistrationTermOptionsAsync(id);
+            return Ok(response);
+        }
+
+        [HttpPut("{id}/term-assignment")]
+        [Authorize]
+        public async Task<IActionResult> ReassignRegistrationTerm(Guid id, [FromBody] ReassignRegistrationTermRequestDto request)
+        {
+            if (!await CanManageCourseRegistrationsAsync())
+            {
+                return Forbid();
+            }
+
+            if (!await CanAccessRegistrationAsync(id))
+            {
+                return Fail("You do not have permission to access this registration.");
+            }
+
+            if (!await CanAccessTermAsync(request.TermId))
+            {
+                return Fail("You do not have permission to assign this registration to the selected term.");
+            }
+
+            try
+            {
+                var adminId = await GetInternalUserIdAsync();
+                var response = await _registrationService.ReassignRegistrationTermAsync(id, request.TermId, adminId);
+                return Ok(response, "Term reassigned successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
         [HttpGet("stats")]
-        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        [Authorize]
         public async Task<IActionResult> GetRegistrationStats()
         {
+            if (!await CanManageCourseRegistrationsAsync())
+            {
+                return Forbid();
+            }
+
             var managedCenterId = await GetManagedCenterIdAsync();
             if (managedCenterId.HasValue)
             {
@@ -186,6 +267,26 @@ namespace dtc.API.Controllers
 
             var response = await _registrationService.GetRegistrationStatsAsync();
             return Ok(response);
+        }
+
+        private async Task<bool> CanManageCourseRegistrationsAsync()
+        {
+            if (HasRoleClaim("Admin") || HasRoleClaim("TrainingManager") || HasRoleClaim("EnrollmentManager"))
+            {
+                return true;
+            }
+
+            var userId = await GetInternalUserIdAsync();
+            var userRepository = HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+            var user = await userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                return false;
+            }
+
+            return user.RoleId == UserRole.Admin
+                || user.RoleId == UserRole.TrainingManager
+                || user.RoleId == UserRole.EnrollmentManager;
         }
     }
 }

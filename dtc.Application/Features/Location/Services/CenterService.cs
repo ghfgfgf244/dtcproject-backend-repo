@@ -112,7 +112,10 @@ namespace dtc.Application.Features.Location.Services
         public async Task<IEnumerable<CenterResponseDto>> GetAllCentersAsync()
         {
             var centers = await _unitOfWork.Centers.GetAllAsync();
-            return centers.Select(MapToDto).ToList();
+            return centers
+                .Where(center => center != null && !center.IsDeleted && center.IsActive)
+                .Select(MapToDto)
+                .ToList();
         }
 
         public async Task<CenterResponseDto> GetCenterDetailAsync(Guid id)
@@ -162,10 +165,10 @@ namespace dtc.Application.Features.Location.Services
             return new CenterResponseDto
             {
                 Id = center.Id,
-                CenterName = center.CenterName,
-                Address = center.Address,
-                Phone = center.Phone.Value,
-                Email = center.Email.Value,
+                CenterName = center.CenterName ?? string.Empty,
+                Address = center.Address ?? string.Empty,
+                Phone = center.Phone?.Value ?? string.Empty,
+                Email = center.Email?.Value ?? string.Empty,
                 IsActive = center.IsActive,
                 NumberOfClasses = center.NumberOfClasses,
                 MaxStudentPerClass = center.MaxStudentPerClass,

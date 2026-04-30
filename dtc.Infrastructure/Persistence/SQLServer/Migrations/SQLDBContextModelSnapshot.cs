@@ -827,7 +827,6 @@ namespace dtc.Infrastructure.Persistence.SQLServer.Migrations
                         {
                             Id = new Guid("88888888-8888-8888-8888-888888888882"),
                             BatchName = "Ky thi sat hach thang 06",
-                            CenterId = (Guid?)null,
                             CreatedAt = new DateTime(2026, 1, 10, 9, 0, 0, 0, DateTimeKind.Utc),
                             CreatedBy = new Guid("11111111-1111-1111-1111-111111111111"),
                             CurrentCandidates = 1,
