@@ -1,4 +1,4 @@
-using dtc.Application.Features.Email.Interfaces;
+﻿using dtc.Application.Features.Email.Interfaces;
 using dtc.Application.Features.Notifications.Interfaces;
 using dtc.Application.Features.Training.DTOs;
 using dtc.Application.Features.Training.Interfaces;
@@ -23,6 +23,7 @@ namespace dtc.Application.Features.Training.Services
     {
         private const decimal ReferralDiscountRate = 0.05m;
         private const decimal CollaboratorCommissionRate = 0.05m;
+        private const int TermPlacementGraceDays = 7;
 
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
@@ -272,6 +273,129 @@ namespace dtc.Application.Features.Training.Services
             return response;
         }
 
+        public async Task<CourseRegistrationPagedResponseDto> GetRegistrationsPagedAsync(
+            CourseRegistrationPagedQueryDto query,
+            Guid? managedCenterId = null)
+        {
+            var pageNumber = Math.Max(1, query.PageNumber);
+            var pageSize = Math.Max(1, query.PageSize);
+            var search = query.Search?.Trim();
+            var normalizedLicense = string.IsNullOrWhiteSpace(query.LicenseType) || string.Equals(query.LicenseType, "ALL", StringComparison.OrdinalIgnoreCase)
+                ? null
+                : query.LicenseType.Trim();
+            var normalizedStatus = string.IsNullOrWhiteSpace(query.Status) || string.Equals(query.Status, "ALL", StringComparison.OrdinalIgnoreCase)
+                ? null
+                : query.Status.Trim();
+
+            List<Guid>? managedCourseIds = null;
+            if (managedCenterId.HasValue)
+            {
+                managedCourseIds = (await _unitOfWork.Courses.FindAsync(c => c.CenterId == managedCenterId.Value && !c.IsDeleted))
+                    .Select(c => c.Id)
+                    .Distinct()
+                    .ToList();
+
+                if (managedCourseIds.Count == 0)
+                {
+                    return new CourseRegistrationPagedResponseDto
+                    {
+                        PageNumber = pageNumber,
+                        PageSize = pageSize,
+                        TotalItems = 0,
+                        TotalPages = 0,
+                        NewRegistrationsThisMonth = 0,
+                        PendingRegistrations = 0,
+                        Items = []
+                    };
+                }
+            }
+
+            var registrations = managedCourseIds != null
+                ? (await _unitOfWork.CourseRegistrations.FindAsync(r => managedCourseIds.Contains(r.CourseId))).ToList()
+                : (await _unitOfWork.CourseRegistrations.GetAllAsync()).ToList();
+
+            var now = DateTime.UtcNow;
+            var startOfMonth = new DateTime(now.Year, now.Month, 1);
+            var newRegistrationsThisMonth = registrations.Count(r => r.RegistrationDate >= startOfMonth);
+            var pendingRegistrations = registrations.Count(r => r.Status == CourseRegistrationStatus.Pending);
+
+            if (!string.IsNullOrWhiteSpace(normalizedStatus) &&
+                Enum.TryParse<CourseRegistrationStatus>(normalizedStatus, true, out var statusFilter))
+            {
+                registrations = registrations
+                    .Where(r => r.Status == statusFilter)
+                    .ToList();
+            }
+
+            var courseIds = registrations.Select(r => r.CourseId).Distinct().ToList();
+            var userIds = registrations.Select(r => r.UserId).Distinct().ToList();
+
+            var courses = courseIds.Count == 0
+                ? []
+                : (await _unitOfWork.Courses.FindAsync(c => courseIds.Contains(c.Id))).ToList();
+            var users = userIds.Count == 0
+                ? []
+                : (await _unitOfWork.Users.FindAsync(u => userIds.Contains(u.Id))).ToList();
+
+            var courseLookup = courses.ToDictionary(c => c.Id);
+            var userLookup = users.ToDictionary(u => u.Id);
+
+            if (!string.IsNullOrWhiteSpace(normalizedLicense))
+            {
+                registrations = registrations
+                    .Where(r =>
+                        courseLookup.TryGetValue(r.CourseId, out var course) &&
+                        string.Equals(course.LicenseType.ToString(), normalizedLicense, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var normalizedSearch = search.ToLowerInvariant();
+                registrations = registrations
+                    .Where(r =>
+                    {
+                        courseLookup.TryGetValue(r.CourseId, out var course);
+                        userLookup.TryGetValue(r.UserId, out var user);
+
+                        return (user?.FullName?.ToLowerInvariant().Contains(normalizedSearch) ?? false)
+                               || (user?.Email.Value?.ToLowerInvariant().Contains(normalizedSearch) ?? false)
+                               || (user?.Phone?.Value?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)
+                               || r.UserId.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)
+                               || (course?.CourseName?.ToLowerInvariant().Contains(normalizedSearch) ?? false);
+                    })
+                    .ToList();
+            }
+
+            registrations = registrations
+                .OrderByDescending(r => r.RegistrationDate)
+                .ThenByDescending(r => r.CreatedAt)
+                .ToList();
+
+            var totalItems = registrations.Count;
+            var pagedRegistrations = registrations
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var items = new List<CourseRegistrationResponseDto>();
+            foreach (var registration in pagedRegistrations)
+            {
+                items.Add(await MapToDto(registration));
+            }
+
+            return new CourseRegistrationPagedResponseDto
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalItems = totalItems,
+                TotalPages = totalItems == 0 ? 0 : (int)Math.Ceiling((double)totalItems / pageSize),
+                NewRegistrationsThisMonth = newRegistrationsThisMonth,
+                PendingRegistrations = pendingRegistrations,
+                Items = items
+            };
+        }
+
         public async Task<CourseRegistrationResponseDto> GetRegistrationDetailAsync(Guid registrationId)
         {
             var registration = await _unitOfWork.CourseRegistrations.GetByIdAsync(registrationId);
@@ -279,6 +403,90 @@ namespace dtc.Application.Features.Training.Services
                 throw new Exception("Registration not found");
 
             return await MapToDto(registration);
+        }
+
+        public async Task<IReadOnlyCollection<CourseRegistrationTermOptionDto>> GetRegistrationTermOptionsAsync(Guid registrationId)
+        {
+            var registration = await _unitOfWork.CourseRegistrations.GetByIdAsync(registrationId);
+            if (registration == null)
+                throw new Exception("Registration not found");
+
+            var effectiveDate = GetPlacementReferenceDate(registration.RegistrationDate);
+            var today = DateTime.UtcNow.Date;
+
+            var terms = (await _unitOfWork.Terms.FindAsync(t =>
+                    t.CourseId == registration.CourseId
+                    && !t.IsDeleted
+                    && t.IsActive
+                    && t.EndDate >= today))
+                .OrderBy(t => t.StartDate)
+                .ToList();
+
+            return terms
+                .Where(t => t.Id == registration.AssignedTermId || t.CurrentStudents < t.MaxStudents)
+                .Select(t => new CourseRegistrationTermOptionDto
+                {
+                    Id = t.Id,
+                    TermName = t.TermName,
+                    StartDate = t.StartDate,
+                    EndDate = t.EndDate,
+                    CurrentStudents = t.CurrentStudents,
+                    MaxStudents = t.MaxStudents,
+                    IsCurrentAssignment = registration.AssignedTermId == t.Id,
+                    IsLateForAutoPlacement = IsLateForAutomaticPlacement(t, effectiveDate)
+                })
+                .ToList();
+        }
+
+        public async Task<CourseRegistrationResponseDto> ReassignRegistrationTermAsync(Guid registrationId, Guid termId, Guid adminId)
+        {
+            var response = await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                var registration = await _unitOfWork.CourseRegistrations.GetByIdAsync(registrationId)
+                    ?? throw new Exception("Registration not found");
+
+                if (registration.Status != CourseRegistrationStatus.Approved
+                    && registration.Status != CourseRegistrationStatus.Pending)
+                {
+                    throw new InvalidOperationException("Chỉ có thể chuyển kỳ thủ công cho hồ sơ đang chờ duyệt hoặc đã duyệt.");
+                }
+
+                var targetTerm = await _unitOfWork.Terms.GetByIdAsync(termId)
+                    ?? throw new InvalidOperationException("Không tìm thấy kỳ học được chọn.");
+
+                if (targetTerm.CourseId != registration.CourseId)
+                {
+                    throw new InvalidOperationException("Chỉ được chuyển sang kỳ học thuộc cùng khóa học.");
+                }
+
+                if (targetTerm.IsDeleted || !targetTerm.IsActive || targetTerm.EndDate.Date < DateTime.UtcNow.Date)
+                {
+                    throw new InvalidOperationException("Kỳ học được chọn không còn khả dụng.");
+                }
+
+                if (registration.AssignedTermId == targetTerm.Id)
+                {
+                    return await MapToDto(registration);
+                }
+
+                if (targetTerm.CurrentStudents >= targetTerm.MaxStudents)
+                {
+                    throw new InvalidOperationException("Kỳ học được chọn đã đủ sĩ số.");
+                }
+
+                await ReleasePlacementAsync(registration, adminId);
+
+                targetTerm.EnrollStudent(adminId);
+                registration.AssignTerm(targetTerm.Id, adminId);
+
+                await _unitOfWork.Terms.UpdateAsync(targetTerm);
+                await _unitOfWork.CourseRegistrations.UpdateAsync(registration);
+
+                return await MapToDto(registration);
+            });
+
+            await NotifyRegistrationTermReassignedAsync(response);
+            return response;
         }
 
         public async Task<object> GetRegistrationStatsAsync()
@@ -298,7 +506,7 @@ namespace dtc.Application.Features.Training.Services
 
         private async Task<PlacementAssignment> AssignRegistrationToPlacementAsync(CourseRegistration registration, Guid adminId)
         {
-            var term = await FindAvailableTermAsync(registration.CourseId, registration.RegistrationDate);
+            var term = await FindAvailableTermAsync(registration.CourseId, GetPlacementReferenceDate(registration.RegistrationDate));
             if (term == null)
             {
                 throw new InvalidOperationException("Không tìm thấy kỳ học phù hợp còn chỗ trống cho khóa học này. Vui lòng tạo thêm kỳ học hoặc tăng sĩ số trước khi duyệt.");
@@ -308,12 +516,10 @@ namespace dtc.Application.Features.Training.Services
             registration.AssignTerm(term.Id, adminId);
             await _unitOfWork.Terms.UpdateAsync(term);
 
-            var assignedClass = await TryAssignStudentToClassAsync(term.Id, registration.UserId, adminId);
-
             return new PlacementAssignment
             {
                 Term = term,
-                AssignedClass = assignedClass
+                AssignedClass = null
             };
         }
 
@@ -381,12 +587,14 @@ namespace dtc.Application.Features.Training.Services
 
         private async Task<Term?> FindAvailableTermAsync(Guid courseId, DateTime registrationDate)
         {
+            var effectiveDate = GetPlacementReferenceDate(registrationDate);
             var candidateTerms = (await _unitOfWork.Terms.FindAsync(t =>
                     t.CourseId == courseId
                     && !t.IsDeleted
                     && t.IsActive
-                    && t.EndDate >= registrationDate))
-                .OrderBy(t => GetTermPriority(t, registrationDate))
+                    && t.EndDate >= effectiveDate))
+                .Where(t => !IsLateForAutomaticPlacement(t, effectiveDate))
+                .OrderBy(t => GetTermPriority(t, effectiveDate))
                 .ThenBy(t => t.StartDate)
                 .ToList();
 
@@ -406,6 +614,24 @@ namespace dtc.Application.Features.Training.Services
             }
 
             return term.StartDate > registrationDate ? 1 : 2;
+        }
+
+        private static DateTime GetPlacementReferenceDate(DateTime registrationDate)
+        {
+            var now = DateTime.UtcNow;
+            var effectiveDate = registrationDate > now ? registrationDate : now;
+            return effectiveDate.Date;
+        }
+
+        private static bool IsLateForAutomaticPlacement(Term term, DateTime effectiveDate)
+        {
+            if (effectiveDate.Date < term.StartDate.Date)
+            {
+                return false;
+            }
+
+            var autoPlacementDeadline = term.StartDate.Date.AddDays(TermPlacementGraceDays);
+            return effectiveDate.Date > autoPlacementDeadline;
         }
 
         private async Task NotifyRegistrationReceivedAsync(RegistrationSubmissionResult submission)
@@ -533,7 +759,7 @@ namespace dtc.Application.Features.Training.Services
                 {
                     title = "Từ chối hồ sơ đăng ký";
                     content = $"Hồ sơ đăng ký khóa học '{course.CourseName}' của bạn đã bị từ chối. Lý do: {reason}";
-                }
+                }           
                 else
                 {
                     title = "Hủy hồ sơ đăng ký";
@@ -549,6 +775,90 @@ namespace dtc.Application.Features.Training.Services
                     "Failed to notify registration status change for registration {RegistrationId} with status {Status}.",
                     registrationId,
                     newStatus);
+            }
+        }
+
+        private async Task NotifyRegistrationTermReassignedAsync(CourseRegistrationResponseDto registration)
+        {
+            Term? assignedTerm = null;
+            if (registration.AssignedTermId.HasValue)
+            {
+                assignedTerm = await _unitOfWork.Terms.GetByIdAsync(registration.AssignedTermId.Value);
+            }
+
+            var termDateRangeText = assignedTerm == null
+                ? null
+                : $"{assignedTerm.StartDate:dd/MM/yyyy} - {assignedTerm.EndDate:dd/MM/yyyy}";
+
+            try
+            {
+                var courseName = string.IsNullOrWhiteSpace(registration.CourseName) ? "khóa học đã đăng ký" : registration.CourseName!;
+                var assignedTermName = string.IsNullOrWhiteSpace(registration.AssignedTermName)
+                    ? "kỳ học mới"
+                    : registration.AssignedTermName!;
+                var notificationContent = $"Hồ sơ đăng ký '{courseName}' của bạn đã được trung tâm chuyển sang kỳ '{assignedTermName}'";
+                if (!string.IsNullOrWhiteSpace(termDateRangeText))
+                {
+                    notificationContent += $" ({termDateRangeText})";
+                }
+
+                notificationContent += ". Vui lòng theo dõi thông báo tiếp theo để biết thông tin xếp lớp.";
+
+                await _notificationService.CreateForUserAsync(
+                    registration.UserId,
+                    "Đã cập nhật kỳ học đăng ký",
+                    notificationContent,
+                    NotificationType.Registration);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Failed to create term reassignment notification for registration {RegistrationId}.",
+                    registration.Id);
+            }
+
+            try
+            {
+                var courseName = string.IsNullOrWhiteSpace(registration.CourseName) ? "khóa học đã đăng ký" : registration.CourseName!;
+                var assignedTermName = string.IsNullOrWhiteSpace(registration.AssignedTermName)
+                    ? "kỳ học mới"
+                    : registration.AssignedTermName!;
+                var studentName = string.IsNullOrWhiteSpace(registration.StudentName) ? "Học viên" : registration.StudentName;
+                var centerName = string.IsNullOrWhiteSpace(registration.CenterName) ? "Drive Safe Academy" : registration.CenterName!;
+                var statusLabel = registration.Status switch
+                {
+                    "Approved" => "Đã duyệt",
+                    "Pending" => "Chờ duyệt",
+                    "Rejected" => "Từ chối",
+                    "Cancelled" => "Đã hủy",
+                    _ => registration.Status
+                };
+                var body = $@"
+<h2>Cập nhật kỳ học đăng ký</h2>
+<p>Xin chào <b>{System.Web.HttpUtility.HtmlEncode(studentName)}</b>,</p>
+<p>Trung tâm vừa cập nhật hồ sơ đăng ký khóa học <b>{System.Web.HttpUtility.HtmlEncode(courseName)}</b> của bạn.</p>
+<p><b>Kỳ học mới:</b> {System.Web.HttpUtility.HtmlEncode(assignedTermName)}</p>
+{(assignedTerm == null ? string.Empty : $"<p><b>Ngày bắt đầu kỳ học:</b> {assignedTerm.StartDate:dd/MM/yyyy}</p><p><b>Ngày kết thúc kỳ học:</b> {assignedTerm.EndDate:dd/MM/yyyy}</p>")}
+<p>Hiện tại hồ sơ của bạn đang ở trạng thái <b>{statusLabel}</b>. Trung tâm sẽ tiếp tục gửi thông báo khi có lịch xếp lớp cụ thể.</p>
+<hr/>
+<p style=""font-size:12px;color:gray;"">Email được gửi từ {System.Web.HttpUtility.HtmlEncode(centerName)}.</p>";
+
+                await _emailService.SendAsync(new dtc.Application.Features.Email.DTOs.SendEmailRequestDto
+                {
+                    ToEmail = registration.Email,
+                    ToName = studentName,
+                    Subject = $"Cập nhật kỳ học - {courseName}",
+                    Body = body,
+                    IsHtml = true
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Failed to send term reassignment email for registration {RegistrationId}.",
+                    registration.Id);
             }
         }
 
@@ -663,7 +973,7 @@ namespace dtc.Application.Features.Training.Services
             {
                 return assignedClass != null
                     ? $"Đã xếp vào kỳ '{assignedTerm.TermName}' và lớp '{assignedClass.ClassName}'."
-                    : $"Đã xếp vào kỳ '{assignedTerm.TermName}', chưa có lớp phù hợp để bố trí ngay.";
+                    : $"Đã xếp vào kỳ '{assignedTerm.TermName}'. Trung tâm sẽ xếp lớp lý thuyết và thực hành phù hợp sau.";
             }
 
             if (registration.Status == CourseRegistrationStatus.Pending && suggestedTerm != null)
@@ -673,7 +983,7 @@ namespace dtc.Application.Features.Training.Services
 
             if (registration.Status == CourseRegistrationStatus.Pending)
             {
-                return "Chưa tìm thấy kỳ học còn chỗ trống ở các đợt hiện có.";
+                return $"Chưa tìm thấy kỳ học còn chỗ trống hoặc còn trong thời gian nhận học viên (tối đa {TermPlacementGraceDays} ngày đầu kỳ).";
             }
 
             return null;

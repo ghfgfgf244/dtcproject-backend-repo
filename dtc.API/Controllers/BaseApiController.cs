@@ -8,6 +8,7 @@ using System;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using dtc.Domain.Entities.Permissions;
 
 namespace dtc.API.Controllers
 {
@@ -69,10 +70,10 @@ namespace dtc.API.Controllers
         }
 
         protected bool IsAdminUser()
-            => User.IsInRole("Admin");
+            => HasRoleClaim("Admin");
 
         protected bool IsCenterScopedManager()
-            => User.IsInRole("TrainingManager") || User.IsInRole("EnrollmentManager");
+            => HasRoleClaim("TrainingManager") || HasRoleClaim("EnrollmentManager");
 
         protected async Task<Guid?> GetManagedCenterIdAsync()
         {
@@ -93,6 +94,36 @@ namespace dtc.API.Controllers
                 .FirstOrDefault();
 
             return userCenter?.CenterId;
+        }
+
+        protected bool HasRoleClaim(string expectedRole)
+        {
+            if (User.IsInRole(expectedRole))
+            {
+                return true;
+            }
+
+            var normalizedExpectedRole = NormalizeRoleName(expectedRole);
+            var roleClaims = User.FindAll(ClaimTypes.Role)
+                .Select(claim => claim.Value)
+                .Concat(User.FindAll("role").Select(claim => claim.Value))
+                .Where(value => !string.IsNullOrWhiteSpace(value));
+
+            return roleClaims.Any(value => NormalizeRoleName(value) == normalizedExpectedRole);
+        }
+
+        protected static string NormalizeRoleName(string? role)
+        {
+            if (string.IsNullOrWhiteSpace(role))
+            {
+                return string.Empty;
+            }
+
+            return new string(role
+                .Trim()
+                .Where(char.IsLetterOrDigit)
+                .ToArray())
+                .ToUpperInvariant();
         }
 
         protected async Task<bool> CanAccessCourseAsync(Guid courseId)

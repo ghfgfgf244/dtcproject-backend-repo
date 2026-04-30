@@ -129,10 +129,10 @@ INSERT INTO @CourseTemplates
 VALUES
 (1, N'A1',  2, 40,   850000, N'Khóa học GPLX hạng A1', N'Đào tạo xe máy dưới 175cc, tập trung phần lý thuyết và thực hành cơ bản để thi nhanh trong thời gian ngắn.', 0),
 (2, N'A',   3, 32,  1900000, N'Khóa học GPLX hạng A',  N'Đào tạo mô tô phân khối lớn trên 175cc, phù hợp người học nâng hạng từ xe máy phổ thông lên mô tô công suất lớn.', 0),
-(3, N'B1', 16, 28, 17500000, N'Khóa học GPLX hạng B1', N'Đào tạo ô tô số tự động không kinh doanh vận tải, gồm lý thuyết, sa hình và thực hành đường trường.', 1),
-(4, N'B',  16, 28, 18000000, N'Khóa học GPLX hạng B',  N'Đào tạo ô tô số sàn, có thể phục vụ nhu cầu hành nghề lái xe và kinh doanh vận tải theo quy định hiện hành.', 1),
-(5, N'C1', 22, 24, 20500000, N'Khóa học GPLX hạng C1', N'Đào tạo xe tải và xe chuyên dùng từ trên 3,5 tấn đến 7,5 tấn, chú trọng kỹ năng điều khiển an toàn và xử lý tình huống.', 1),
-(6, N'C',  24, 22, 21500000, N'Khóa học GPLX hạng C',  N'Đào tạo xe tải nặng và xe chuyên dùng trên 7,5 tấn với lộ trình học dài hơn, phù hợp học viên định hướng lái xe chuyên nghiệp.', 1);
+(3, N'B1', 16, 28, 21000000, N'Khóa học GPLX hạng B1', N'Đào tạo ô tô số tự động không kinh doanh vận tải, gồm lý thuyết, sa hình và thực hành đường trường.', 1),
+(4, N'B',  16, 28, 21500000, N'Khóa học GPLX hạng B',  N'Đào tạo ô tô số sàn, có thể phục vụ nhu cầu hành nghề lái xe và kinh doanh vận tải theo quy định hiện hành.', 1),
+(5, N'C1', 22, 24, 25000000, N'Khóa học GPLX hạng C1', N'Đào tạo xe tải và xe chuyên dùng từ trên 3,5 tấn đến 7,5 tấn, chú trọng kỹ năng điều khiển an toàn và xử lý tình huống.', 1),
+(6, N'C',  24, 22, 25500000, N'Khóa học GPLX hạng C',  N'Đào tạo xe tải nặng và xe chuyên dùng trên 7,5 tấn với lộ trình học dài hơn, phù hợp học viên định hướng lái xe chuyên nghiệp.', 1);
 
 DECLARE @SeedCourseIds TABLE
 (
@@ -146,7 +146,7 @@ JOIN @Centers center_scope
     ON center_scope.CenterId = c.CenterId
 WHERE c.IsDeleted = 0;
 
-/* Dọn dữ liệu seed cũ để đảm bảo học phí, thời lượng, term, class và exam được tạo lại đồng bộ */
+/* Dọn dữ liệu seed cũ để đảm bảo học phí, thời lượng, kỳ học, lớp và bài thi được tạo lại đồng bộ */
 DELETE er
 FROM dbo.ExamResults er
 JOIN dbo.Exams e
@@ -154,7 +154,7 @@ JOIN dbo.Exams e
 WHERE e.CourseId IN (SELECT CourseId FROM @SeedCourseIds);
 
 DELETE a
-FROM dbo.Attendances a
+FROM dbo.Attendance a
 JOIN dbo.ClassSchedules cs
     ON cs.Id = a.ClassScheduleId
 JOIN dbo.Classes c
@@ -624,31 +624,57 @@ DECLARE @StudentRegistrationSeed TABLE
     CourseId UNIQUEIDENTIFIER NOT NULL,
     RegistrationDate DATETIME2(7) NOT NULL,
     Status NVARCHAR(50) NOT NULL,
-    Price DECIMAL(18,2) NOT NULL,
+    OriginalFee DECIMAL(18,2) NOT NULL,
+    TotalFee DECIMAL(18,2) NOT NULL,
     Notes NVARCHAR(500) NULL
 );
 
 INSERT INTO @StudentRegistrationSeed
-(Seq, UserId, CourseId, RegistrationDate, Status, Price, Notes)
+(Seq, UserId, CourseId, RegistrationDate, Status, OriginalFee, TotalFee, Notes)
 SELECT
     st.Seq,
     st.UserId,
     c.CourseId,
-    DATEADD(DAY, -1 * (601 - st.Seq), @Now),
     CASE
         WHEN st.Seq BETWEEN 1 AND 300 THEN
-            CASE st.Seq % 4
-                WHEN 0 THEN N'Pending'
-                WHEN 1 THEN N'Approved'
-                WHEN 2 THEN N'Rejected'
-                ELSE N'Cancelled'
+            DATEADD(DAY, -1 * (((st.Seq - 1) % 120) + 1), @Now)
+        ELSE
+            DATEADD(DAY, -1 * (45 + ((st.Seq - 301) % 120)), @Now)
+    END,
+    CASE
+        WHEN st.Seq BETWEEN 1 AND 300 THEN
+            CASE st.Seq % 10
+                WHEN 0 THEN N'Cancelled'
+                WHEN 1 THEN N'Pending'
+                WHEN 2 THEN N'Pending'
+                WHEN 3 THEN N'Pending'
+                WHEN 4 THEN N'Pending'
+                WHEN 5 THEN N'Approved'
+                WHEN 6 THEN N'Approved'
+                WHEN 7 THEN N'Approved'
+                WHEN 8 THEN N'Rejected'
+                ELSE N'Rejected'
             END
         ELSE N'Approved'
     END,
     c.Price,
     CASE
-        WHEN st.Seq BETWEEN 1 AND 300 THEN N'Hồ sơ seed phục vụ pipeline tuyển sinh.'
-        ELSE N'Hồ sơ seed đủ điều kiện vào học, xếp lớp và đăng ký thi.'
+        WHEN st.Seq BETWEEN 301 AND 360 THEN CAST(ROUND(c.Price * 0.95, 0) AS DECIMAL(18,2))
+        ELSE c.Price
+    END,
+    CASE
+        WHEN st.Seq BETWEEN 1 AND 300 THEN
+            CASE st.Seq % 10
+                WHEN 0 THEN N'Hồ sơ đã được học viên chủ động hủy sau khi tư vấn.'
+                WHEN 8 THEN N'Hồ sơ bị từ chối do thiếu giấy khám sức khỏe hoặc hồ sơ tùy thân.'
+                WHEN 9 THEN N'Hồ sơ bị từ chối do thông tin cá nhân chưa khớp.'
+                WHEN 5 THEN N'Hồ sơ đã được duyệt và chờ xếp kỳ học phù hợp.'
+                WHEN 6 THEN N'Hồ sơ đã được duyệt và đang chờ học viên bổ sung phí đầu vào.'
+                WHEN 7 THEN N'Hồ sơ đã được duyệt sau khi xác minh đủ điều kiện.'
+                ELSE N'Hồ sơ đang nằm trong pipeline tuyển sinh và chờ xử lý.'
+            END
+        WHEN st.Seq BETWEEN 301 AND 360 THEN N'Hồ sơ đã áp dụng mã giới thiệu cộng tác viên, đủ điều kiện xếp lớp và đăng ký thi.'
+        ELSE N'Hồ sơ đã hoàn tất nhập học, được xếp lớp và sẵn sàng đăng ký thi.'
     END
 FROM @Students st
 JOIN @Courses c
@@ -656,7 +682,7 @@ JOIN @Courses c
 
 INSERT INTO dbo.CourseRegistrations
 (
-    Id, CourseId, UserId, AssignedTermId, RegistrationDate, Status, TotalFee, Notes,
+    Id, CourseId, UserId, AssignedTermId, RegistrationDate, Status, OriginalFee, TotalFee, Notes,
     CreatedAt, CreatedBy, UpdatedAt, UpdatedBy, IsDeleted
 )
 SELECT
@@ -666,7 +692,8 @@ SELECT
     NULL,
     s.RegistrationDate,
     s.Status,
-    s.Price,
+    s.OriginalFee,
+    s.TotalFee,
     s.Notes,
     @Now,
     @CreatedBy,
@@ -714,16 +741,20 @@ DECLARE @ReferralStudents TABLE
     Seq INT PRIMARY KEY,
     StudentId UNIQUEIDENTIFIER NOT NULL,
     ReferralCodeId UNIQUEIDENTIFIER NOT NULL,
-    CollaboratorId UNIQUEIDENTIFIER NOT NULL
+    CollaboratorId UNIQUEIDENTIFIER NOT NULL,
+    CourseRegistrationId UNIQUEIDENTIFIER NOT NULL,
+    RegisteredAt DATETIME2(7) NOT NULL
 );
 
 INSERT INTO @ReferralStudents
-(Seq, StudentId, ReferralCodeId, CollaboratorId)
+(Seq, StudentId, ReferralCodeId, CollaboratorId, CourseRegistrationId, RegisteredAt)
 SELECT
     ROW_NUMBER() OVER (ORDER BY st.Seq),
     st.UserId,
     rc.Id,
-    rc.CollaboratorId
+    rc.CollaboratorId,
+    cr.Id,
+    DATEADD(DAY, 1, cr.RegistrationDate)
 FROM @Students st
 JOIN dbo.ReferralCodes rc
     ON ((st.Seq - 301) % 20) + 1 =
@@ -732,14 +763,19 @@ JOIN dbo.ReferralCodes rc
            FROM @CollaboratorSeed c
            WHERE c.ReferralCode = rc.Code
        )
+JOIN dbo.CourseRegistrations cr
+    ON cr.UserId = st.UserId
+   AND cr.IsDeleted = 0
+   AND cr.Status = N'Approved'
 WHERE st.Seq BETWEEN 301 AND 360;
 
-INSERT INTO dbo.ReferralRegistrations (Id, ReferralCodeId, StudentId, RegisteredAt)
+INSERT INTO dbo.ReferralRegistrations (Id, ReferralCodeId, StudentId, CourseRegistrationId, RegisteredAt)
 SELECT
     NEWID(),
     rs.ReferralCodeId,
     rs.StudentId,
-    DATEADD(DAY, -7, @Now)
+    rs.CourseRegistrationId,
+    rs.RegisteredAt
 FROM @ReferralStudents rs
 WHERE NOT EXISTS
 (
@@ -747,6 +783,7 @@ WHERE NOT EXISTS
     FROM dbo.ReferralRegistrations rr
     WHERE rr.ReferralCodeId = rs.ReferralCodeId
       AND rr.StudentId = rs.StudentId
+      AND rr.CourseRegistrationId = rs.CourseRegistrationId
 );
 
 UPDATE rc
@@ -763,26 +800,27 @@ JOIN
     ON usage_stats.ReferralCodeId = rc.Id;
 
 INSERT INTO dbo.CollaboratorCommissions
-(Id, CollaboratorId, Amount, Status, CreatedAt, PaidAt)
+(Id, CollaboratorId, ReferralRegistrationId, Amount, Status, CreatedAt, PaidAt)
 SELECT
     NEWID(),
     rs.CollaboratorId,
-    CAST(ROUND(cr.TotalFee * 0.05, 0) AS DECIMAL(18,2)),
-    CASE WHEN ABS(CHECKSUM(rs.StudentId)) % 4 = 0 THEN N'Paid' ELSE N'Pending' END,
-    DATEADD(DAY, -5, @Now),
-    CASE WHEN ABS(CHECKSUM(rs.StudentId)) % 4 = 0 THEN DATEADD(DAY, -2, @Now) ELSE NULL END
+    rr.Id,
+    CAST(ROUND(cr.OriginalFee * 0.05, 0) AS DECIMAL(18,2)),
+    CASE WHEN ABS(CHECKSUM(rs.StudentId)) % 5 = 0 THEN N'Paid' ELSE N'Pending' END,
+    DATEADD(DAY, 3, rs.RegisteredAt),
+    CASE WHEN ABS(CHECKSUM(rs.StudentId)) % 5 = 0 THEN DATEADD(DAY, 14, rs.RegisteredAt) ELSE NULL END
 FROM @ReferralStudents rs
 JOIN dbo.CourseRegistrations cr
-    ON cr.UserId = rs.StudentId
-   AND cr.IsDeleted = 0
-   AND cr.Status = N'Approved'
+    ON cr.Id = rs.CourseRegistrationId
+JOIN dbo.ReferralRegistrations rr
+    ON rr.ReferralCodeId = rs.ReferralCodeId
+   AND rr.StudentId = rs.StudentId
+   AND rr.CourseRegistrationId = rs.CourseRegistrationId
 WHERE NOT EXISTS
 (
     SELECT 1
     FROM dbo.CollaboratorCommissions cc
-    WHERE cc.CollaboratorId = rs.CollaboratorId
-      AND cc.Amount = CAST(ROUND(cr.TotalFee * 0.05, 0) AS DECIMAL(18,2))
-      AND cc.CreatedAt >= DATEADD(DAY, -30, @Now)
+    WHERE cc.ReferralRegistrationId = rr.Id
 );
 
 /* =========================================================
@@ -804,9 +842,9 @@ INSERT INTO @TermSeed
 SELECT
     c.CourseId,
     t.TermNo,
-    CONCAT(N'Đợt ', RIGHT(CONCAT(N'0', t.TermNo), 2), N'-', YEAR(DATEADD(MONTH, (t.TermNo - 1) * 4, CAST('2026-05-05' AS DATETIME2(7)))), N' ', c.LicenseType, N' - ', c.CenterName),
-    DATEADD(MONTH, (t.TermNo - 1) * 4, CAST('2026-05-05' AS DATETIME2(7))),
-    DATEADD(WEEK, c.DurationInWeeks, DATEADD(MONTH, (t.TermNo - 1) * 4, CAST('2026-05-05' AS DATETIME2(7)))),
+    CONCAT(N'Đợt ', RIGHT(CONCAT(N'0', t.TermNo), 2), N'-', YEAR(DATEADD(MONTH, (t.TermNo - 1) * 4, CAST('2025-10-06' AS DATETIME2(7)))), N' ', c.LicenseType, N' - ', c.CenterName),
+    DATEADD(MONTH, (t.TermNo - 1) * 4, CAST('2025-10-06' AS DATETIME2(7))),
+    DATEADD(WEEK, c.DurationInWeeks, DATEADD(MONTH, (t.TermNo - 1) * 4, CAST('2025-10-06' AS DATETIME2(7)))),
     c.MaxStudents
 FROM @Courses c
 CROSS JOIN (VALUES (1), (2), (3)) t(TermNo);
@@ -915,7 +953,7 @@ JOIN
     FROM @Terms t
 ) term_pool
     ON term_pool.CourseId = cr.CourseId
-   AND term_pool.TermNo = ((ABS(CHECKSUM(s.UserId)) % 3) + 1)
+   AND term_pool.TermNo = ((ABS(CHECKSUM(s.UserId)) % 2) + 1)
 WHERE s.Seq BETWEEN 301 AND 600;
 
 UPDATE cr
@@ -1395,30 +1433,56 @@ WHERE eb.IsDeleted = 0;
 
 DECLARE @ExamCourseBatchMap TABLE
 (
-    CourseId UNIQUEIDENTIFIER PRIMARY KEY,
+    TermId UNIQUEIDENTIFIER NOT NULL,
+    CourseId UNIQUEIDENTIFIER NOT NULL,
     ExamBatchId UNIQUEIDENTIFIER NOT NULL,
     ExamDate DATETIME2(7) NOT NULL,
     AddressId INT NOT NULL,
     LicenseType NVARCHAR(20) NOT NULL,
     CourseName NVARCHAR(255) NOT NULL,
     CenterName NVARCHAR(255) NOT NULL,
-    HasSimulation BIT NOT NULL
+    HasSimulation BIT NOT NULL,
+    PRIMARY KEY (TermId, CourseId, ExamBatchId)
 );
 
 INSERT INTO @ExamCourseBatchMap
-(CourseId, ExamBatchId, ExamDate, AddressId, LicenseType, CourseName, CenterName, HasSimulation)
+(TermId, CourseId, ExamBatchId, ExamDate, AddressId, LicenseType, CourseName, CenterName, HasSimulation)
 SELECT
-    c.CourseId,
-    eb.ExamBatchId,
-    DATEADD(DAY, (c.RowNo - 1) % 6, eb.ExamStartDate),
-    c.ExamAddressId,
-    c.LicenseType,
-    c.CourseName,
-    c.CenterName,
-    c.HasSimulation
-FROM @Courses c
-JOIN @ExamBatches eb
-    ON eb.BatchNo = ((c.RowNo - 1) % 10) + 1;
+    term_plan.TermId,
+    term_plan.CourseId,
+    eb_choice.ExamBatchId,
+    DATEADD(DAY, (ABS(CHECKSUM(term_plan.TermId, term_plan.CourseId)) % 3), eb_choice.ExamStartDate),
+    term_plan.ExamAddressId,
+    term_plan.LicenseType,
+    term_plan.CourseName,
+    term_plan.CenterName,
+    term_plan.HasSimulation
+FROM
+(
+    SELECT DISTINCT
+        ast.TermId,
+        ast.CourseId,
+        t.EndDate,
+        c.ExamAddressId,
+        c.LicenseType,
+        c.CourseName,
+        c.CenterName,
+        c.HasSimulation
+    FROM @ApprovedStudentTerms ast
+    JOIN @Terms t
+        ON t.TermId = ast.TermId
+    JOIN @Courses c
+        ON c.CourseId = ast.CourseId
+) term_plan
+CROSS APPLY
+(
+    SELECT TOP (1)
+        eb.ExamBatchId,
+        eb.ExamStartDate
+    FROM @ExamBatches eb
+    WHERE eb.ExamStartDate >= DATEADD(DAY, 7, term_plan.EndDate)
+    ORDER BY eb.ExamStartDate, eb.ExamBatchId
+) eb_choice;
 
 INSERT INTO dbo.Exams
 (
@@ -1437,7 +1501,7 @@ SELECT
     CASE WHEN m.LicenseType IN (N'A1', N'A') THEN 20 ELSE 30 END,
     CASE WHEN m.LicenseType IN (N'A1', N'A') THEN 25 ELSE 35 END,
     CASE WHEN m.LicenseType IN (N'A1', N'A') THEN 21 ELSE 32 END,
-    N'Finished',
+    CASE WHEN DATEADD(HOUR, 8, m.ExamDate) < @Now THEN N'Finished' ELSE N'Scheduled' END,
     @Now,
     @CreatedBy,
     @Now,
@@ -1471,7 +1535,7 @@ SELECT
     CASE WHEN m.LicenseType IN (N'A1', N'A') THEN 15 ELSE 30 END,
     100,
     80,
-    N'Finished',
+    CASE WHEN DATEADD(HOUR, 13, m.ExamDate) < @Now THEN N'Finished' ELSE N'Scheduled' END,
     @Now,
     @CreatedBy,
     @Now,
@@ -1505,7 +1569,7 @@ SELECT
     20,
     50,
     35,
-    N'Finished',
+    CASE WHEN DATEADD(HOUR, 10, m.ExamDate) < @Now THEN N'Finished' ELSE N'Scheduled' END,
     @Now,
     @CreatedBy,
     @Now,
@@ -1536,7 +1600,7 @@ SELECT
     NEWID(),
     map.ExamBatchId,
     ast.UserId,
-    DATEADD(DAY, -10, @Now),
+    DATEADD(DAY, -14, map.ExamDate),
     1,
     N'Approved',
     @Now,
@@ -1547,6 +1611,7 @@ SELECT
 FROM @ApprovedStudentTerms ast
 JOIN @ExamCourseBatchMap map
     ON map.CourseId = ast.CourseId
+   AND map.TermId = ast.TermId
 WHERE NOT EXISTS
 (
     SELECT 1
@@ -1587,6 +1652,7 @@ SELECT
 FROM @ApprovedStudentTerms ast
 JOIN @ExamCourseBatchMap map
     ON map.CourseId = ast.CourseId
+   AND map.TermId = ast.TermId
 JOIN dbo.Exams e
     ON e.ExamBatchId = map.ExamBatchId
    AND e.CourseId = ast.CourseId
@@ -1626,7 +1692,8 @@ WHERE NOT EXISTS
     FROM dbo.ExamResults er
     WHERE er.ExamId = e.Id
       AND er.StudentId = ast.UserId
-);
+)
+  AND e.ExamDate < @Now;
 
 /* =========================================================
    PHASE 21 - Query tổng kết nhanh
