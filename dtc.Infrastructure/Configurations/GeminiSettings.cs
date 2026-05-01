@@ -9,5 +9,7 @@ namespace dtc.Infrastructure.Configurations
         public string BaseUrl { get; set; } = "https://generativelanguage.googleapis.com";
         public List<string> ApiKeys { get; set; } = [];
         public int CooldownMinutesWhenRateLimited { get; set; } = 60;
+        public string EmbeddingModel { get; set; } = "gemini-embedding-001";
+        public int EmbeddingDimensions { get; set; } = 1536;
     }
 }
