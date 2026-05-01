@@ -38,12 +38,7 @@ namespace dtc.Infrastructure.Auth
                 return principal;
             }
 
-            // --- DEBUG LOGGING (VERBOSE) ---
             _logger.LogInformation("DTC Auth: Validating JWT for ClerkId: {ClerkId}", clerkId);
-            foreach (var claim in principal.Claims)
-            {
-                _logger.LogInformation("DTC Claim: {Type} = {Value}", claim.Type, claim.Value);
-            }
 
             try
             {
