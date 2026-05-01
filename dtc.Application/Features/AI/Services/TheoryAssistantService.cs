@@ -33,7 +33,13 @@ namespace dtc.Application.Features.AI.Services
                 filters["category"] = request.Category.Trim();
             }
 
-            var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(request.Question, cancellationToken);
+            var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(
+                request.Question,
+                new EmbeddingGenerationOptions
+                {
+                    TaskType = "RETRIEVAL_QUERY"
+                },
+                cancellationToken);
             var retrievalResults = await _vectorSearchService.SearchAsync(
                 request.Question,
                 queryEmbedding,

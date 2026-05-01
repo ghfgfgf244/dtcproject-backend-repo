@@ -53,6 +53,20 @@ namespace dtc.Infrastructure
                 client.Timeout = TimeSpan.FromSeconds(60);
             });
 
+            services.AddHttpClient<IEmbeddingService, EmbeddingService>((sp, client) =>
+            {
+                var settings = sp.GetRequiredService<IOptions<GeminiSettings>>().Value;
+                client.BaseAddress = new Uri(settings.BaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(60);
+            });
+
+            services.AddHttpClient<IVectorSearchService, UpstashVectorService>((sp, client) =>
+            {
+                var settings = sp.GetRequiredService<IOptions<UpstashVectorSettings>>().Value;
+                client.BaseAddress = new Uri(settings.Endpoint.TrimEnd('/'));
+                client.Timeout = TimeSpan.FromSeconds(60);
+            });
+
             // Register Generic Repositories - optional, normally injected via specific repos
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
@@ -109,8 +123,6 @@ namespace dtc.Infrastructure
             services.AddScoped<IAiCacheService, UpstashRedisCacheService>();
             services.AddScoped<IApiKeyRotationStore, RedisApiKeyRotationStore>();
             services.AddScoped<IAiRouterService, AiRouterService>();
-            services.AddScoped<IVectorSearchService, UpstashVectorService>();
-            services.AddScoped<IEmbeddingService, EmbeddingService>();
 
             // Register Email Service (SMTP)
             services.Configure<SmtpSettings>(opts => configuration.GetSection(SmtpSettings.SectionName).Bind(opts));

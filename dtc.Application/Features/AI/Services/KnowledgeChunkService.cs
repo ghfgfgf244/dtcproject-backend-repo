@@ -72,7 +72,14 @@ namespace dtc.Application.Features.AI.Services
         {
             foreach (var payload in payloads)
             {
-                var embedding = await _embeddingService.GenerateEmbeddingAsync(payload.Text, cancellationToken);
+                var embedding = await _embeddingService.GenerateEmbeddingAsync(
+                    payload.Text,
+                    new EmbeddingGenerationOptions
+                    {
+                        TaskType = "RETRIEVAL_DOCUMENT",
+                        Title = payload.Metadata.GetValueOrDefault("title")
+                    },
+                    cancellationToken);
                 await _vectorSearchService.UpsertAsync(new KnowledgeVectorDocument
                 {
                     Id = payload.Id,

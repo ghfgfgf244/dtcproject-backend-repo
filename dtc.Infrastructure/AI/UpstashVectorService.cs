@@ -1,122 +1,183 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using dtc.Application.Features.AI.Interfaces;
+using dtc.Infrastructure.Configurations;
+using Microsoft.Extensions.Options;
 
 namespace dtc.Infrastructure.AI
 {
     public class UpstashVectorService : IVectorSearchService
     {
-        private static readonly ConcurrentDictionary<string, KnowledgeVectorDocument> Documents = new();
+        private readonly HttpClient _httpClient;
+        private readonly UpstashVectorSettings _settings;
+        private readonly AiSettings _aiSettings;
 
-        public Task UpsertAsync(KnowledgeVectorDocument document, CancellationToken cancellationToken = default)
+        public UpstashVectorService(
+            HttpClient httpClient,
+            IOptions<UpstashVectorSettings> settings,
+            IOptions<AiSettings> aiSettings)
         {
-            Documents[document.Id] = new KnowledgeVectorDocument
-            {
-                Id = document.Id,
-                Text = document.Text,
-                Embedding = document.Embedding ?? [],
-                Metadata = document.Metadata ?? []
-            };
+            _httpClient = httpClient;
+            _settings = settings.Value;
+            _aiSettings = aiSettings.Value;
 
-            return Task.CompletedTask;
+            if (!string.IsNullOrWhiteSpace(_settings.Token))
+            {
+                _httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", _settings.Token);
+            }
         }
 
-        public Task<IReadOnlyCollection<KnowledgeVectorSearchResult>> SearchAsync(
+        public async Task UpsertAsync(KnowledgeVectorDocument document, CancellationToken cancellationToken = default)
+        {
+            if (document == null || string.IsNullOrWhiteSpace(document.Id) || document.Embedding.Length == 0)
+            {
+                return;
+            }
+
+            if (!HasValidConfiguration())
+            {
+                return;
+            }
+
+            var payload = new UpstashUpsertRequest
+            {
+                Id = document.Id,
+                Vector = document.Embedding,
+                Metadata = document.Metadata ?? [],
+                Data = document.Text
+            };
+
+            using var response = await _httpClient.PostAsJsonAsync("/upsert", payload, cancellationToken);
+            response.EnsureSuccessStatusCode();
+        }
+
+        public async Task<IReadOnlyCollection<KnowledgeVectorSearchResult>> SearchAsync(
             string query,
             float[]? embedding = null,
             IReadOnlyDictionary<string, string>? metadataFilters = null,
             int topK = 5,
             CancellationToken cancellationToken = default)
         {
-            var queryEmbedding = embedding is { Length: > 0 } ? embedding : BuildFallbackEmbedding(query);
-
-            var results = Documents.Values
-                .Where(document => MatchesFilters(document.Metadata, metadataFilters))
-                .Select(document => new KnowledgeVectorSearchResult
-                {
-                    Id = document.Id,
-                    Text = document.Text,
-                    Metadata = document.Metadata,
-                    Score = ComputeCosineSimilarity(queryEmbedding, document.Embedding)
-                })
-                .OrderByDescending(item => item.Score)
-                .Take(Math.Max(1, topK))
-                .ToList();
-
-            return Task.FromResult<IReadOnlyCollection<KnowledgeVectorSearchResult>>(results);
-        }
-
-        private static bool MatchesFilters(
-            IReadOnlyDictionary<string, string> metadata,
-            IReadOnlyDictionary<string, string>? filters)
-        {
-            if (filters == null || filters.Count == 0)
-            {
-                return true;
-            }
-
-            foreach (var filter in filters)
-            {
-                if (string.IsNullOrWhiteSpace(filter.Value))
-                {
-                    continue;
-                }
-
-                if (!metadata.TryGetValue(filter.Key, out var value) ||
-                    !string.Equals(value, filter.Value, StringComparison.OrdinalIgnoreCase))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        private static float[] BuildFallbackEmbedding(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
+            if ((embedding == null || embedding.Length == 0) || !HasValidConfiguration())
             {
                 return [];
             }
 
-            var values = new float[32];
-            foreach (var (character, index) in text.Take(128).Select((character, index) => (character, index)))
+            var payload = new UpstashQueryRequest
             {
-                values[index % values.Length] += character / 255f;
-            }
+                Vector = embedding,
+                TopK = Math.Max(1, topK <= 0 ? _settings.DefaultTopK : topK),
+                IncludeData = true,
+                IncludeMetadata = true,
+                Filter = BuildFilter(metadataFilters)
+            };
 
-            return values;
+            try
+            {
+                using var response = await _httpClient.PostAsJsonAsync("/query", payload, cancellationToken);
+                response.EnsureSuccessStatusCode();
+
+                var items = await response.Content.ReadFromJsonAsync<List<UpstashQueryResponseItem>>(cancellationToken: cancellationToken)
+                    ?? [];
+
+                return items.Select(item => new KnowledgeVectorSearchResult
+                    {
+                        Id = item.Id ?? string.Empty,
+                        Text = item.Data ?? string.Empty,
+                        Score = item.Score,
+                        Metadata = item.Metadata ?? []
+                    })
+                    .ToList();
+            }
+            catch (HttpRequestException)
+            {
+                return [];
+            }
         }
 
-        private static double ComputeCosineSimilarity(float[] left, float[] right)
+        private bool HasValidConfiguration()
         {
-            if (left.Length == 0 || right.Length == 0)
+            return !_aiSettings.EnableMockResponses
+                && !string.IsNullOrWhiteSpace(_settings.Endpoint)
+                && !string.IsNullOrWhiteSpace(_settings.Token);
+        }
+
+        private static string? BuildFilter(IReadOnlyDictionary<string, string>? metadataFilters)
+        {
+            if (metadataFilters == null || metadataFilters.Count == 0)
             {
-                return 0;
+                return null;
             }
 
-            var length = Math.Min(left.Length, right.Length);
-            double dot = 0;
-            double leftMagnitude = 0;
-            double rightMagnitude = 0;
+            var filters = metadataFilters
+                .Where(static pair => !string.IsNullOrWhiteSpace(pair.Key) && !string.IsNullOrWhiteSpace(pair.Value))
+                .Select(pair => $"{pair.Key} = '{EscapeFilterValue(pair.Value)}'")
+                .ToArray();
 
-            for (var i = 0; i < length; i++)
-            {
-                dot += left[i] * right[i];
-                leftMagnitude += left[i] * left[i];
-                rightMagnitude += right[i] * right[i];
-            }
+            return filters.Length == 0 ? null : string.Join(" AND ", filters);
+        }
 
-            if (leftMagnitude <= 0 || rightMagnitude <= 0)
-            {
-                return 0;
-            }
+        private static string EscapeFilterValue(string value)
+        {
+            return value.Replace("\\", "\\\\", StringComparison.Ordinal)
+                .Replace("'", "\\'", StringComparison.Ordinal);
+        }
 
-            return dot / (Math.Sqrt(leftMagnitude) * Math.Sqrt(rightMagnitude));
+        private sealed class UpstashUpsertRequest
+        {
+            [JsonPropertyName("id")]
+            public string Id { get; set; } = string.Empty;
+
+            [JsonPropertyName("vector")]
+            public float[] Vector { get; set; } = [];
+
+            [JsonPropertyName("metadata")]
+            public Dictionary<string, string> Metadata { get; set; } = [];
+
+            [JsonPropertyName("data")]
+            public string Data { get; set; } = string.Empty;
+        }
+
+        private sealed class UpstashQueryRequest
+        {
+            [JsonPropertyName("vector")]
+            public float[] Vector { get; set; } = [];
+
+            [JsonPropertyName("topK")]
+            public int TopK { get; set; }
+
+            [JsonPropertyName("includeData")]
+            public bool IncludeData { get; set; }
+
+            [JsonPropertyName("includeMetadata")]
+            public bool IncludeMetadata { get; set; }
+
+            [JsonPropertyName("filter")]
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+            public string? Filter { get; set; }
+        }
+
+        private sealed class UpstashQueryResponseItem
+        {
+            [JsonPropertyName("id")]
+            public string? Id { get; set; }
+
+            [JsonPropertyName("score")]
+            public double Score { get; set; }
+
+            [JsonPropertyName("metadata")]
+            public Dictionary<string, string>? Metadata { get; set; }
+
+            [JsonPropertyName("data")]
+            public string? Data { get; set; }
         }
     }
 }

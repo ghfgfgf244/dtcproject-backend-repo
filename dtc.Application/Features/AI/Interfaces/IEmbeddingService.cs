@@ -5,6 +5,15 @@ namespace dtc.Application.Features.AI.Interfaces
 {
     public interface IEmbeddingService
     {
-        Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default);
+        Task<float[]> GenerateEmbeddingAsync(
+            string text,
+            EmbeddingGenerationOptions? options = null,
+            CancellationToken cancellationToken = default);
+    }
+
+    public sealed class EmbeddingGenerationOptions
+    {
+        public string? TaskType { get; init; }
+        public string? Title { get; init; }
     }
 }
