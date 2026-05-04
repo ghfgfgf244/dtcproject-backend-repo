@@ -12,6 +12,7 @@ namespace dtc.Application.Features.Training.Interfaces
         Task<TermResponseDto> UpdateTermAsync(Guid termId, UpdateTermRequestDto request, Guid adminId);
         
         Task<IEnumerable<TermResponseDto>> GetAllTermsAsync();
+        Task<TermPagedResponseDto> GetTermsPagedAsync(TermPagedQueryDto query, Guid? managedCenterId = null);
         Task<TermResponseDto> GetTermDetailAsync(Guid termId);
         Task<bool> DeleteTermAsync(Guid termId, Guid adminId);
     }

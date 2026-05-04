@@ -62,6 +62,27 @@ namespace dtc.API.Controllers
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        public async Task<IActionResult> DeleteCourse(Guid id)
+        {
+            var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessCourseAsync(id))
+            {
+                return Fail("You do not have permission to access this course.");
+            }
+
+            try
+            {
+                await _courseService.DeleteCourseAsync(id, adminId);
+                return NoContent("Course deleted successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpPost("{id}/deactivate")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> DeactivateCourse(Guid id)
         {
             var adminId = await GetInternalUserIdAsync();
@@ -74,6 +95,27 @@ namespace dtc.API.Controllers
             {
                 await _courseService.DeactivateCourseAsync(id, adminId);
                 return NoContent("Course deactivated successfully.");
+            }
+            catch (Exception ex)
+            {
+                return Fail(ex.Message);
+            }
+        }
+
+        [HttpPost("{id}/activate")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        public async Task<IActionResult> ActivateCourse(Guid id)
+        {
+            var adminId = await GetInternalUserIdAsync();
+            if (!await CanAccessCourseAsync(id))
+            {
+                return Fail("You do not have permission to access this course.");
+            }
+
+            try
+            {
+                await _courseService.ActivateCourseAsync(id, adminId);
+                return NoContent("Course activated successfully.");
             }
             catch (Exception ex)
             {

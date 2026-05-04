@@ -41,7 +41,7 @@ namespace dtc.Application.Features.Training.Services
         public async Task<CourseResponseDto> UpdateCourseAsync(Guid courseId, UpdateCourseRequestDto request, Guid adminId)
         {
             var course = await _unitOfWork.Courses.GetByIdAsync(courseId);
-            if (course == null)
+            if (course == null || course.IsDeleted)
                 throw new Exception("Course not found");
 
             var changed = false;
@@ -78,10 +78,21 @@ namespace dtc.Application.Features.Training.Services
             return MapToDto(course);
         }
 
+        public async Task ActivateCourseAsync(Guid courseId, Guid adminId)
+        {
+            var course = await _unitOfWork.Courses.GetByIdAsync(courseId);
+            if (course == null || course.IsDeleted)
+                throw new Exception("Course not found");
+
+            course.Activate(adminId);
+            await _unitOfWork.Courses.UpdateAsync(course);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
         public async Task DeactivateCourseAsync(Guid courseId, Guid adminId)
         {
             var course = await _unitOfWork.Courses.GetByIdAsync(courseId);
-            if (course == null)
+            if (course == null || course.IsDeleted)
                 throw new Exception("Course not found");
 
             // Check if there are active classes for this course's terms
@@ -96,28 +107,51 @@ namespace dtc.Application.Features.Training.Services
             await _unitOfWork.SaveChangesAsync();
         }
 
+        public async Task DeleteCourseAsync(Guid courseId, Guid adminId)
+        {
+            var course = await _unitOfWork.Courses.GetByIdAsync(courseId);
+            if (course == null || course.IsDeleted)
+                throw new Exception("Course not found");
+
+            var terms = (await _unitOfWork.Terms.FindAsync(t => t.CourseId == courseId && !t.IsDeleted)).ToList();
+            if (terms.Count > 0)
+                throw new InvalidOperationException("Cannot delete course that already has terms. Deactivate it instead.");
+
+            var registrations = (await _unitOfWork.CourseRegistrations.FindAsync(r => r.CourseId == courseId && !r.IsDeleted)).ToList();
+            if (registrations.Count > 0)
+                throw new InvalidOperationException("Cannot delete course that already has registrations. Deactivate it instead.");
+
+            var exams = (await _unitOfWork.Exams.FindAsync(e => e.CourseId == courseId && !e.IsDeleted)).ToList();
+            if (exams.Count > 0)
+                throw new InvalidOperationException("Cannot delete course that already has exams. Deactivate it instead.");
+
+            course.SoftDelete(adminId);
+            await _unitOfWork.Courses.UpdateAsync(course);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
         public async Task<IEnumerable<CourseResponseDto>> GetAllCoursesAsync()
         {
-            var courses = await _unitOfWork.Courses.FindAsync(c => true, c => c.Center);
+            var courses = await _unitOfWork.Courses.FindAsync(c => !c.IsDeleted, c => c.Center);
             return courses.Select(MapToDto);
         }
 
         public async Task<IEnumerable<CourseResponseDto>> GetAvailableCoursesAsync()
         {
-            var courses = await _unitOfWork.Courses.FindAsync(c => c.IsActive, c => c.Center);
+            var courses = await _unitOfWork.Courses.FindAsync(c => !c.IsDeleted && c.IsActive, c => c.Center);
             return courses.Select(MapToDto);
         }
 
         public async Task<IEnumerable<CourseResponseDto>> GetCoursesByCenterAsync(Guid centerId)
         {
-            var courses = await _unitOfWork.Courses.FindAsync(c => c.CenterId == centerId);
+            var courses = await _unitOfWork.Courses.FindAsync(c => c.CenterId == centerId && !c.IsDeleted);
             return courses.Select(MapToDto);
         }
 
         public async Task<CourseResponseDto> GetCourseDetailAsync(Guid courseId)
         {
             var course = await _unitOfWork.Courses.FirstOrDefaultAsync(c => c.Id == courseId, c => c.Center);
-            if (course == null)
+            if (course == null || course.IsDeleted)
                 throw new Exception("Course not found");
 
             var roadmaps = await _unitOfWork.LearningRoadmaps.FindAsync(r => r.CourseId == courseId);

@@ -61,6 +61,7 @@ namespace dtc.Application.Features.Training.Services
                 if (courses.TryGetValue(term.CourseId, out var course))
                 {
                     dto.CourseName = course.CourseName;
+                    dto.LicenseType = course.LicenseType.ToString();
                     dto.CenterId = course.CenterId;
                     if (centers.TryGetValue(course.CenterId, out var centerName))
                     {
@@ -69,6 +70,61 @@ namespace dtc.Application.Features.Training.Services
                 }
                 return dto;
             });
+        }
+
+        public async Task<TermPagedResponseDto> GetTermsPagedAsync(TermPagedQueryDto query, Guid? managedCenterId = null)
+        {
+            var normalizedLicenseType = string.IsNullOrWhiteSpace(query.LicenseType)
+                ? null
+                : query.LicenseType.Trim().ToUpperInvariant();
+            var pageNumber = query.PageNumber < 1 ? 1 : query.PageNumber;
+            var pageSize = query.PageSize < 1 ? 10 : query.PageSize;
+
+            var allTerms = await GetAllTermsAsync();
+            var scopedTerms = allTerms;
+
+            if (managedCenterId.HasValue)
+            {
+                scopedTerms = scopedTerms.Where(term => term.CenterId == managedCenterId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(normalizedLicenseType))
+            {
+                scopedTerms = scopedTerms.Where(term =>
+                    string.Equals(
+                        term.LicenseType?.Trim(),
+                        normalizedLicenseType,
+                        StringComparison.OrdinalIgnoreCase));
+            }
+
+            var orderedTerms = scopedTerms
+                .OrderByDescending(term => term.StartDate)
+                .ThenByDescending(term => term.CreatedAt)
+                .ToList();
+
+            var totalItems = orderedTerms.Count;
+            var totalPages = totalItems == 0
+                ? 0
+                : (int)Math.Ceiling((double)totalItems / pageSize);
+
+            if (totalPages > 0 && pageNumber > totalPages)
+            {
+                pageNumber = totalPages;
+            }
+
+            var items = orderedTerms
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return new TermPagedResponseDto
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalItems = totalItems,
+                TotalPages = totalPages,
+                Items = items
+            };
         }
 
         public async Task<TermResponseDto> GetTermDetailAsync(Guid termId)
@@ -106,6 +162,7 @@ namespace dtc.Application.Features.Training.Services
             if (course != null)
             {
                 dto.CourseName = course.CourseName;
+                dto.LicenseType = course.LicenseType.ToString();
                 dto.CenterId = course.CenterId;
 
                 var center = await _unitOfWork.Centers.GetByIdAsync(course.CenterId);

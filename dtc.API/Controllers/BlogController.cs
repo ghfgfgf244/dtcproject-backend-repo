@@ -29,6 +29,13 @@ namespace dtc.API.Controllers
         }
 
         // GET /api/Blog/{id} - Xem chi tiết bài post
+        [HttpGet("paged")]
+        public async Task<IActionResult> GetPagedBlogs([FromQuery] BlogPagedQueryDto query)
+        {
+            var response = await _blogService.GetBlogsPagedAsync(query);
+            return Ok(response);
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetBlogById(Guid id)
         {
