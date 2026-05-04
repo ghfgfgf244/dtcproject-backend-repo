@@ -8,6 +8,7 @@ namespace dtc.Application.Features.Training.DTOs
         public Guid CourseId { get; set; }
         public Guid CenterId { get; set; }
         public string? CourseName { get; set; }
+        public string? LicenseType { get; set; }
         public string? CenterName { get; set; }
         public string TermName { get; set; } = string.Empty;
         public DateTime StartDate { get; set; }

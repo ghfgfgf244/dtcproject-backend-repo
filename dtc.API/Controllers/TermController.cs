@@ -94,6 +94,16 @@ namespace dtc.API.Controllers
             return Ok(response);
         }
 
+        [HttpGet("paged")]
+        [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
+        public async Task<IActionResult> GetPagedTerms([FromQuery] TermPagedQueryDto query)
+        {
+            var managedCenterId = await GetManagedCenterIdAsync();
+            var response = await _termService.GetTermsPagedAsync(query, managedCenterId);
+
+            return Ok(response);
+        }
+
         [HttpGet("{id}")]
         [Authorize(Roles = "Admin,TrainingManager,EnrollmentManager")]
         public async Task<IActionResult> GetTermDetail(Guid id)

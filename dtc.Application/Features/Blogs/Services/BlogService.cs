@@ -121,6 +121,96 @@ namespace dtc.Application.Features.Blogs.Services
             return dtos;
         }
 
+        public async Task<BlogPagedResponseDto> GetBlogsPagedAsync(BlogPagedQueryDto query)
+        {
+            var pageNumber = query.PageNumber < 1 ? 1 : query.PageNumber;
+            var pageSize = query.PageSize < 1 ? 10 : query.PageSize;
+            var searchTerm = query.SearchTerm?.Trim();
+            var categoryName = query.CategoryName?.Trim();
+
+            IEnumerable<Blog> blogs;
+            if (query.OnlyPublished)
+            {
+                blogs = await _unitOfWork.Blogs.FindAsync(b => b.Status && !b.IsDeleted);
+            }
+            else
+            {
+                blogs = await _unitOfWork.Blogs.FindAsync(b => !b.IsDeleted);
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                blogs = blogs.Where(b =>
+                    (!string.IsNullOrWhiteSpace(b.Title) &&
+                     b.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrWhiteSpace(b.Summary) &&
+                     b.Summary.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            var mapped = new List<BlogResponseDto>();
+            foreach (var blog in blogs.OrderByDescending(b => b.CreatedAt))
+            {
+                try
+                {
+                    mapped.Add(await MapToDtoAsync(blog));
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error mapping blog {blog.Id}: {ex.Message}");
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(categoryName))
+            {
+                mapped = mapped
+                    .Where(item => string.Equals(
+                        item.CategoryName?.Trim(),
+                        categoryName,
+                        StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
+            if (query.StartDate.HasValue)
+            {
+                var startDate = query.StartDate.Value.Date;
+                mapped = mapped
+                    .Where(item => item.CreatedAt.Date >= startDate)
+                    .ToList();
+            }
+
+            if (query.EndDate.HasValue)
+            {
+                var endDate = query.EndDate.Value.Date;
+                mapped = mapped
+                    .Where(item => item.CreatedAt.Date <= endDate)
+                    .ToList();
+            }
+
+            var totalItems = mapped.Count;
+            var totalPages = totalItems == 0
+                ? 0
+                : (int)Math.Ceiling((double)totalItems / pageSize);
+
+            if (totalPages > 0 && pageNumber > totalPages)
+            {
+                pageNumber = totalPages;
+            }
+
+            var items = mapped
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return new BlogPagedResponseDto
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalItems = totalItems,
+                TotalPages = totalPages,
+                Items = items
+            };
+        }
+
         public async Task<bool> PublishBlogAsync(Guid id, Guid adminId)
         {
             var blog = await _unitOfWork.Blogs.GetByIdAsync(id);
