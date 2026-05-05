@@ -27,25 +27,41 @@ namespace dtc.Application.Features.AI.Services
             TheoryAssistantRequestDto request,
             CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrWhiteSpace(request.Question))
+            {
+                return CreateFallbackResponse(
+                    "Vui long nhap cau hoi ly thuyet de tro ly AI co the ho tro.");
+            }
+
             var filters = new Dictionary<string, string>();
             if (!string.IsNullOrWhiteSpace(request.Category))
             {
                 filters["category"] = request.Category.Trim();
             }
 
-            var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(
-                request.Question,
-                new EmbeddingGenerationOptions
-                {
-                    TaskType = "RETRIEVAL_QUERY"
-                },
-                cancellationToken);
-            var retrievalResults = await _vectorSearchService.SearchAsync(
-                request.Question,
-                queryEmbedding,
-                filters,
-                topK: 4,
-                cancellationToken: cancellationToken);
+            IReadOnlyCollection<KnowledgeVectorSearchResult> retrievalResults = [];
+
+            try
+            {
+                var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(
+                    request.Question,
+                    new EmbeddingGenerationOptions
+                    {
+                        TaskType = "RETRIEVAL_QUERY"
+                    },
+                    cancellationToken);
+
+                retrievalResults = await _vectorSearchService.SearchAsync(
+                    request.Question,
+                    queryEmbedding,
+                    filters,
+                    topK: 4,
+                    cancellationToken: cancellationToken);
+            }
+            catch
+            {
+                retrievalResults = [];
+            }
 
             var context = string.Join(
                 "\n\n",
@@ -61,13 +77,52 @@ namespace dtc.Application.Features.AI.Services
                 $"Ngu canh truy xuat:\n{(string.IsNullOrWhiteSpace(context) ? "Khong co ngu canh truy xuat phu hop." : context)}\n\n" +
                 $"{(request.IncludeStudyTips ? "Cuoi cau tra loi them meo hoc nhanh gon." : string.Empty)}";
 
-            var result = await _aiRouterService.GenerateAsync("theory-assistant", prompt, cancellationToken);
+            try
+            {
+                var result = await _aiRouterService.GenerateAsync("theory-assistant", prompt, cancellationToken);
+
+                return new TheoryAssistantResponseDto
+                {
+                    Answer = string.IsNullOrWhiteSpace(result.Content)
+                        ? "Tro ly AI da nhan cau hoi nhung chua the tao cau tra loi phu hop. Vui long thu lai sau."
+                        : result.Content,
+                    Model = result.Model,
+                    Sources = retrievalResults
+                        .Select(item => new AiSourceDto
+                        {
+                            Title = item.Metadata.GetValueOrDefault("title") ?? item.Id,
+                            Snippet = item.Text.Length > 220 ? $"{item.Text[..220]}..." : item.Text,
+                            SourceType = item.Metadata.GetValueOrDefault("documentType") ?? "knowledge",
+                            ReferenceId = item.Metadata.GetValueOrDefault("referenceId")
+                        })
+                        .ToList(),
+                    SuggestedTopics = retrievalResults
+                        .Select(item => item.Metadata.GetValueOrDefault("category") ?? item.Metadata.GetValueOrDefault("courseName"))
+                        .Where(item => !string.IsNullOrWhiteSpace(item))
+                        .Distinct()
+                        .Take(4)
+                        .ToList()!
+                };
+            }
+            catch
+            {
+                return CreateFallbackResponse(
+                    "Hien chua the lay phan hoi tu tro ly AI. Vui long thu lai sau.",
+                    retrievalResults);
+            }
+        }
+
+        private static TheoryAssistantResponseDto CreateFallbackResponse(
+            string answer,
+            IReadOnlyCollection<KnowledgeVectorSearchResult>? retrievalResults = null)
+        {
+            var safeResults = retrievalResults ?? [];
 
             return new TheoryAssistantResponseDto
             {
-                Answer = result.Content,
-                Model = result.Model,
-                Sources = retrievalResults
+                Answer = answer,
+                Model = "fallback",
+                Sources = safeResults
                     .Select(item => new AiSourceDto
                     {
                         Title = item.Metadata.GetValueOrDefault("title") ?? item.Id,
@@ -76,7 +131,7 @@ namespace dtc.Application.Features.AI.Services
                         ReferenceId = item.Metadata.GetValueOrDefault("referenceId")
                     })
                     .ToList(),
-                SuggestedTopics = retrievalResults
+                SuggestedTopics = safeResults
                     .Select(item => item.Metadata.GetValueOrDefault("category") ?? item.Metadata.GetValueOrDefault("courseName"))
                     .Where(item => !string.IsNullOrWhiteSpace(item))
                     .Distinct()

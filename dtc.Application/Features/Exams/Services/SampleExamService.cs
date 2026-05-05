@@ -202,7 +202,9 @@ namespace dtc.Application.Features.Exams.Services
         public async Task<IEnumerable<SampleExamResponseDto>> GetAllSampleExamsAsync()
         {
             var sampleExams = await _unitOfWork.SampleExams.GetAllAsync();
-            return sampleExams.Select(MapToDto);
+            return sampleExams
+                .Where(sampleExam => sampleExam.IsActive)
+                .Select(MapToDto);
         }
 
         public async Task<SampleExamResponseDto> CreateSampleExamWithQuestionsAsync(CreateSampleExamWithQuestionsRequestDto request)
