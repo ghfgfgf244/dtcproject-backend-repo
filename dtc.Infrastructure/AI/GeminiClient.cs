@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Net;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -40,18 +41,33 @@ namespace dtc.Infrastructure.AI
                 return new GeminiTextResult
                 {
                     Model = model,
-                    Text = $"[AI scaffold] Chua cau hinh Gemini key. Prompt nhan duoc: {prompt}",
+                    Text = "He thong AI chua duoc cau hinh san sang. Vui long thu lai sau.",
                     UsedMockResponse = true
                 };
             }
 
-            foreach (var apiKey in _geminiSettings.ApiKeys.Where(k => !string.IsNullOrWhiteSpace(k)))
+            var configuredKeys = _geminiSettings.ApiKeys
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .ToList();
+
+            var availableKeys = new System.Collections.Generic.List<string>();
+            foreach (var apiKey in configuredKeys)
             {
                 var keyHash = RedisApiKeyRotationStore.HashKey(apiKey);
-                if (await _keyRotationStore.IsCoolingDownAsync(keyHash, cancellationToken))
+                if (!await _keyRotationStore.IsCoolingDownAsync(keyHash, cancellationToken))
                 {
-                    continue;
+                    availableKeys.Add(apiKey);
                 }
+            }
+
+            // If every key is currently cooling down, retry them once instead of hard failing.
+            // This prevents the whole AI layer from becoming unavailable due to stale or overly broad cooldowns.
+            var candidateKeys = availableKeys.Count > 0 ? availableKeys : configuredKeys;
+            string? lastErrorMessage = null;
+
+            foreach (var apiKey in candidateKeys)
+            {
+                var keyHash = RedisApiKeyRotationStore.HashKey(apiKey);
 
                 try
                 {
@@ -68,7 +84,22 @@ namespace dtc.Infrastructure.AI
                     };
 
                     var response = await _httpClient.PostAsJsonAsync(endpoint, request, cancellationToken);
-                    response.EnsureSuccessStatusCode();
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var errorPayload = await response.Content.ReadAsStringAsync(cancellationToken);
+                        lastErrorMessage = BuildErrorMessage(model, response.StatusCode, errorPayload);
+
+                        if (ShouldMarkCooldown(response.StatusCode))
+                        {
+                            await _keyRotationStore.MarkCooldownAsync(
+                                keyHash,
+                                _geminiSettings.CooldownMinutesWhenRateLimited,
+                                cancellationToken);
+                        }
+
+                        continue;
+                    }
 
                     var payload = await response.Content.ReadFromJsonAsync<GeminiGenerateContentResponse>(cancellationToken: cancellationToken);
                     var text = payload?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text
@@ -82,6 +113,7 @@ namespace dtc.Infrastructure.AI
                 }
                 catch (HttpRequestException)
                 {
+                    lastErrorMessage = $"Khong the ket noi toi Gemini model {model}.";
                     await _keyRotationStore.MarkCooldownAsync(
                         keyHash,
                         _geminiSettings.CooldownMinutesWhenRateLimited,
@@ -92,9 +124,46 @@ namespace dtc.Infrastructure.AI
             return new GeminiTextResult
             {
                 Model = model,
-                Text = "[AI scaffold] Tat ca API key tam thoi khong kha dung.",
+                Text = string.IsNullOrWhiteSpace(lastErrorMessage)
+                    ? "Tam thoi khong the ket noi den dich vu AI. Vui long thu lai sau."
+                    : lastErrorMessage,
                 UsedMockResponse = true
             };
+        }
+
+        private static bool ShouldMarkCooldown(HttpStatusCode statusCode)
+        {
+            return statusCode == HttpStatusCode.TooManyRequests
+                || statusCode == HttpStatusCode.ServiceUnavailable
+                || statusCode == HttpStatusCode.BadGateway
+                || statusCode == HttpStatusCode.GatewayTimeout;
+        }
+
+        private static string BuildErrorMessage(string model, HttpStatusCode statusCode, string? errorPayload)
+        {
+            if (statusCode == HttpStatusCode.Unauthorized || statusCode == HttpStatusCode.Forbidden)
+            {
+                return $"API key Gemini khong hop le hoac khong du quyen voi model {model}.";
+            }
+
+            if (statusCode == HttpStatusCode.TooManyRequests)
+            {
+                return $"Model {model} dang tam qua tai hoac vuot gioi han truy cap.";
+            }
+
+            if (statusCode == HttpStatusCode.NotFound)
+            {
+                return $"Model {model} khong ton tai hoac khong kha dung trong cau hinh hien tai.";
+            }
+
+            if (statusCode == HttpStatusCode.BadRequest)
+            {
+                return $"Yeu cau gui toi model {model} khong hop le.";
+            }
+
+            return string.IsNullOrWhiteSpace(errorPayload)
+                ? $"Khong the nhan phan hoi hop le tu model {model}. (HTTP {(int)statusCode})"
+                : $"Khong the nhan phan hoi hop le tu model {model}. (HTTP {(int)statusCode})";
         }
 
         private sealed class GeminiGenerateContentRequest

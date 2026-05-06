@@ -295,9 +295,13 @@ namespace dtc.Application.Features.AI.Services
 
             return
                 "Ban la tro ly tu van khoa hoc lai xe. " +
-                "Hay viet mot doan tu van ngan gon, than thien, bang tieng Viet, dua tren du lieu that ben duoi. " +
+                "Hay tu van bang tieng Viet, ngan gon, than thien, khong lap lai prompt va khong bịa them du lieu. " +
                 $"Nhu cau: hang bang={request.DesiredLicenseLevel ?? "chua ro"}, khu vuc={request.PreferredDistrict ?? "chua ro"}, lich ranh={request.PreferredSchedule ?? "chua ro"}. " +
                 "Neu du lieu chua du thi noi ro dieu do, khong duoc bo sung thong tin khong co. " +
+                "Dinh dang bat buoc:\n" +
+                "Tong quan:\n- toi da 2 y\n" +
+                "Top goi y:\n- moi y gom ten khoa hoc, trung tam, diem manh chinh\n" +
+                "Loi khuyen tiep theo:\n- toi da 2 y\n" +
                 "Du lieu goi y: " + string.Join(" ", suggestionLines);
         }
 
