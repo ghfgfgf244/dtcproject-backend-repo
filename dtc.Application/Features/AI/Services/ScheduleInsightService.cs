@@ -20,7 +20,13 @@ namespace dtc.Application.Features.AI.Services
         {
             var result = await _aiRouterService.GenerateAsync(
                 "schedule-insight",
-                $"Phan tich xung dot lich hoc sau va dua ra goi y: {request.Scenario}. {request.Context}",
+                "Phan tich xung dot lich hoc va dua ra goi y dieu chinh bang tieng Viet. " +
+                "Chi tra loi ngan gon, de doc va khong lap lai prompt. " +
+                $"Tinh huong: {request.Scenario}. " +
+                $"Ngu canh: {request.Context}. " +
+                "Dinh dang bat buoc:\n" +
+                "Van de:\n- toi da 3 y\n" +
+                "Goi y xu ly:\n- toi da 3 y",
                 cancellationToken);
 
             return new ScheduleInsightResponseDto

@@ -425,14 +425,18 @@ namespace dtc.Application.Features.Exams.Services
 
                 var prompt =
                     "Ban la tro ly on tap ly thuyet lai xe. " +
-                    "Hay viet mot doan nhan xet ngan gon bang tieng Viet, than thien, tap trung vao nhom kien thuc can on lai. " +
+                    "Hay nhan xet bang tieng Viet, ngan gon, than thien, tap trung vao nhom kien thuc can on lai va khong lap lai prompt. " +
                     $"Hang GPLX: {level}. " +
                     $"Diem bai thi: {score}/100. Muc dat: {passingScore}/100. " +
                     $"So cau sai theo nhom: {string.Join(", ", wrongCountsByCategory.Select(item => $"{item.Key}={item.Value}"))}. " +
                     $"Chu de on tap goi y: {string.Join(", ", suggestedTopics)}. " +
                     "Danh sach cau sai tieu bieu: " +
                     string.Join(" ", wrongQuestionLines) +
-                    " Hay tra ve 3-4 cau, khong dung markdown.";
+                    " Dinh dang bat buoc:\n" +
+                    "Nhan xet chung:\n- toi da 2 y\n" +
+                    "Can on lai:\n- toi da 3 y\n" +
+                    "Meo cai thien:\n- toi da 2 y\n" +
+                    "Khong dung markdown table.";
 
                 var aiResult = await _aiRouterService.GenerateAsync("mock-exam-insight", prompt);
 
